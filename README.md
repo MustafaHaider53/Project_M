@@ -30,6 +30,26 @@ pip install -r requirements.txt
 streamlit run streamlit_app.py
 ```
 
+## 5) Run end-to-end tests (Selenium)
+
+Prereqs:
+- Google Chrome installed
+- `.streamlit/secrets.toml` configured (tests use your Supabase)
+
+Install dev deps:
+
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+```
+
+Run:
+
+```bash
+python run_e2e_tests.py
+```
+
+You’ll get a pass/fail summary of the full flow (Student → Murajat/Juzulhali/Jadeed).
+
 ## 4) Deploy free
 
 - **Streamlit Community Cloud** (free tier): connect GitHub repo and set the same secrets in Streamlit “Secrets”.

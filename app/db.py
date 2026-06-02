@@ -243,7 +243,8 @@ def increment_mistake(session_id: str, kind: str) -> Dict[str, int]:
 
     rest.insert(
         "mistake_events",
-        [{"session_id": session_id, "kind": kind, "activity_date": today_iso(), "created_at": now_utc_iso()}],
+        # Rely on DB defaults for dates/timestamps to avoid schema mismatch.
+        [{"session_id": session_id, "kind": kind}],
         returning="minimal",
     )
 
@@ -280,5 +281,22 @@ def mark_no_jadeed_today(*, student_id: str) -> None:
         [{"student_id": student_id, "activity_date": today_iso(), "no_jadeed": True, "updated_at": now_utc_iso()}],
         on_conflict="student_id,activity_date",
         returning="minimal",
+    )
+
+
+def list_jadeed_entries(*, student_id: str, limit: int = 200) -> List[Dict[str, Any]]:
+    rest = get_rest()
+    if rest is None:
+        raise RuntimeError("Supabase is not configured.")
+    # Include joined surah fields for display.
+    select = "id,student_id,activity_date,surah_id,page_number,ayah_number,how_much,created_at,surahs(name_en,name_ar,number)"
+    return rest.select(
+        "jadeed_entries",
+        select=select,
+        params={
+            "student_id": f"eq.{student_id}",
+            "order": "created_at.desc",
+            "limit": str(int(limit)),
+        },
     )
 
