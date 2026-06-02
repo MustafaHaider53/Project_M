@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from datetime import date
 from typing import Any, Dict, List, Optional
 
 import streamlit as st
 import requests
+from requests.exceptions import JSONDecodeError as RequestsJSONDecodeError
 
 from app.config import get_settings
 
@@ -20,6 +22,9 @@ def get_rest() -> Optional["SupabaseRest"]:
 def now_utc_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
+def today_iso() -> str:
+    # Date-wise storage; user does not select date.
+    return date.today().isoformat()
 
 class SupabaseRest:
     def __init__(self, *, url: str, key: str):
@@ -44,7 +49,15 @@ class SupabaseRest:
             timeout=20,
         )
         r.raise_for_status()
-        return list(r.json() or [])
+        if not r.content or not r.content.strip():
+            return []
+        try:
+            return list(r.json() or [])
+        except Exception:
+            raise RuntimeError(
+                f"Supabase returned non-JSON for select {table}. "
+                f"status={r.status_code} content_type={r.headers.get('content-type')} body={r.text[:300]!r}"
+            ) from None
 
     def select_single(
         self, table: str, *, select: str, params: Optional[Dict[str, str]] = None
@@ -62,7 +75,34 @@ class SupabaseRest:
             timeout=20,
         )
         r.raise_for_status()
-        return list(r.json() or [])
+        # With Prefer: return=minimal, PostgREST returns an empty body.
+        # Even when "representation" is requested, some setups can still return an empty body.
+        if returning == "minimal" or not r.content or not r.content.strip():
+            return []
+        # Some proxies/middlewares can return non-JSON HTML/text even on 2xx.
+        # Guard so we never raise JSONDecodeError here.
+        try:
+            payload = r.json()
+        except Exception:
+            return []
+        return list(payload or [])
+
+    def upsert(
+        self,
+        table: str,
+        rows: List[Dict[str, Any]],
+        *,
+        on_conflict: str,
+        returning: str = "minimal",
+    ) -> None:
+        r = requests.post(
+            f"{self.url}/rest/v1/{table}",
+            headers=self._headers(prefer=f"resolution=merge-duplicates,return={returning}"),
+            params={"on_conflict": on_conflict},
+            json=rows,
+            timeout=20,
+        )
+        r.raise_for_status()
 
     def update(self, table: str, *, match: Dict[str, Any], patch: Dict[str, Any]) -> None:
         params = {k: f"eq.{v}" for k, v in match.items()}
@@ -83,8 +123,35 @@ def list_surahs() -> List[Dict[str, Any]]:
     return rest.select("surahs", select="id,name_ar,name_en,number", params={"order": "number.asc"})
 
 
+def list_students() -> List[Dict[str, Any]]:
+    rest = get_rest()
+    if rest is None:
+        return []
+    return rest.select("students", select="id,full_name,created_at", params={"order": "full_name.asc"})
+
+
+def create_student(*, full_name: str) -> Dict[str, Any]:
+    rest = get_rest()
+    if rest is None:
+        raise RuntimeError("Supabase is not configured.")
+    full_name = full_name.strip()
+    if not full_name:
+        raise ValueError("Student name is required.")
+    # Try insert; if unique constraint blocks, fetch existing.
+    try:
+        res = rest.insert("students", [{"full_name": full_name}])
+        if res:
+            return res[0]
+    except requests.HTTPError:
+        pass
+    existing = rest.select_single("students", select="id,full_name,created_at", params={"full_name": f"eq.{full_name}"})
+    if not existing:
+        raise RuntimeError("Could not create or fetch student.")
+    return existing
+
 def create_listening_session(
     *,
+    student_id: str,
     mode: str,
     surah_id: Optional[int],
     page_number: Optional[int],
@@ -94,6 +161,8 @@ def create_listening_session(
         raise RuntimeError("Supabase is not configured. Set SUPABASE_URL and SUPABASE_KEY in Streamlit secrets.")
 
     payload: Dict[str, Any] = {
+        "student_id": student_id,
+        "activity_date": today_iso(),
         "mode": mode,
         "surah_id": surah_id,
         "page_number": page_number,
@@ -174,14 +243,14 @@ def increment_mistake(session_id: str, kind: str) -> Dict[str, int]:
 
     rest.insert(
         "mistake_events",
-        [{"session_id": session_id, "kind": kind, "created_at": now_utc_iso()}],
+        [{"session_id": session_id, "kind": kind, "activity_date": today_iso(), "created_at": now_utc_iso()}],
         returning="minimal",
     )
 
     return counts
 
 
-def insert_jadeed_rows(rows: List[Dict[str, Any]]) -> None:
+def insert_jadeed_rows(*, student_id: str, rows: List[Dict[str, Any]]) -> None:
     rest = get_rest()
     if rest is None:
         raise RuntimeError("Supabase is not configured.")
@@ -189,5 +258,27 @@ def insert_jadeed_rows(rows: List[Dict[str, Any]]) -> None:
         return
     for r in rows:
         r["created_at"] = now_utc_iso()
+        r["student_id"] = student_id
+        r["activity_date"] = today_iso()
     rest.insert("jadeed_entries", rows, returning="minimal")
+
+    # Mark that this student DID jadeed today (no_jadeed = false)
+    rest.upsert(
+        "jadeed_daily",
+        [{"student_id": student_id, "activity_date": today_iso(), "no_jadeed": False, "updated_at": now_utc_iso()}],
+        on_conflict="student_id,activity_date",
+        returning="minimal",
+    )
+
+
+def mark_no_jadeed_today(*, student_id: str) -> None:
+    rest = get_rest()
+    if rest is None:
+        raise RuntimeError("Supabase is not configured.")
+    rest.upsert(
+        "jadeed_daily",
+        [{"student_id": student_id, "activity_date": today_iso(), "no_jadeed": True, "updated_at": now_utc_iso()}],
+        on_conflict="student_id,activity_date",
+        returning="minimal",
+    )
 

@@ -10,9 +10,19 @@ create table if not exists public.surahs (
   name_ar text not null
 );
 
+-- Students master
+create table if not exists public.students (
+  id uuid primary key default uuid_generate_v4(),
+  full_name text not null,
+  created_at timestamptz not null default now(),
+  unique (full_name)
+);
+
 -- Listening sessions: Murajat or Juzulhali
 create table if not exists public.listening_sessions (
   id uuid primary key default uuid_generate_v4(),
+  student_id uuid not null references public.students(id) on delete cascade,
+  activity_date date not null default current_date,
   mode text not null check (mode in ('murajat', 'juzulhali')),
   surah_id bigint references public.surahs(id),
   page_number int,
@@ -40,17 +50,29 @@ create table if not exists public.mistake_events (
   id uuid primary key default uuid_generate_v4(),
   session_id uuid not null references public.listening_sessions(id) on delete cascade,
   kind text not null check (kind in ('talqeen','tanbeeh','repeat_mistake','mutashabehat')),
+  activity_date date not null default current_date,
   created_at timestamptz not null default now()
 );
 
 -- Jadeed entries (data table)
 create table if not exists public.jadeed_entries (
   id uuid primary key default uuid_generate_v4(),
+  student_id uuid not null references public.students(id) on delete cascade,
+  activity_date date not null default current_date,
   surah_id bigint not null references public.surahs(id),
   page_number int not null,
   ayah_number int not null,
   how_much text not null check (how_much in ('Half', 'Full')),
   created_at timestamptz not null default now()
+);
+
+-- Daily Jadeed status (no user-chosen date; always current_date from app)
+create table if not exists public.jadeed_daily (
+  student_id uuid not null references public.students(id) on delete cascade,
+  activity_date date not null,
+  no_jadeed boolean not null default false,
+  updated_at timestamptz not null default now(),
+  primary key (student_id, activity_date)
 );
 
 -- ---- Seed surahs (114)
@@ -173,15 +195,21 @@ on conflict (number) do nothing;
 
 -- RLS (optional): start permissive for quick prototyping
 alter table public.surahs enable row level security;
+alter table public.students enable row level security;
 alter table public.listening_sessions enable row level security;
 alter table public.mistake_counts enable row level security;
 alter table public.mistake_events enable row level security;
 alter table public.jadeed_entries enable row level security;
+alter table public.jadeed_daily enable row level security;
 
 do $$
 begin
   if not exists (select 1 from pg_policies where schemaname='public' and tablename='surahs') then
     create policy "read surahs" on public.surahs for select using (true);
+  end if;
+
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='students') then
+    create policy "crud students" on public.students for all using (true) with check (true);
   end if;
 
   if not exists (select 1 from pg_policies where schemaname='public' and tablename='listening_sessions') then
@@ -198,6 +226,10 @@ begin
 
   if not exists (select 1 from pg_policies where schemaname='public' and tablename='jadeed_entries') then
     create policy "crud jadeed" on public.jadeed_entries for all using (true) with check (true);
+  end if;
+
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='jadeed_daily') then
+    create policy "crud jadeed daily" on public.jadeed_daily for all using (true) with check (true);
   end if;
 end $$;
 

@@ -4,11 +4,18 @@ import streamlit as st
 
 from app.db import create_listening_session, get_session_counts, increment_mistake, list_surahs
 from app.ui.shared import back_home_button, mistake_buttons, surah_selector
+from app.ui.student import current_student_badge
 
 
 def render_murajat() -> None:
     back_home_button()
     st.subheader("Murajat")
+    current_student_badge()
+
+    student_id = st.session_state.get("student_id")
+    if not student_id:
+        st.warning("Please select a student on Home first.")
+        return
 
     surahs = list_surahs()
     surah_id, surah = surah_selector(surahs=surahs, key="murajat_surah")
@@ -16,9 +23,14 @@ def render_murajat() -> None:
     if surah_id is None:
         return
 
-    if "murajat_session_id" not in st.session_state or st.session_state.get("murajat_surah_id") != surah_id:
+    if (
+        "murajat_session_id" not in st.session_state
+        or st.session_state.get("murajat_surah_id") != surah_id
+        or st.session_state.get("murajat_student_id") != student_id
+    ):
         st.session_state.murajat_surah_id = surah_id
-        session = create_listening_session(mode="murajat", surah_id=surah_id, page_number=None)
+        st.session_state.murajat_student_id = student_id
+        session = create_listening_session(student_id=student_id, mode="murajat", surah_id=surah_id, page_number=None)
         st.session_state.murajat_session_id = session["id"]
 
     st.markdown(f"**Selected**: {surah['name_en']} ({surah['name_ar']})" if surah else "**Selected**: Surah")
@@ -35,7 +47,7 @@ def render_murajat() -> None:
     c1, c2 = st.columns(2)
     with c1:
         if st.button("New session (same Surah)"):
-            session = create_listening_session(mode="murajat", surah_id=surah_id, page_number=None)
+            session = create_listening_session(student_id=student_id, mode="murajat", surah_id=surah_id, page_number=None)
             st.session_state.murajat_session_id = session["id"]
             st.rerun()
     with c2:

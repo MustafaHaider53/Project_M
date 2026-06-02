@@ -1,12 +1,20 @@
 import streamlit as st
 
 from app.db import get_rest
+from app.ui.student import current_student_badge, require_student
 
 
 def render_home() -> None:
     rest = get_rest()
     if rest is None:
         st.warning("Supabase is not configured yet. Add SUPABASE_URL and SUPABASE_KEY in Streamlit secrets.")
+        return
+
+    student_id = require_student()
+    if not student_id:
+        return
+
+    current_student_badge()
 
     st.subheader("Choose a module")
 
