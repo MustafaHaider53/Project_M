@@ -61,10 +61,12 @@ def apply_islamic_theme() -> None:
           /* Inputs */
           [data-baseweb="select"] > div,
           .stTextInput input,
-          .stNumberInput input {
+          .stNumberInput input,
+          .stTextArea textarea {
             border-radius: 12px !important;
-            border: 1px solid rgba(212,175,55,0.22) !important;
-            background: rgba(255,255,255,0.60) !important;
+            border: 1.5px solid var(--border) !important;
+            background: rgba(255, 255, 255, 0.85) !important;
+            color: var(--ink) !important;
           }
 
           /* Dataframe / editor container */

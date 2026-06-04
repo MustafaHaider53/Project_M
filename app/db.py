@@ -3,9 +3,11 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from datetime import date
 from typing import Any, Dict, List, Optional
+from collections import defaultdict
 
 import streamlit as st
 import requests
+import threading
 from requests.exceptions import JSONDecodeError as RequestsJSONDecodeError
 
 from app.config import get_settings
@@ -25,6 +27,23 @@ def now_utc_iso() -> str:
 def today_iso() -> str:
     # Date-wise storage; user does not select date.
     return date.today().isoformat()
+
+
+def normalize_text(value: str) -> str:
+    """
+    Basic normalization for user-entered homework text:
+    - trim each line
+    - collapse repeated spaces
+    - keep user content, only improve readability consistency
+    """
+    lines = str(value or "").replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    cleaned: List[str] = []
+    for ln in lines:
+        parts = ln.strip().split()
+        cleaned.append(" ".join(parts))
+    # keep non-empty lines, but preserve line breaks between meaningful entries
+    cleaned = [ln for ln in cleaned if ln]
+    return "\n".join(cleaned)
 
 class SupabaseRest:
     def __init__(self, *, url: str, key: str):
@@ -116,6 +135,7 @@ class SupabaseRest:
         r.raise_for_status()
 
 
+@st.cache_data(show_spinner=False)
 def list_surahs() -> List[Dict[str, Any]]:
     rest = get_rest()
     if rest is None:
@@ -123,6 +143,7 @@ def list_surahs() -> List[Dict[str, Any]]:
     return rest.select("surahs", select="id,name_ar,name_en,number", params={"order": "number.asc"})
 
 
+@st.cache_data(show_spinner=False)
 def list_students() -> List[Dict[str, Any]]:
     rest = get_rest()
     if rest is None:
@@ -140,6 +161,7 @@ def create_student(*, full_name: str) -> Dict[str, Any]:
     # Try insert; if unique constraint blocks, fetch existing.
     try:
         res = rest.insert("students", [{"full_name": full_name}])
+        list_students.clear()
         if res:
             return res[0]
     except requests.HTTPError:
@@ -251,6 +273,38 @@ def increment_mistake(session_id: str, kind: str) -> Dict[str, int]:
     return counts
 
 
+def increment_mistake_bg(session_id: str, kind: str, counts: Dict[str, int]) -> None:
+    rest = get_rest()
+    if rest is None:
+        return
+    t = threading.Thread(target=_bg_update_mistake, args=(rest, session_id, kind, counts.copy()))
+    t.daemon = True
+    t.start()
+
+
+def _bg_update_mistake(rest: SupabaseRest, session_id: str, kind: str, counts: Dict[str, int]) -> None:
+    try:
+        rest.update(
+            "mistake_counts",
+            match={"session_id": session_id},
+            patch={
+                "talqeen": counts["talqeen"],
+                "tanbeeh": counts["tanbeeh"],
+                "repeat_mistake": counts["repeat_mistake"],
+                "mutashabehat": counts["mutashabehat"],
+                "updated_at": now_utc_iso(),
+            },
+        )
+        rest.insert(
+            "mistake_events",
+            [{"session_id": session_id, "kind": kind}],
+            returning="minimal",
+        )
+    except Exception as e:
+        import logging
+        logging.error(f"Background database update error: {e}")
+
+
 def insert_jadeed_rows(*, student_id: str, rows: List[Dict[str, Any]]) -> None:
     rest = get_rest()
     if rest is None:
@@ -289,7 +343,7 @@ def list_jadeed_entries(*, student_id: str, limit: int = 200) -> List[Dict[str, 
     if rest is None:
         raise RuntimeError("Supabase is not configured.")
     # Include joined surah fields for display.
-    select = "id,student_id,activity_date,surah_id,page_number,ayah_number,how_much,created_at,surahs(name_en,name_ar,number)"
+    select = "id,student_id,activity_date,surah_id,page_number,ayah_number,volume,created_at,surahs(name_en,name_ar,number)"
     return rest.select(
         "jadeed_entries",
         select=select,
@@ -299,4 +353,186 @@ def list_jadeed_entries(*, student_id: str, limit: int = 200) -> List[Dict[str, 
             "limit": str(int(limit)),
         },
     )
+
+
+def upsert_takhteet_today(*, student_id: str, murajat_text_raw: str, juzulhali_text_raw: str, jadeed_text_raw: str) -> None:
+    rest = get_rest()
+    if rest is None:
+        raise RuntimeError("Supabase is not configured.")
+
+    row = {
+        "student_id": student_id,
+        "activity_date": today_iso(),
+        "murajat_text_raw": murajat_text_raw or "",
+        "juzulhali_text_raw": juzulhali_text_raw or "",
+        "jadeed_text_raw": jadeed_text_raw or "",
+        "murajat_text_clean": normalize_text(murajat_text_raw),
+        "juzulhali_text_clean": normalize_text(juzulhali_text_raw),
+        "jadeed_text_clean": normalize_text(jadeed_text_raw),
+        "updated_at": now_utc_iso(),
+    }
+    rest.upsert("takhteet_daily", [row], on_conflict="student_id,activity_date", returning="minimal")
+
+
+def get_takhteet_today(*, student_id: str) -> Optional[Dict[str, Any]]:
+    rest = get_rest()
+    if rest is None:
+        raise RuntimeError("Supabase is not configured.")
+    return rest.select_single(
+        "takhteet_daily",
+        select="student_id,activity_date,murajat_text_raw,juzulhali_text_raw,jadeed_text_raw,murajat_text_clean,juzulhali_text_clean,jadeed_text_clean,updated_at",
+        params={"student_id": f"eq.{student_id}", "activity_date": f"eq.{today_iso()}"},
+    )
+
+
+def _extract_count(value: Any) -> int:
+    if isinstance(value, list):
+        if not value:
+            return 0
+        value = value[0]
+    if isinstance(value, dict):
+        return int(value.get("count", 0) or 0)
+    return int(value or 0)
+
+
+def fetch_monthly_report(*, student_id: str, year: int, month: int) -> List[Dict[str, Any]]:
+    """
+    Returns date-wise structured report data for web + PDF for a specific month/year:
+    [
+      {
+        "activity_date": "YYYY-MM-DD",
+        "murajat": [...],
+        "juzulhali": [...],
+        "jadeed": [...],
+        "no_jadeed": bool,
+        "takhteet": {...}
+      }
+    ]
+    """
+    rest = get_rest()
+    if rest is None:
+        raise RuntimeError("Supabase is not configured.")
+
+    import calendar
+    _, last_day = calendar.monthrange(year, month)
+    from_date = f"{year:04d}-{month:02d}-01"
+    to_date = f"{year:04d}-{month:02d}-{last_day:02d}"
+
+    # Sessions + counts + surah
+    sessions = rest.select(
+        "listening_sessions",
+        select="id,activity_date,mode,surah_id,page_number,created_at,surahs(number,name_en,name_ar),mistake_counts(talqeen,tanbeeh,repeat_mistake,mutashabehat)",
+        params={
+            "student_id": f"eq.{student_id}",
+            "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
+            "order": "activity_date.asc,created_at.asc",
+        },
+    )
+
+    jadeed_rows = rest.select(
+        "jadeed_entries",
+        select="id,activity_date,surah_id,page_number,ayah_number,volume,created_at,surahs(number,name_en,name_ar)",
+        params={
+            "student_id": f"eq.{student_id}",
+            "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
+            "order": "activity_date.asc,created_at.asc",
+        },
+    )
+
+    jadeed_daily_rows = rest.select(
+        "jadeed_daily",
+        select="student_id,activity_date,no_jadeed,updated_at",
+        params={
+            "student_id": f"eq.{student_id}",
+            "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
+            "order": "activity_date.asc",
+        },
+    )
+
+    takhteet_rows = rest.select(
+        "takhteet_daily",
+        select="student_id,activity_date,murajat_text_clean,juzulhali_text_clean,jadeed_text_clean,updated_at",
+        params={
+            "student_id": f"eq.{student_id}",
+            "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
+            "order": "activity_date.asc",
+        },
+    )
+
+    by_date: Dict[str, Dict[str, Any]] = {}
+    for day in range(1, last_day + 1):
+        d = f"{year:04d}-{month:02d}-{day:02d}"
+        by_date[d] = {
+            "activity_date": d,
+            "murajat": [],
+            "juzulhali": [],
+            "jadeed": [],
+            "no_jadeed": False,
+            "takhteet": {"murajat": "", "juzulhali": "", "jadeed": ""},
+        }
+
+    for s in sessions:
+        d = str(s.get("activity_date"))
+        if d not in by_date:
+            continue
+        counts = s.get("mistake_counts") or {}
+        if isinstance(counts, list):
+            counts = counts[0] if counts else {}
+        talqeen = int(counts.get("talqeen", 0) or 0)
+        tanbeeh = int(counts.get("tanbeeh", 0) or 0)
+        repeat_mistake = int(counts.get("repeat_mistake", 0) or 0)
+        mutashabehat = int(counts.get("mutashabehat", 0) or 0)
+        marks = 10 - talqeen - (0.5 * tanbeeh)
+        row = {
+            "talqeen": talqeen,
+            "tanbeeh": tanbeeh,
+            "repeat_mistake": repeat_mistake,
+            "mutashabehat": mutashabehat,
+            "marks": marks,
+        }
+        if s.get("mode") == "murajat":
+            surah = s.get("surahs") or {}
+            if isinstance(surah, list):
+                surah = surah[0] if surah else {}
+            row["surat"] = f"{surah.get('number', '')} - {surah.get('name_en', '')}".strip(" -")
+            row["surah_name_ar"] = surah.get("name_ar", "")
+            row["surah_number"] = surah.get("number", "")
+            by_date[d]["murajat"].append(row)
+        elif s.get("mode") == "juzulhali":
+            row["page_number"] = int(s.get("page_number") or 0)
+            by_date[d]["juzulhali"].append(row)
+
+    for j in jadeed_rows:
+        d = str(j.get("activity_date"))
+        if d not in by_date:
+            continue
+        surah = j.get("surahs") or {}
+        if isinstance(surah, list):
+            surah = surah[0] if surah else {}
+        by_date[d]["jadeed"].append(
+            {
+                "surat": f"{surah.get('number', '')} - {surah.get('name_en', '')}".strip(" -"),
+                "surah_name_ar": surah.get("name_ar", ""),
+                "surah_number": surah.get("number", ""),
+                "page_number": int(j.get("page_number") or 0),
+                "ayah_number": int(j.get("ayah_number") or 0),
+                "volume": j.get("volume") or "",
+            }
+        )
+
+    for jd in jadeed_daily_rows:
+        d = str(jd.get("activity_date"))
+        if d in by_date:
+            by_date[d]["no_jadeed"] = bool(jd.get("no_jadeed"))
+
+    for t in takhteet_rows:
+        d = str(t.get("activity_date"))
+        if d in by_date:
+            by_date[d]["takhteet"] = {
+                "murajat": t.get("murajat_text_clean") or "",
+                "juzulhali": t.get("juzulhali_text_clean") or "",
+                "jadeed": t.get("jadeed_text_clean") or "",
+            }
+
+    return [by_date[k] for k in sorted(by_date.keys())]
 

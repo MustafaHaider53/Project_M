@@ -62,7 +62,7 @@ create table if not exists public.jadeed_entries (
   surah_id bigint not null references public.surahs(id),
   page_number int not null,
   ayah_number int not null,
-  how_much text not null check (how_much in ('Half', 'Full')),
+  volume text not null check (volume in ('Half', 'Full')),
   created_at timestamptz not null default now()
 );
 
@@ -71,6 +71,20 @@ create table if not exists public.jadeed_daily (
   student_id uuid not null references public.students(id) on delete cascade,
   activity_date date not null,
   no_jadeed boolean not null default false,
+  updated_at timestamptz not null default now(),
+  primary key (student_id, activity_date)
+);
+
+-- Daily Takhteet (homework text)
+create table if not exists public.takhteet_daily (
+  student_id uuid not null references public.students(id) on delete cascade,
+  activity_date date not null,
+  murajat_text_raw text not null default '',
+  juzulhali_text_raw text not null default '',
+  jadeed_text_raw text not null default '',
+  murajat_text_clean text not null default '',
+  juzulhali_text_clean text not null default '',
+  jadeed_text_clean text not null default '',
   updated_at timestamptz not null default now(),
   primary key (student_id, activity_date)
 );
@@ -201,6 +215,7 @@ alter table public.mistake_counts enable row level security;
 alter table public.mistake_events enable row level security;
 alter table public.jadeed_entries enable row level security;
 alter table public.jadeed_daily enable row level security;
+alter table public.takhteet_daily enable row level security;
 
 do $$
 begin
@@ -230,6 +245,10 @@ begin
 
   if not exists (select 1 from pg_policies where schemaname='public' and tablename='jadeed_daily') then
     create policy "crud jadeed daily" on public.jadeed_daily for all using (true) with check (true);
+  end if;
+
+  if not exists (select 1 from pg_policies where schemaname='public' and tablename='takhteet_daily') then
+    create policy "crud takhteet daily" on public.takhteet_daily for all using (true) with check (true);
   end if;
 end $$;
 

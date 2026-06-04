@@ -18,7 +18,7 @@ def render_home() -> None:
 
     st.subheader("Choose a module")
 
-    c1, c2, c3 = st.columns(3)
+    c1, c2, c3, c4, c5 = st.columns(5)
     with c1:
         if st.button("Murajat", use_container_width=True):
             st.session_state.page = "murajat"
@@ -30,5 +30,13 @@ def render_home() -> None:
     with c3:
         if st.button("Jadeed", use_container_width=True):
             st.session_state.page = "jadeed"
+            st.rerun()
+    with c4:
+        if st.button("Takhteet", use_container_width=True):
+            st.session_state.page = "takhteet"
+            st.rerun()
+    with c5:
+        if st.button("Report", use_container_width=True):
+            st.session_state.page = "report"
             st.rerun()
 

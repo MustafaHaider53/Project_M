@@ -41,7 +41,7 @@ def render_jadeed() -> None:
         label = str(r.get("Surat") or "").strip()
         page = int(r.get("Page Number") or 0)
         ayah = int(r.get("Ayah") or 0)
-        how = str(r.get("How Much") or "").strip()
+        how = str(r.get("Volume") or "").strip()
         return (label, page, ayah, how)
 
     # Load today's existing saved rows into the SAME data table.
@@ -56,7 +56,7 @@ def render_jadeed() -> None:
                 or surah_by_id.get(int(t.get("surah_id") or 0), surah_labels[0]),
                 "Page Number": int(t.get("page_number") or 1),
                 "Ayah": int(t.get("ayah_number") or 1),
-                "How Much": str(t.get("how_much") or "Full"),
+                "Volume": str(t.get("volume") or "Full"),
             }
             for t in todays
         ]
@@ -64,22 +64,26 @@ def render_jadeed() -> None:
         st.session_state.jadeed_existing_keys = {_row_key(r) for r in loaded_rows}
         st.session_state.jadeed_init_key = init_key
 
-    edited = st.data_editor(
-        st.session_state.jadeed_rows,
+    import pandas as pd
+    df = pd.DataFrame(st.session_state.jadeed_rows, columns=["Surat", "Page Number", "Ayah", "Volume"])
+    
+    edited_df = st.data_editor(
+        df,
         num_rows="dynamic",
-        use_container_width=True,
+        width="stretch",
         column_config={
             "Surat": st.column_config.SelectboxColumn("Surat", options=surah_labels, required=True),
             "Page Number": st.column_config.NumberColumn("Page Number", min_value=1, step=1, required=True),
             "Ayah": st.column_config.NumberColumn("Ayah", min_value=1, step=1, required=True),
-            "How Much": st.column_config.SelectboxColumn("How Much", options=["Half", "Full"], required=True),
+            "Volume": st.column_config.SelectboxColumn("Volume", options=["Half", "Full"], required=True),
         },
         key="jadeed_editor",
     )
+    edited = edited_df.to_dict(orient="records")
 
-    c1, c2, c3 = st.columns(3)
+    c1, c2 = st.columns(2)
     with c1:
-        if st.button("Save to Supabase", type="primary", use_container_width=True):
+        if st.button("Save to Supabase", type="primary", width="stretch"):
             payload: List[Dict[str, Any]] = []
             existing_keys = set(st.session_state.get("jadeed_existing_keys") or set())
             for r in edited:
@@ -95,7 +99,7 @@ def render_jadeed() -> None:
                         "surah_id": int(surah_id),
                         "page_number": int(r.get("Page Number") or 1),
                         "ayah_number": int(r.get("Ayah") or 1),
-                        "how_much": str(r.get("How Much") or "Full"),
+                        "volume": str(r.get("Volume") or "Full"),
                     }
                 )
 
@@ -105,12 +109,7 @@ def render_jadeed() -> None:
             st.session_state.pop("jadeed_existing_keys", None)
             st.rerun()
     with c2:
-        if st.button("Reset table", use_container_width=True):
-            st.session_state.jadeed_rows = []
-            # keep init key so reset means "start adding new" without reloading
-            st.rerun()
-    with c3:
-        if st.button("No Jadeed today", use_container_width=True):
+        if st.button("No Jadeed today", width="stretch"):
             mark_no_jadeed_today(student_id=student_id)
             st.session_state.jadeed_flash = "Marked: No Jadeed for today."
             st.rerun()

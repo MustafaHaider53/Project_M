@@ -6,9 +6,7 @@ import streamlit as st
 
 
 def back_home_button() -> None:
-    if st.button("← Back to Home"):
-        st.session_state.page = "home"
-        st.rerun()
+    pass
 
 
 def surah_selector(*, surahs: List[Dict[str, Any]], key: str) -> Tuple[Optional[int], Optional[Dict[str, Any]]]:
@@ -29,28 +27,28 @@ def mistake_buttons(*, session_id: str, counts: Dict[str, int], on_click) -> Non
     with c1:
         st.button(
             f"Talqeen ({counts['talqeen']})",
-            use_container_width=True,
+            width="stretch",
             on_click=on_click,
             kwargs={"kind": "talqeen"},
         )
     with c2:
         st.button(
             f"Tanbeeh ({counts['tanbeeh']})",
-            use_container_width=True,
+            width="stretch",
             on_click=on_click,
             kwargs={"kind": "tanbeeh"},
         )
     with c3:
         st.button(
             f"Repeat mistake ({counts['repeat_mistake']})",
-            use_container_width=True,
+            width="stretch",
             on_click=on_click,
             kwargs={"kind": "repeat_mistake"},
         )
     with c4:
         st.button(
             f"Mutashabehat ({counts['mutashabehat']})",
-            use_container_width=True,
+            width="stretch",
             on_click=on_click,
             kwargs={"kind": "mutashabehat"},
         )
