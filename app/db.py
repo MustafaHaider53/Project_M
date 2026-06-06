@@ -577,3 +577,90 @@ def fetch_monthly_report(*, student_id: str, year: int, month: int) -> List[Dict
 
     return [by_date[k] for k in sorted(by_date.keys())]
 
+
+def get_student_email(*, student_id: str) -> Optional[str]:
+    rest = get_rest()
+    if rest is None:
+        return None
+    try:
+        res = rest.select_single("students", select="email", params={"id": f"eq.{student_id}"})
+        if res:
+            return res.get("email")
+    except Exception:
+        pass
+    return None
+
+
+def get_student_daily_summary(*, student_id: str, date_str: str) -> Dict[str, Any]:
+    rest = get_rest()
+    if rest is None:
+        raise RuntimeError("Supabase is not configured.")
+
+    try:
+        student = rest.select_single("students", select="full_name,email", params={"id": f"eq.{student_id}"})
+    except Exception:
+        student = rest.select_single("students", select="full_name", params={"id": f"eq.{student_id}"})
+
+    if not student:
+        raise ValueError("Student not found.")
+
+    sessions = rest.select(
+        "listening_sessions",
+        select="id,mode,surah_id,page_number,created_at,surahs(number,name_en,name_ar),mistake_counts(talqeen,tanbeeh,repeat_mistake,mutashabehat,irab)",
+        params={
+            "student_id": f"eq.{student_id}",
+            "activity_date": f"eq.{date_str}",
+            "order": "created_at.asc",
+        },
+    )
+
+    jadeed_rows = rest.select(
+        "jadeed_entries",
+        select="id,surah_id,page_number,ayah_number,volume,created_at,surahs(number,name_en,name_ar)",
+        params={
+            "student_id": f"eq.{student_id}",
+            "activity_date": f"eq.{date_str}",
+            "order": "created_at.asc",
+        },
+    )
+
+    jadeed_daily_row = None
+    try:
+        jadeed_daily_row = rest.select_single(
+            "jadeed_daily",
+            select="no_jadeed",
+            params={
+                "student_id": f"eq.{student_id}",
+                "activity_date": f"eq.{date_str}",
+            },
+        )
+    except Exception:
+        pass
+
+    takhteet_row = None
+    try:
+        takhteet_row = rest.select_single(
+            "takhteet_daily",
+            select="murajat_text_raw,juzulhali_text_raw,jadeed_text_raw,murajat_text_clean,juzulhali_text_clean,jadeed_text_clean",
+            params={
+                "student_id": f"eq.{student_id}",
+                "activity_date": f"eq.{date_str}",
+            },
+        )
+    except Exception:
+        pass
+
+    murajat_sessions = [s for s in sessions if s.get("mode") == "murajat"]
+    juzulhali_sessions = [s for s in sessions if s.get("mode") == "juzulhali"]
+
+    return {
+        "student_name": student.get("full_name"),
+        "student_email": student.get("email"),
+        "activity_date": date_str,
+        "murajat": murajat_sessions,
+        "juzulhali": juzulhali_sessions,
+        "jadeed": jadeed_rows,
+        "no_jadeed": bool(jadeed_daily_row.get("no_jadeed")) if jadeed_daily_row else False,
+        "takhteet": takhteet_row or {},
+    }
+

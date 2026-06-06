@@ -30,7 +30,7 @@ def main() -> None:
     # 3. Render Header Navigation buttons
     current_page = st.session_state.get("page", "home")
     
-    cols = st.columns(6)
+    cols = st.columns(7)
     with cols[0]:
         if st.button("👥 Change Student", width="stretch"):
             st.session_state.student_id = None
@@ -59,6 +59,11 @@ def main() -> None:
             st.rerun()
             
     with cols[5]:
+        if st.button("Email Summary", type="primary" if current_page == "email" else "secondary", width="stretch"):
+            st.session_state.page = "email"
+            st.rerun()
+            
+    with cols[6]:
         if st.button("Report", type="primary" if current_page == "report" else "secondary", width="stretch"):
             st.session_state.page = "report"
             st.rerun()
@@ -77,6 +82,9 @@ def main() -> None:
         render_jadeed()
     elif current_page == "takhteet":
         render_takhteet()
+    elif current_page == "email":
+        from app.ui.email_page import render_email_page
+        render_email_page()
     elif current_page == "report":
         render_report()
     else:
