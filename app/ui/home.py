@@ -15,6 +15,9 @@ def render_home() -> None:
         return
 
     current_student_badge()
+    
+    from app.ui.shared import show_previous_takhteet
+    show_previous_takhteet(student_id)
 
     st.subheader("Choose a module")
 

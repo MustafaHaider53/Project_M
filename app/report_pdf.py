@@ -61,10 +61,86 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]]) -> str:
         if len(activity_date) == 10:
             date_sub = f"{activity_date[8:10]}/{activity_date[5:7]}"
             
+        from datetime import datetime
+        try:
+            dt = datetime.strptime(activity_date, "%Y-%m-%d")
+            wd = dt.weekday()  # 0=Monday, ..., 5=Saturday, 6=Sunday
+        except Exception:
+            wd = 0
+            
+        day_names_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        day_name_en = day_names_en[wd]
+        is_weekend = wd in (5, 6)
+            
         murajat = r.get("murajat", [])
         juzulhali = r.get("juzulhali", [])
         jadeed = r.get("jadeed", [])
         
+        # Check if student is absent (absolutely no record of any kind for this day, only for weekdays, and only for past/today days)
+        from datetime import date
+        today_str = date.today().isoformat()
+        is_absent = (
+            not is_weekend
+            and activity_date <= today_str
+            and not murajat 
+            and not juzulhali 
+            and not jadeed 
+            and not r.get("no_jadeed") 
+            and not (r.get("takhteet") or {}).get("murajat", "").strip()
+            and not (r.get("takhteet") or {}).get("juzulhali", "").strip()
+            and not (r.get("takhteet") or {}).get("jadeed", "").strip()
+        )
+        
+        # Check if weekend is completely empty (no made-up tasks/recitations)
+        is_weekend_empty = (
+            is_weekend
+            and not murajat 
+            and not juzulhali 
+            and not jadeed 
+            and not r.get("no_jadeed") 
+            and not (r.get("takhteet") or {}).get("murajat", "").strip()
+            and not (r.get("takhteet") or {}).get("juzulhali", "").strip()
+            and not (r.get("takhteet") or {}).get("jadeed", "").strip()
+        )
+        
+        if is_absent:
+            cells = []
+            cells.append(
+                f'<td class="date-col col-date absent-row">'
+                f'  <div class="day-number">{date_num}</div>'
+                f'  <div class="day-date">{date_sub}</div>'
+                f'  <div class="day-name">{day_name_en}</div>'
+                f'</td>'
+            )
+            cells.append(
+                f'<td colspan="19" class="absent-cell">Absent / غائب ({day_name_en})</td>'
+            )
+            row_class = ' class="day-separator week-end-separator"' if wd == 6 else ' class="day-separator"'
+            table_rows.append(f'<tr{row_class}>{"".join(cells)}</tr>')
+            if wd == 6 and idx < len(sorted_rows) - 1:
+                table_rows.append('<tr class="week-spacer-row"><td colspan="20"></td></tr>')
+            continue
+
+        if is_weekend_empty:
+            cells = []
+            cells.append(
+                f'<td class="date-col col-date weekend-date-cell">'
+                f'  <div class="day-number">{date_num}</div>'
+                f'  <div class="day-date">{date_sub}</div>'
+                f'  <div class="day-name">{day_name_en}</div>'
+                f'</td>'
+            )
+            weekend_label_en = "Saturday - Weekend" if wd == 5 else "Sunday - Weekend"
+            weekend_label_ar = "السبت - عطلة نهاية الأسبوع" if wd == 5 else "الأحد - عطلة نهاية الأسبوع"
+            cells.append(
+                f'<td colspan="19" class="weekend-cell">{weekend_label_en} / {weekend_label_ar}</td>'
+            )
+            row_class = ' class="day-separator week-end-separator"' if wd == 6 else ' class="day-separator"'
+            table_rows.append(f'<tr{row_class}>{"".join(cells)}</tr>')
+            if wd == 6 and idx < len(sorted_rows) - 1:
+                table_rows.append('<tr class="week-spacer-row"><td colspan="20"></td></tr>')
+            continue
+
         # Calculate sub-rows needed for this day to keep grid columns aligned
         N_rows = max(len(murajat), len(juzulhali), len(jadeed), 1)
         
@@ -73,14 +149,16 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]]) -> str:
             
             # 1. Date column (rowspanned)
             if sub_idx == 0:
+                date_class = "date-col col-date weekend-date-cell" if is_weekend else "date-col col-date"
                 cells.append(
-                    f'<td class="date-col col-date" rowspan="{N_rows}">'
+                    f'<td class="{date_class}" rowspan="{N_rows}">'
                     f'  <div class="day-number">{date_num}</div>'
                     f'  <div class="day-date">{date_sub}</div>'
+                    f'  <div class="day-name">{day_name_en}</div>'
                     f'</td>'
                 )
                 
-            # 2. Murajat columns (Juz/Surah, Talqeen, Tanbeeh, Repeat, Mutashabehat, Grade)
+            # 2. Murajat columns (Juz/Surah, Talqeen, Tanbeeh, I'rab, Repeat, Mutashabehat, Grade)
             if sub_idx < len(murajat):
                 m = murajat[sub_idx]
                 surah_name = m.get("surah_name_ar") or m.get("surat") or ""
@@ -91,6 +169,7 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]]) -> str:
                     
                 talqeen = _to_arabic_numeral(m.get("talqeen", 0)) if m.get("talqeen", 0) > 0 else "0"
                 tanbeeh = _to_arabic_numeral(m.get("tanbeeh", 0)) if m.get("tanbeeh", 0) > 0 else "0"
+                irab = _to_arabic_numeral(m.get("irab", 0)) if m.get("irab", 0) > 0 else "0"
                 repeat = _to_arabic_numeral(m.get("repeat_mistake", 0)) if m.get("repeat_mistake", 0) > 0 else "0"
                 mutashabehat = _to_arabic_numeral(m.get("mutashabehat", 0)) if m.get("mutashabehat", 0) > 0 else "0"
                 marks = f"{m.get('marks', 0.0):.1f}"
@@ -99,18 +178,20 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]]) -> str:
                 cells.append(f'<td class="text-left col-murajat" style="font-weight: 600;">{escape(surah_name)}</td>')
                 cells.append(f'<td class="col-murajat">{talqeen}</td>')
                 cells.append(f'<td class="col-murajat">{tanbeeh}</td>')
+                cells.append(f'<td class="col-murajat">{irab}</td>')
                 cells.append(f'<td class="col-murajat">{repeat}</td>')
                 cells.append(f'<td class="col-murajat">{mutashabehat}</td>')
                 cells.append(f'<td class="col-murajat" style="font-weight: bold; color: #1b4d3e;">{marks_ar}</td>')
             else:
-                cells.extend(['<td class="col-murajat"></td>'] * 6)
+                cells.extend(['<td class="col-murajat"></td>'] * 7)
                 
-            # 3. Juzulhali columns (Page, Talqeen, Tanbeeh, Repeat, Mutashabehat, Grade)
+            # 3. Juzulhali columns (Page, Talqeen, Tanbeeh, I'rab, Repeat, Mutashabehat, Grade)
             if sub_idx < len(juzulhali):
                 j = juzulhali[sub_idx]
                 page = _to_arabic_numeral(j.get("page_number", 0)) if j.get("page_number", 0) > 0 else "-"
                 talqeen = _to_arabic_numeral(j.get("talqeen", 0)) if j.get("talqeen", 0) > 0 else "0"
                 tanbeeh = _to_arabic_numeral(j.get("tanbeeh", 0)) if j.get("tanbeeh", 0) > 0 else "0"
+                irab = _to_arabic_numeral(j.get("irab", 0)) if j.get("irab", 0) > 0 else "0"
                 repeat = _to_arabic_numeral(j.get("repeat_mistake", 0)) if j.get("repeat_mistake", 0) > 0 else "0"
                 mutashabehat = _to_arabic_numeral(j.get("mutashabehat", 0)) if j.get("mutashabehat", 0) > 0 else "0"
                 marks = f"{j.get('marks', 0.0):.1f}"
@@ -119,11 +200,12 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]]) -> str:
                 cells.append(f'<td class="col-juzulhali">{page}</td>')
                 cells.append(f'<td class="col-juzulhali">{talqeen}</td>')
                 cells.append(f'<td class="col-juzulhali">{tanbeeh}</td>')
+                cells.append(f'<td class="col-juzulhali">{irab}</td>')
                 cells.append(f'<td class="col-juzulhali">{repeat}</td>')
                 cells.append(f'<td class="col-juzulhali">{mutashabehat}</td>')
                 cells.append(f'<td class="col-juzulhali" style="font-weight: bold; color: #1b4d3e;">{marks_ar}</td>')
             else:
-                cells.extend(['<td class="col-juzulhali"></td>'] * 6)
+                cells.extend(['<td class="col-juzulhali"></td>'] * 7)
                 
             # 4. Jadeed columns (Surah, Page, Ayah, Volume)
             if sub_idx < len(jadeed):
@@ -153,14 +235,21 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]]) -> str:
                 )
                 
             is_last_sub = (sub_idx == N_rows - 1)
-            row_class = ' class="day-separator"' if is_last_sub else ''
+            row_class = ''
+            if is_last_sub:
+                if wd == 6:
+                    row_class = ' class="day-separator week-end-separator"'
+                else:
+                    row_class = ' class="day-separator"'
             table_rows.append(f"<tr{row_class}>{''.join(cells)}</tr>")
+            if is_last_sub and wd == 6 and idx < len(sorted_rows) - 1:
+                table_rows.append('<tr class="week-spacer-row"><td colspan="20"></td></tr>')
 
     return f"""<!doctype html>
 <html lang="en" dir="ltr">
 <head>
   <meta charset="utf-8"/>
-  <title>Monthly Recitation Report - {escape(student_name)}</title>
+  <title>Monthly Tasmee Report - {escape(student_name)}</title>
   <style>
     @page {{
       size: A4 landscape;
@@ -168,6 +257,14 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]]) -> str:
     }}
     @media print {{
       .print-btn {{ display: none !important; }}
+      * {{
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }}
+    }}
+    * {{
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
     }}
     .print-btn {{
       position: fixed;
@@ -267,6 +364,12 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]]) -> str:
       text-align: center;
       height: 10px;
     }}
+    .week-spacer-row td {{
+      border: none !important;
+      background: transparent !important;
+      height: 16px !important;
+      padding: 0 !important;
+    }}
     .col-date {{
       background-color: #fff4cc !important;
     }}
@@ -281,6 +384,28 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]]) -> str:
     }}
     .col-takhteet {{
       background-color: #e8f3ff !important;
+    }}
+    .absent-row {{
+      background-color: #ffeaea !important;
+    }}
+    .absent-cell {{
+      background-color: #ffeaea !important;
+      color: #b03a2e !important;
+      font-weight: bold;
+      font-size: 8pt;
+      letter-spacing: 0.5px;
+      text-align: center;
+    }}
+    .weekend-date-cell {{
+      background-color: #ebdcb9 !important;
+    }}
+    .weekend-cell {{
+      background-color: #fcf8e3 !important;
+      color: #8a6d3b !important;
+      font-weight: bold;
+      font-size: 8pt;
+      text-align: center;
+      letter-spacing: 0.5px;
     }}
     .date-col {{
       font-weight: bold;
@@ -298,12 +423,22 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]]) -> str:
       color: #555;
       font-weight: normal;
     }}
+    .day-name {{
+      font-size: 5pt;
+      color: #666;
+      font-weight: bold;
+      text-transform: uppercase;
+      margin-top: 1px;
+    }}
     .text-left {{
       text-align: left;
       padding-left: 4px;
     }}
     .day-separator td {{
-      border-bottom: 2px solid #1b4d3e !important;
+      border-bottom: 2.2px solid #1b4d3e !important;
+    }}
+    .week-end-separator td {{
+      border-bottom: 4.5px double #1b4d3e !important;
     }}
     .muted {{
       color: #a89f91;
@@ -344,7 +479,7 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]]) -> str:
     </div>
     <div style="text-align:center; flex:1; padding: 0 10px;">
       <div style="color:#D4AF37; font-size:8pt; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; opacity:0.75;">Al Madrasa-tus-Saifiyah-tul-Burhaniyah</div>
-      <div style="color:#FBF6EA; font-size:12pt; font-weight:900; letter-spacing:0.5px; margin-top:1px;">Monthly Recitation Report</div>
+      <div style="color:#FBF6EA; font-size:12pt; font-weight:900; letter-spacing:0.5px; margin-top:1px;">Monthly Tasmee Report</div>
     </div>
     <div style="text-align:right;">
       <div style="color:#D4AF37; font-size:7pt; font-weight:600; letter-spacing:0.5px; text-transform:uppercase; opacity:0.85;">Month</div>
@@ -355,31 +490,33 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]]) -> str:
     <thead>
       <tr>
         <th rowspan="2" style="width: 4.5%;">Date</th>
-        <th colspan="6" style="width: 27%;">Murajat</th>
-        <th colspan="6" style="width: 22%;">Juzulhali</th>
-        <th colspan="4" style="width: 27%;">Jadeed</th>
-        <th rowspan="2" style="width: 19.5%;">Takhteet</th>
+        <th colspan="7" style="width: 32%;">Murajat</th>
+        <th colspan="7" style="width: 27.5%;">Juzulhali</th>
+        <th colspan="4" style="width: 22%;">Jadeed</th>
+        <th rowspan="2" style="width: 14%;">Takhteet</th>
       </tr>
       <tr>
         <!-- Murajat -->
-        <th style="width: 11%;">Juz/Surah</th>
+        <th style="width: 10%;">Juz/Surah</th>
         <th style="width: 3.2%;">Talqeen</th>
         <th style="width: 3.2%;">Tanbeeh</th>
+        <th style="width: 3.2%;">I'rab</th>
         <th style="width: 3.2%;">Repeat</th>
         <th style="width: 3.2%;">Mutash.</th>
-        <th style="width: 3.2%;">Grade</th>
+        <th style="width: 6%;">Grade</th>
         <!-- Juzulhali -->
-        <th style="width: 6%;">Page</th>
+        <th style="width: 4.9%;">Page</th>
         <th style="width: 3.2%;">Talqeen</th>
         <th style="width: 3.2%;">Tanbeeh</th>
+        <th style="width: 3.2%;">I'rab</th>
         <th style="width: 3.2%;">Repeat</th>
         <th style="width: 3.2%;">Mutash.</th>
-        <th style="width: 3.2%;">Grade</th>
+        <th style="width: 6.6%;">Grade</th>
         <!-- Jadeed -->
-        <th style="width: 12%;">Surah</th>
-        <th style="width: 5%;">Page</th>
-        <th style="width: 5%;">Ayah</th>
-        <th style="width: 5%;">Volume</th>
+        <th style="width: 10%;">Surah</th>
+        <th style="width: 4%;">Page</th>
+        <th style="width: 4%;">Ayah</th>
+        <th style="width: 4%;">Volume</th>
       </tr>
     </thead>
     <tbody>

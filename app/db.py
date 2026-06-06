@@ -134,6 +134,16 @@ class SupabaseRest:
         )
         r.raise_for_status()
 
+    def delete(self, table: str, *, match: Dict[str, Any]) -> None:
+        params = {k: f"eq.{v}" for k, v in match.items()}
+        r = requests.delete(
+            f"{self.url}/rest/v1/{table}",
+            headers=self._headers(),
+            params=params,
+            timeout=20,
+        )
+        r.raise_for_status()
+
 
 @st.cache_data(show_spinner=False)
 def list_surahs() -> List[Dict[str, Any]]:
@@ -200,7 +210,7 @@ def get_session_counts(session_id: str) -> Dict[str, int]:
         raise RuntimeError("Supabase is not configured.")
     row = rest.select_single(
         "mistake_counts",
-        select="talqeen,tanbeeh,repeat_mistake,mutashabehat",
+        select="talqeen,tanbeeh,repeat_mistake,mutashabehat,irab",
         params={"session_id": f"eq.{session_id}"},
     )
     if not row:
@@ -211,16 +221,18 @@ def get_session_counts(session_id: str) -> Dict[str, int]:
             "tanbeeh": 0,
             "repeat_mistake": 0,
             "mutashabehat": 0,
+            "irab": 0,
             "updated_at": now_utc_iso(),
         }
         rest.insert("mistake_counts", [init], returning="minimal")
-        return {"talqeen": 0, "tanbeeh": 0, "repeat_mistake": 0, "mutashabehat": 0}
+        return {"talqeen": 0, "tanbeeh": 0, "repeat_mistake": 0, "mutashabehat": 0, "irab": 0}
 
     return {
         "talqeen": int(row.get("talqeen", 0) or 0),
         "tanbeeh": int(row.get("tanbeeh", 0) or 0),
         "repeat_mistake": int(row.get("repeat_mistake", 0) or 0),
         "mutashabehat": int(row.get("mutashabehat", 0) or 0),
+        "irab": int(row.get("irab", 0) or 0),
     }
 
 
@@ -231,6 +243,7 @@ def increment_mistake(session_id: str, kind: str) -> Dict[str, int]:
     - tanbeeh increments tanbeeh
     - repeat_mistake increments repeat_mistake AND talqeen
     - mutashabehat increments mutashabehat AND talqeen
+    - irab increments irab AND talqeen
     """
     counts = get_session_counts(session_id)
 
@@ -243,6 +256,9 @@ def increment_mistake(session_id: str, kind: str) -> Dict[str, int]:
         counts["talqeen"] += 1
     elif kind == "mutashabehat":
         counts["mutashabehat"] += 1
+        counts["talqeen"] += 1
+    elif kind == "irab":
+        counts["irab"] += 1
         counts["talqeen"] += 1
     else:
         raise ValueError(f"Unknown kind: {kind}")
@@ -259,6 +275,7 @@ def increment_mistake(session_id: str, kind: str) -> Dict[str, int]:
             "tanbeeh": counts["tanbeeh"],
             "repeat_mistake": counts["repeat_mistake"],
             "mutashabehat": counts["mutashabehat"],
+            "irab": counts["irab"],
             "updated_at": now_utc_iso(),
         },
     )
@@ -292,6 +309,7 @@ def _bg_update_mistake(rest: SupabaseRest, session_id: str, kind: str, counts: D
                 "tanbeeh": counts["tanbeeh"],
                 "repeat_mistake": counts["repeat_mistake"],
                 "mutashabehat": counts["mutashabehat"],
+                "irab": counts["irab"],
                 "updated_at": now_utc_iso(),
             },
         )
@@ -309,18 +327,20 @@ def insert_jadeed_rows(*, student_id: str, rows: List[Dict[str, Any]]) -> None:
     rest = get_rest()
     if rest is None:
         raise RuntimeError("Supabase is not configured.")
-    if not rows:
-        return
-    for r in rows:
-        r["created_at"] = now_utc_iso()
-        r["student_id"] = student_id
-        r["activity_date"] = today_iso()
-    rest.insert("jadeed_entries", rows, returning="minimal")
+    # Delete existing entries for this student on this day first
+    rest.delete("jadeed_entries", match={"student_id": student_id, "activity_date": today_iso()})
+    
+    if rows:
+        for r in rows:
+            r["created_at"] = now_utc_iso()
+            r["student_id"] = student_id
+            r["activity_date"] = today_iso()
+        rest.insert("jadeed_entries", rows, returning="minimal")
 
-    # Mark that this student DID jadeed today (no_jadeed = false)
+    # Mark whether this student did jadeed today
     rest.upsert(
         "jadeed_daily",
-        [{"student_id": student_id, "activity_date": today_iso(), "no_jadeed": False, "updated_at": now_utc_iso()}],
+        [{"student_id": student_id, "activity_date": today_iso(), "no_jadeed": not bool(rows), "updated_at": now_utc_iso()}],
         on_conflict="student_id,activity_date",
         returning="minimal",
     )
@@ -385,6 +405,25 @@ def get_takhteet_today(*, student_id: str) -> Optional[Dict[str, Any]]:
     )
 
 
+def get_previous_takhteet(*, student_id: str) -> Optional[Dict[str, Any]]:
+    rest = get_rest()
+    if rest is None:
+        raise RuntimeError("Supabase is not configured.")
+    rows = rest.select(
+        "takhteet_daily",
+        select="student_id,activity_date,murajat_text_raw,juzulhali_text_raw,jadeed_text_raw,murajat_text_clean,juzulhali_text_clean,jadeed_text_clean",
+        params={
+            "student_id": f"eq.{student_id}",
+            "activity_date": f"lt.{today_iso()}",
+            "order": "activity_date.desc",
+            "limit": "1",
+        }
+    )
+    if rows:
+        return rows[0]
+    return None
+
+
 def _extract_count(value: Any) -> int:
     if isinstance(value, list):
         if not value:
@@ -421,7 +460,7 @@ def fetch_monthly_report(*, student_id: str, year: int, month: int) -> List[Dict
     # Sessions + counts + surah
     sessions = rest.select(
         "listening_sessions",
-        select="id,activity_date,mode,surah_id,page_number,created_at,surahs(number,name_en,name_ar),mistake_counts(talqeen,tanbeeh,repeat_mistake,mutashabehat)",
+        select="id,activity_date,mode,surah_id,page_number,created_at,surahs(number,name_en,name_ar),mistake_counts(talqeen,tanbeeh,repeat_mistake,mutashabehat,irab)",
         params={
             "student_id": f"eq.{student_id}",
             "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
@@ -482,12 +521,14 @@ def fetch_monthly_report(*, student_id: str, year: int, month: int) -> List[Dict
         tanbeeh = int(counts.get("tanbeeh", 0) or 0)
         repeat_mistake = int(counts.get("repeat_mistake", 0) or 0)
         mutashabehat = int(counts.get("mutashabehat", 0) or 0)
+        irab = int(counts.get("irab", 0) or 0)
         marks = 10 - talqeen - (0.5 * tanbeeh)
         row = {
             "talqeen": talqeen,
             "tanbeeh": tanbeeh,
             "repeat_mistake": repeat_mistake,
             "mutashabehat": mutashabehat,
+            "irab": irab,
             "marks": marks,
         }
         if s.get("mode") == "murajat":

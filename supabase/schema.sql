@@ -42,6 +42,7 @@ create table if not exists public.mistake_counts (
   tanbeeh int not null default 0,
   repeat_mistake int not null default 0,
   mutashabehat int not null default 0,
+  irab int not null default 0,
   updated_at timestamptz not null default now()
 );
 
@@ -49,7 +50,7 @@ create table if not exists public.mistake_counts (
 create table if not exists public.mistake_events (
   id uuid primary key default uuid_generate_v4(),
   session_id uuid not null references public.listening_sessions(id) on delete cascade,
-  kind text not null check (kind in ('talqeen','tanbeeh','repeat_mistake','mutashabehat')),
+  kind text not null check (kind in ('talqeen','tanbeeh','repeat_mistake','mutashabehat','irab')),
   activity_date date not null default current_date,
   created_at timestamptz not null default now()
 );
@@ -62,7 +63,7 @@ create table if not exists public.jadeed_entries (
   surah_id bigint not null references public.surahs(id),
   page_number int not null,
   ayah_number int not null,
-  volume text not null check (volume in ('Half', 'Full')),
+  volume text not null check (volume in ('Half', 'Full', 'Ruba', 'Nisf', 'Sulus', 'Kamil')),
   created_at timestamptz not null default now()
 );
 

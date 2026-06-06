@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 import streamlit as st
 
 from app.db import insert_jadeed_rows, list_jadeed_entries, list_surahs, mark_no_jadeed_today, today_iso
-from app.ui.shared import back_home_button
+from app.ui.shared import back_home_button, show_previous_takhteet
 from app.ui.student import current_student_badge
 
 
@@ -19,6 +19,8 @@ def render_jadeed() -> None:
     if not student_id:
         st.warning("Please select a student on Home first.")
         return
+
+    show_previous_takhteet(student_id)
 
     # One-time success message (prevents accidental double-save)
     flash = st.session_state.pop("jadeed_flash", None)
@@ -56,7 +58,7 @@ def render_jadeed() -> None:
                 or surah_by_id.get(int(t.get("surah_id") or 0), surah_labels[0]),
                 "Page Number": int(t.get("page_number") or 1),
                 "Ayah": int(t.get("ayah_number") or 1),
-                "Volume": str(t.get("volume") or "Full"),
+                "Volume": str(t.get("volume") or "Kamil"),
             }
             for t in todays
         ]
@@ -75,21 +77,18 @@ def render_jadeed() -> None:
             "Surat": st.column_config.SelectboxColumn("Surat", options=surah_labels, required=True),
             "Page Number": st.column_config.NumberColumn("Page Number", min_value=1, step=1, required=True),
             "Ayah": st.column_config.NumberColumn("Ayah", min_value=1, step=1, required=True),
-            "Volume": st.column_config.SelectboxColumn("Volume", options=["Half", "Full"], required=True),
+            "Volume": st.column_config.SelectboxColumn("Volume", options=["Ruba", "Nisf", "Sulus", "Kamil"], required=True),
         },
         key="jadeed_editor",
     )
     edited = edited_df.to_dict(orient="records")
 
-    c1, c2 = st.columns(2)
-    with c1:
+    has_jadeed_today = len(edited) > 0
+
+    if has_jadeed_today:
         if st.button("Save to Supabase", type="primary", width="stretch"):
             payload: List[Dict[str, Any]] = []
-            existing_keys = set(st.session_state.get("jadeed_existing_keys") or set())
             for r in edited:
-                # Don't re-save rows already saved today
-                if _row_key(r) in existing_keys:
-                    continue
                 label = (r.get("Surat") or "").strip()
                 surah_id = surah_options.get(label)
                 if not surah_id:
@@ -99,7 +98,7 @@ def render_jadeed() -> None:
                         "surah_id": int(surah_id),
                         "page_number": int(r.get("Page Number") or 1),
                         "ayah_number": int(r.get("Ayah") or 1),
-                        "volume": str(r.get("Volume") or "Full"),
+                        "volume": str(r.get("Volume") or "Kamil"),
                     }
                 )
 
@@ -108,9 +107,9 @@ def render_jadeed() -> None:
             st.session_state.pop("jadeed_init_key", None)  # force refresh from DB
             st.session_state.pop("jadeed_existing_keys", None)
             st.rerun()
-    with c2:
-        if st.button("No Jadeed today", width="stretch"):
-            mark_no_jadeed_today(student_id=student_id)
+    else:
+        if st.button("No Jadeed today", type="primary", width="stretch"):
+            insert_jadeed_rows(student_id=student_id, rows=[])
             st.session_state.jadeed_flash = "Marked: No Jadeed for today."
             st.rerun()
 
