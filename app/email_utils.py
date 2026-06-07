@@ -92,7 +92,7 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
             marks = 10.0 - talqeen - (0.5 * tanbeeh)
             juzulhali_rows += f"""
             <tr>
-                <td style="border: 1px solid #e0dcd5; padding: 8px 4px; font-weight: bold; color: #1b4d3e; text-align: center;">Page {page}</td>
+                <td style="border: 1px solid #e0dcd5; padding: 8px 4px; font-weight: bold; color: #1b4d3e; text-align: center;">{page}</td>
                 <td style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center;">{talqeen}</td>
                 <td style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center;">{tanbeeh}</td>
                 <td style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center;">{irab}</td>
