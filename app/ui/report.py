@@ -40,9 +40,27 @@ def render_report() -> None:
         st.info("No report data found.")
         return
 
-    html = build_report_html(student_name=student_name, rows=rows)
-
-    st.markdown("### Report Preview")
-    # Render the report inside an iframe for styling isolation and accurate representation
-    st.iframe(html, height=700)
+    st.markdown("### Report Category Select")
+    t1, t2, t3, t4 = st.tabs([
+        "👥 Murajat Report",
+        "📖 Juzulhali Report",
+        "📝 Jadeed Report",
+        "📋 Takhteet Report"
+    ])
+    
+    with t1:
+        html_murajat = build_report_html(student_name=student_name, rows=rows, report_type="murajat")
+        st.iframe(html_murajat, height=700)
+        
+    with t2:
+        html_juzulhali = build_report_html(student_name=student_name, rows=rows, report_type="juzulhali")
+        st.iframe(html_juzulhali, height=700)
+        
+    with t3:
+        html_jadeed = build_report_html(student_name=student_name, rows=rows, report_type="jadeed")
+        st.iframe(html_jadeed, height=700)
+        
+    with t4:
+        html_takhteet = build_report_html(student_name=student_name, rows=rows, report_type="takhteet")
+        st.iframe(html_takhteet, height=700)
 

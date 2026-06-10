@@ -96,6 +96,9 @@ def render_juzulhali() -> None:
             "ikhfa": 0, "izhaar": 0, "qalqalah": 0, "ism_jalalah": 0, "tahreek_sakin": 0, "gunnah": 0,
             "idgham": 0, "madd_lazim": 0, "madd_muttasil": 0, "mad_tabaiee": 0
         }
+        from app.db import MAKHARIJ_COLS
+        for col in MAKHARIJ_COLS:
+            counts[col] = 0
 
     def _on_click(kind: str) -> None:
         sid = st.session_state.get("juzulhali_session_id")
@@ -156,15 +159,17 @@ def render_juzulhali() -> None:
             local_counts["tanbeeh"] += 1
         elif kind in ("ikhfa", "izhaar", "qalqalah", "ism_jalalah", "tahreek_sakin", "gunnah", "idgham", "madd_lazim", "madd_muttasil", "mad_tabaiee"):
             local_counts[kind] = local_counts.get(kind, 0) + 1
+        elif kind.startswith("makhraj_"):
+            local_counts[kind] = 1 if local_counts.get(kind, 0) == 0 else 0
             
         from app.db import increment_mistake_bg
         increment_mistake_bg(sid, kind, local_counts)
 
-    mistake_buttons(session_id=session_id or "", counts=counts, on_click=_on_click)
-
     if page_number is None:
         st.info("Please select a Page to start Juzulhali recitation.")
         return
+
+    mistake_buttons(session_id=session_id or "", counts=counts, on_click=_on_click)
 
 
 

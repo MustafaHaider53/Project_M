@@ -186,11 +186,14 @@ def render_header_with_homework(title: str, student_id: Optional[str]) -> None:
         st.markdown(f"<h3 style='margin: 0; padding: 0;'>{title}</h3>", unsafe_allow_html=True)
     with col_hw:
         if student_id:
-            from app.db import get_previous_takhteet
-            try:
-                prev = get_previous_takhteet(student_id=student_id)
-            except Exception:
-                prev = None
+            cache_key = f"prev_takhteet_{student_id}"
+            if cache_key not in st.session_state:
+                from app.db import get_previous_takhteet
+                try:
+                    st.session_state[cache_key] = get_previous_takhteet(student_id=student_id)
+                except Exception:
+                    st.session_state[cache_key] = None
+            prev = st.session_state[cache_key]
             if prev:
                 jadeed = prev.get("jadeed_text_raw", "").strip() or "-"
                 juzulhali = prev.get("juzulhali_text_raw", "").strip() or "-"
