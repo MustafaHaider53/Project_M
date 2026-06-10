@@ -225,7 +225,7 @@ def apply_islamic_theme() -> None:
           }
 
           /* Target 3-column rows (label + 2 buttons) on desktop to align buttons next to each other on the right side */
-          div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) {
+          div[data-testid="column"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
@@ -234,17 +234,17 @@ def apply_islamic_theme() -> None:
             gap: 4px !important;
             width: 100% !important;
           }
-          div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(1) {
+          div[data-testid="column"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(1) {
             flex: 0 1 auto !important;
             margin-right: auto !important;
             min-width: 0 !important;
           }
-          div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(2),
-          div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(3) {
+          div[data-testid="column"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(2),
+          div[data-testid="column"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(3) {
             flex: 0 0 auto !important;
             width: auto !important;
           }
-          div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) .stButton > button {
+          div[data-testid="column"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) .stButton > button {
             width: 26px !important;
             max-width: 26px !important;
             height: 26px !important;
@@ -291,8 +291,8 @@ def apply_islamic_theme() -> None:
               gap: 3px !important;
             }
 
-            /* 1. Force ALL columns (horizontal blocks) to stay in a row on mobile */
-            div[data-testid="stHorizontalBlock"] {
+            /* 1. Force nested columns (horizontal blocks) to stay in a row on mobile */
+            div[data-testid="column"] div[data-testid="stHorizontalBlock"] {
               display: flex !important;
               flex-direction: row !important;
               flex-wrap: nowrap !important;
@@ -301,30 +301,30 @@ def apply_islamic_theme() -> None:
               align-items: center !important;
             }
 
-            /* 2. Force columns to shrink appropriately without overflowing */
-            div[data-testid="stHorizontalBlock"] div[data-testid="column"] {
+            /* 2. Force nested columns to shrink appropriately without overflowing */
+            div[data-testid="column"] div[data-testid="column"] {
               min-width: 0 !important;
               flex: 1 1 0% !important;
               padding: 0 !important;
             }
 
             /* Allow navigation row (7 columns) to wrap on mobile so buttons do not overlap */
-            div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(7)) {
+            div[data-testid="stHorizontalBlock"]:not(div[data-testid="column"] div[data-testid="stHorizontalBlock"]):has(div[data-testid="column"]:nth-child(7)) {
               flex-wrap: wrap !important;
               gap: 5px 3px !important;
             }
-            div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(7)) div[data-testid="column"] {
+            div[data-testid="stHorizontalBlock"]:not(div[data-testid="column"] div[data-testid="stHorizontalBlock"]):has(div[data-testid="column"]:nth-child(7)) div[data-testid="column"] {
               flex: 1 1 28% !important;
               min-width: 80px !important;
             }
 
             /* Restrict width and flex for 3-column mistake rows on mobile to prevent overlapping */
-            div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(1) {
+            div[data-testid="column"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(1) {
               flex: 1 1 60% !important;
               min-width: 60% !important;
             }
-            div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(2),
-            div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(3) {
+            div[data-testid="column"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(2),
+            div[data-testid="column"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(3) {
               flex: 0 0 18% !important;
               min-width: 26px !important;
               max-width: 32px !important;
@@ -356,7 +356,7 @@ def apply_islamic_theme() -> None:
             }
 
             /* Override the global button style for emoji buttons to keep them square on mobile */
-            div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) .stButton > button {
+            div[data-testid="column"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) .stButton > button {
               width: 23px !important;
               max-width: 23px !important;
               height: 23px !important;

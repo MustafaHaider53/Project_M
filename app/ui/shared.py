@@ -180,32 +180,43 @@ def mistake_buttons(*, session_id: str, counts: Dict[str, int], on_click) -> Non
                         st.button(f"{char}", use_container_width=True, on_click=on_click, kwargs={"kind": kind}, key=f"btn_makhraj_{kind}")
 
 
-def show_previous_takhteet(student_id: str) -> None:
-    from app.db import get_previous_takhteet
-    prev = get_previous_takhteet(student_id=student_id)
-    if prev:
-        date_str = prev.get("activity_date", "Previous Day")
-        try:
-            from datetime import datetime
-            dt = datetime.strptime(date_str, "%Y-%m-%d")
-            formatted_date = dt.strftime("%b %d, %Y (%a)")
-        except Exception:
-            formatted_date = date_str
+def render_header_with_homework(title: str, student_id: Optional[str]) -> None:
+    col_title, col_hw = st.columns([1.2, 5])
+    with col_title:
+        st.markdown(f"<h3 style='margin: 0; padding: 0;'>{title}</h3>", unsafe_allow_html=True)
+    with col_hw:
+        if student_id:
+            from app.db import get_previous_takhteet
+            try:
+                prev = get_previous_takhteet(student_id=student_id)
+            except Exception:
+                prev = None
+            if prev:
+                jadeed = prev.get("jadeed_text_raw", "").strip() or "-"
+                juzulhali = prev.get("juzulhali_text_raw", "").strip() or "-"
+                murajat = prev.get("murajat_text_raw", "").strip() or "-"
+                
+                jadeed_inline = jadeed.replace("\n", " ")
+                juzulhali_inline = juzulhali.replace("\n", " ")
+                murajat_inline = murajat.replace("\n", " ")
+                
+                st.markdown(f"""
+                <div style="display: flex; gap: 12px; justify-content: flex-end; align-items: center; height: 100%; padding-top: 6px; font-size: 0.82rem; flex-wrap: wrap;">
+                  <span style="color: var(--ink); opacity: 0.6; font-weight: bold; white-space: nowrap;">Prev HW:</span>
+                  <span style="color: var(--emerald); font-weight: bold; white-space: nowrap;">Jadeed:</span>
+                  <span style="color: var(--ink); font-weight: 500; white-space: nowrap;">{jadeed_inline}</span>
+                  <span style="color: var(--border); font-weight: bold;">|</span>
+                  <span style="color: var(--emerald); font-weight: bold; white-space: nowrap;">Juzulhali:</span>
+                  <span style="color: var(--ink); font-weight: 500; white-space: nowrap;">{juzulhali_inline}</span>
+                  <span style="color: var(--border); font-weight: bold;">|</span>
+                  <span style="color: var(--emerald); font-weight: bold; white-space: nowrap;">Murajat:</span>
+                  <span style="color: var(--ink); font-weight: 500; white-space: nowrap;">{murajat_inline}</span>
+                </div>
+                """, unsafe_allow_html=True)
 
-        with st.expander(f"📋 **Previous Homework / Takhteet** (Recorded on {formatted_date})", expanded=True):
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                st.markdown("**Murajat**")
-                text = prev.get("murajat_text_raw", "").strip()
-                st.write(text if text else "-")
-            with c2:
-                st.markdown("**Juzulhali**")
-                text = prev.get("juzulhali_text_raw", "").strip()
-                st.write(text if text else "-")
-            with c3:
-                st.markdown("**Jadeed**")
-                text = prev.get("jadeed_text_raw", "").strip()
-                st.write(text if text else "-")
+
+def show_previous_takhteet(student_id: str) -> None:
+    pass
 
 
 def ensure_today_sessions(student_id: str) -> None:

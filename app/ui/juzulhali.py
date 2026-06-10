@@ -3,7 +3,7 @@ from __future__ import annotations
 import streamlit as st
 
 from app.db import create_listening_session, get_session_counts, increment_mistake
-from app.ui.shared import back_home_button, mistake_buttons, show_previous_takhteet, ensure_today_sessions
+from app.ui.shared import back_home_button, mistake_buttons, show_previous_takhteet, ensure_today_sessions, render_header_with_homework
 from app.ui.student import current_student_badge
 
 
@@ -39,11 +39,7 @@ def render_juzulhali() -> None:
     with st.container():
         st.markdown('<div class="sticky-anchor"></div>', unsafe_allow_html=True)
         
-        col_back, col_title = st.columns([1, 4])
-        with col_back:
-            back_home_button()
-        with col_title:
-            st.markdown("<h3 style='margin: 0; padding: 0;'>Juzulhali</h3>", unsafe_allow_html=True)
+        render_header_with_homework("Juzulhali", student_id)
 
         current_student_badge()
         
@@ -170,7 +166,7 @@ def render_juzulhali() -> None:
         st.info("Please select a Page to start Juzulhali recitation.")
         return
 
-    show_previous_takhteet(student_id)
+
 
     st.divider()
     # Show session controls when active

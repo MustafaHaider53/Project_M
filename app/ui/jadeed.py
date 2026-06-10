@@ -5,27 +5,22 @@ from typing import Any, Dict, List
 import streamlit as st
 
 from app.db import insert_jadeed_rows, list_jadeed_entries, list_surahs, mark_no_jadeed_today, today_iso
-from app.ui.shared import back_home_button, show_previous_takhteet
+from app.ui.shared import back_home_button, show_previous_takhteet, render_header_with_homework
 from app.ui.student import current_student_badge
 
 
 def render_jadeed() -> None:
     student_id = st.session_state.get("student_id")
-    
     with st.container():
         st.markdown('<div class="sticky-anchor"></div>', unsafe_allow_html=True)
-        col_back, col_title = st.columns([1, 4])
-        with col_back:
-            back_home_button()
-        with col_title:
-            st.markdown("<h3 style='margin: 0; padding: 0;'>Jadeed</h3>", unsafe_allow_html=True)
+        render_header_with_homework("Jadeed", student_id)
         current_student_badge()
 
     if not student_id:
         st.warning("Please select a student on Home first.")
         return
 
-    show_previous_takhteet(student_id)
+
 
     # One-time success message (prevents accidental double-save)
     flash = st.session_state.pop("jadeed_flash", None)
