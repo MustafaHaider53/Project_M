@@ -91,8 +91,8 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
                     mistakes_detail += makharij_str
                 mistakes_detail += '</div>'
             
-            # calculate grade/marks (consistent with 10 - talqeen - 0.5 * tanbeeh)
-            marks = 10.0 - talqeen - (0.5 * tanbeeh)
+            # calculate grade/marks (consistent with 10 - 0.5 * talqeen - 0.25 * tanbeeh)
+            marks = 10.0 - (0.5 * talqeen) - (0.25 * tanbeeh)
             murajat_rows += f"""
             <tr>
                 <td style="border: 1px solid #e0dcd5; padding: 8px 4px; font-weight: bold; color: #1b4d3e;">
@@ -164,7 +164,7 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
                     mistakes_detail += makharij_str
                 mistakes_detail += '</div>'
             
-            marks = 10.0 - talqeen - (0.5 * tanbeeh)
+            marks = 10.0 - (0.5 * talqeen) - (0.25 * tanbeeh)
             juzulhali_rows += f"""
             <tr>
                 <td style="border: 1px solid #e0dcd5; padding: 8px 4px; font-weight: bold; color: #1b4d3e; text-align: center;">
