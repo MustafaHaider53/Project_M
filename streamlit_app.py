@@ -13,7 +13,7 @@ def main() -> None:
     st.set_page_config(page_title="Al Madrasa-tus-Saifiyah-tul-Burhaniyah", layout="wide")
     apply_islamic_theme()
 
-    st.title("Al Madrasa-tus-Saifiyah-tul-Burhaniyah")
+    st.markdown("<h2 style='text-align: center; font-size: 1.15rem; margin: 0; padding: 2px 0 6px 0; color: var(--emerald); font-weight: bold;'>Al Madrasa-tus-Saifiyah-tul-Burhaniyah</h2>", unsafe_allow_html=True)
 
     # 1. Check if student is selected
     student_id = st.session_state.get("student_id")
@@ -32,43 +32,43 @@ def main() -> None:
     
     cols = st.columns(7)
     with cols[0]:
-        if st.button("👥 Change Student", width="stretch"):
+        if st.button("👥 Change", use_container_width=True):
             st.session_state.student_id = None
             st.session_state.student_name = None
             st.session_state.page = "home"
             st.rerun()
             
     with cols[1]:
-        if st.button("Murajat", type="primary" if current_page == "murajat" else "secondary", width="stretch"):
+        if st.button("Murajat", type="primary" if current_page == "murajat" else "secondary", use_container_width=True):
             st.session_state.page = "murajat"
             st.rerun()
             
     with cols[2]:
-        if st.button("Juzulhali", type="primary" if current_page == "juzulhali" else "secondary", width="stretch"):
+        if st.button("Juzulhali", type="primary" if current_page == "juzulhali" else "secondary", use_container_width=True):
             st.session_state.page = "juzulhali"
             st.rerun()
             
     with cols[3]:
-        if st.button("Jadeed", type="primary" if current_page == "jadeed" else "secondary", width="stretch"):
+        if st.button("Jadeed", type="primary" if current_page == "jadeed" else "secondary", use_container_width=True):
             st.session_state.page = "jadeed"
             st.rerun()
             
     with cols[4]:
-        if st.button("Takhteet", type="primary" if current_page == "takhteet" else "secondary", width="stretch"):
+        if st.button("Takhteet", type="primary" if current_page == "takhteet" else "secondary", use_container_width=True):
             st.session_state.page = "takhteet"
             st.rerun()
             
     with cols[5]:
-        if st.button("Email Summary", type="primary" if current_page == "email" else "secondary", width="stretch"):
+        if st.button("Email", type="primary" if current_page == "email" else "secondary", use_container_width=True):
             st.session_state.page = "email"
             st.rerun()
             
     with cols[6]:
-        if st.button("Report", type="primary" if current_page == "report" else "secondary", width="stretch"):
+        if st.button("Report", type="primary" if current_page == "report" else "secondary", use_container_width=True):
             st.session_state.page = "report"
             st.rerun()
             
-    st.markdown("---")
+
 
     # 4. Render content based on current page
     if current_page == "home":

@@ -204,15 +204,79 @@ def create_listening_session(
     return res[0]
 
 
+def get_recent_listening_session(
+    *,
+    student_id: str,
+    mode: str,
+    surah_id: Optional[int],
+    page_number: Optional[int],
+) -> Optional[Dict[str, Any]]:
+    rest = get_rest()
+    if rest is None:
+        return None
+
+    params = {
+        "student_id": f"eq.{student_id}",
+        "mode": f"eq.{mode}",
+        "activity_date": f"eq.{today_iso()}",
+    }
+    if surah_id is not None:
+        params["surah_id"] = f"eq.{surah_id}"
+    else:
+        params["surah_id"] = "is.null"
+
+    if page_number is not None:
+        params["page_number"] = f"eq.{page_number}"
+    else:
+        params["page_number"] = "is.null"
+
+    params["order"] = "created_at.desc"
+    params["limit"] = "1"
+
+    rows = rest.select("listening_sessions", select="id,created_at", params=params)
+    if rows:
+        return rows[0]
+    return None
+
+
+def get_today_listening_sessions(*, student_id: str) -> List[Dict[str, Any]]:
+    rest = get_rest()
+    if rest is None:
+        return []
+    params = {
+        "student_id": f"eq.{student_id}",
+        "activity_date": f"eq.{today_iso()}",
+        "order": "created_at.desc"
+    }
+    return rest.select("listening_sessions", select="id,mode,surah_id,page_number", params=params)
+
+
+# Global variable to cache which columns are supported by the database
+_db_supported_columns: set[str] | None = None
+
+MAKHARIJ_COLS = [
+    "makhraj_alif", "makhraj_baa", "makhraj_taa", "makhraj_thaa", "makhraj_jeem",
+    "makhraj_haa", "makhraj_khaa", "makhraj_daal", "makhraj_thaal", "makhraj_raa",
+    "makhraj_zaa", "makhraj_seen", "makhraj_sheen", "makhraj_saad", "makhraj_daad",
+    "makhraj_taa_thick", "makhraj_zaa_thick", "makhraj_ain", "makhraj_ghain",
+    "makhraj_faa", "makhraj_qaaf", "makhraj_kaaf", "makhraj_laam", "makhraj_meem",
+    "makhraj_noon", "makhraj_haa_weak", "makhraj_waw", "makhraj_yaa"
+]
+
 def get_session_counts(session_id: str) -> Dict[str, int]:
+    global _db_supported_columns
     rest = get_rest()
     if rest is None:
         raise RuntimeError("Supabase is not configured.")
     row = rest.select_single(
         "mistake_counts",
-        select="talqeen,tanbeeh,repeat_mistake,mutashabehat,irab",
+        select="*",
         params={"session_id": f"eq.{session_id}"},
     )
+    
+    if row:
+        _db_supported_columns = set(row.keys())
+
     if not row:
         # initialize counts row
         init = {
@@ -225,25 +289,75 @@ def get_session_counts(session_id: str) -> Dict[str, int]:
             "updated_at": now_utc_iso(),
         }
         rest.insert("mistake_counts", [init], returning="minimal")
-        return {"talqeen": 0, "tanbeeh": 0, "repeat_mistake": 0, "mutashabehat": 0, "irab": 0}
+        res = {
+            "talqeen": 0,
+            "tanbeeh": 0,
+            "repeat_mistake": 0,
+            "mutashabehat": 0,
+            "irab": 0,
+            "awakhir_ul_ayat": 0,
+            "irab_talqeen": 0,
+            "irab_tanbeeh": 0,
+            "repeat_mistake_talqeen": 0,
+            "repeat_mistake_tanbeeh": 0,
+            "mutashabehat_talqeen": 0,
+            "mutashabehat_tanbeeh": 0,
+            "awakhir_ul_ayat_talqeen": 0,
+            "awakhir_ul_ayat_tanbeeh": 0,
+            "ikhfa": 0,
+            "izhaar": 0,
+            "qalqalah": 0,
+            "ism_jalalah": 0,
+            "tahreek_sakin": 0,
+            "gunnah": 0,
+            "idgham": 0,
+            "madd_lazim": 0,
+            "madd_muttasil": 0,
+            "mad_tabaiee": 0,
+        }
+        for col in MAKHARIJ_COLS:
+            res[col] = 0
+        return res
 
-    return {
+    res = {
         "talqeen": int(row.get("talqeen", 0) or 0),
         "tanbeeh": int(row.get("tanbeeh", 0) or 0),
         "repeat_mistake": int(row.get("repeat_mistake", 0) or 0),
         "mutashabehat": int(row.get("mutashabehat", 0) or 0),
         "irab": int(row.get("irab", 0) or 0),
+        "awakhir_ul_ayat": int(row.get("awakhir_ul_ayat", 0) or 0),
+        "irab_talqeen": int(row.get("irab_talqeen", 0) or 0),
+        "irab_tanbeeh": int(row.get("irab_tanbeeh", 0) or 0),
+        "repeat_mistake_talqeen": int(row.get("repeat_mistake_talqeen", 0) or 0),
+        "repeat_mistake_tanbeeh": int(row.get("repeat_mistake_tanbeeh", 0) or 0),
+        "mutashabehat_talqeen": int(row.get("mutashabehat_talqeen", 0) or 0),
+        "mutashabehat_tanbeeh": int(row.get("mutashabehat_tanbeeh", 0) or 0),
+        "awakhir_ul_ayat_talqeen": int(row.get("awakhir_ul_ayat_talqeen", 0) or 0),
+        "awakhir_ul_ayat_tanbeeh": int(row.get("awakhir_ul_ayat_tanbeeh", 0) or 0),
+        "ikhfa": int(row.get("ikhfa", 0) or 0),
+        "izhaar": int(row.get("izhaar", 0) or 0),
+        "qalqalah": int(row.get("qalqalah", 0) or 0),
+        "ism_jalalah": int(row.get("ism_jalalah", 0) or 0),
+        "tahreek_sakin": int(row.get("tahreek_sakin", 0) or 0),
+        "gunnah": int(row.get("gunnah", 0) or 0),
+        "idgham": int(row.get("idgham", 0) or 0),
+        "madd_lazim": int(row.get("madd_lazim", 0) or 0),
+        "madd_muttasil": int(row.get("madd_muttasil", 0) or 0),
+        "mad_tabaiee": int(row.get("mad_tabaiee", 0) or 0),
     }
+    for col in MAKHARIJ_COLS:
+        res[col] = int(row.get(col, 0) or 0)
+    return res
 
 
 def increment_mistake(session_id: str, kind: str) -> Dict[str, int]:
     """
     Business rules:
-    - talqeen increments talqeen
-    - tanbeeh increments tanbeeh
-    - repeat_mistake increments repeat_mistake AND talqeen
-    - mutashabehat increments mutashabehat AND talqeen
-    - irab increments irab AND talqeen
+    - talqeen/tanbeeh increments talqeen/tanbeeh respectively
+    - secondary mistakes (repeat, mutashabehat, irab, awakhir_ul_ayat) are partitioned into Talqeen or Tanbeeh clicks:
+      - talqeen variant increments the specific Talqeen category counter, the aggregate category counter, and global Talqeen
+      - tanbeeh variant increments the specific Tanbeeh category counter, the aggregate category counter, and global Tanbeeh
+    - Ahkam mistakes (ikhfa, izhaar, etc.) only increment themselves.
     """
     counts = get_session_counts(session_id)
 
@@ -251,15 +365,47 @@ def increment_mistake(session_id: str, kind: str) -> Dict[str, int]:
         counts["talqeen"] += 1
     elif kind == "tanbeeh":
         counts["tanbeeh"] += 1
-    elif kind == "repeat_mistake":
-        counts["repeat_mistake"] += 1
+        
+    elif kind in ("irab", "irab_talqeen"):
+        counts["irab_talqeen"] = counts.get("irab_talqeen", 0) + 1
+        counts["irab"] = counts.get("irab", 0) + 1
         counts["talqeen"] += 1
-    elif kind == "mutashabehat":
-        counts["mutashabehat"] += 1
+    elif kind == "irab_tanbeeh":
+        counts["irab_tanbeeh"] = counts.get("irab_tanbeeh", 0) + 1
+        counts["irab"] = counts.get("irab", 0) + 1
+        counts["tanbeeh"] += 1
+        
+    elif kind in ("repeat_mistake", "repeat_mistake_talqeen"):
+        counts["repeat_mistake_talqeen"] = counts.get("repeat_mistake_talqeen", 0) + 1
+        counts["repeat_mistake"] = counts.get("repeat_mistake", 0) + 1
         counts["talqeen"] += 1
-    elif kind == "irab":
-        counts["irab"] += 1
+    elif kind == "repeat_mistake_tanbeeh":
+        counts["repeat_mistake_tanbeeh"] = counts.get("repeat_mistake_tanbeeh", 0) + 1
+        counts["repeat_mistake"] = counts.get("repeat_mistake", 0) + 1
+        counts["tanbeeh"] += 1
+        
+    elif kind in ("mutashabehat", "mutashabehat_talqeen"):
+        counts["mutashabehat_talqeen"] = counts.get("mutashabehat_talqeen", 0) + 1
+        counts["mutashabehat"] = counts.get("mutashabehat", 0) + 1
         counts["talqeen"] += 1
+    elif kind == "mutashabehat_tanbeeh":
+        counts["mutashabehat_tanbeeh"] = counts.get("mutashabehat_tanbeeh", 0) + 1
+        counts["mutashabehat"] = counts.get("mutashabehat", 0) + 1
+        counts["tanbeeh"] += 1
+        
+    elif kind in ("awakhir_ul_ayat", "awakhir_ul_ayat_talqeen"):
+        counts["awakhir_ul_ayat_talqeen"] = counts.get("awakhir_ul_ayat_talqeen", 0) + 1
+        counts["awakhir_ul_ayat"] = counts.get("awakhir_ul_ayat", 0) + 1
+        counts["talqeen"] += 1
+    elif kind == "awakhir_ul_ayat_tanbeeh":
+        counts["awakhir_ul_ayat_tanbeeh"] = counts.get("awakhir_ul_ayat_tanbeeh", 0) + 1
+        counts["awakhir_ul_ayat"] = counts.get("awakhir_ul_ayat", 0) + 1
+        counts["tanbeeh"] += 1
+        
+    elif kind in ("ikhfa", "izhaar", "qalqalah", "ism_jalalah", "tahreek_sakin", "gunnah", "idgham", "madd_lazim", "madd_muttasil", "mad_tabaiee"):
+        counts[kind] = counts.get(kind, 0) + 1
+    elif kind in MAKHARIJ_COLS:
+        counts[kind] = 1 if counts.get(kind, 0) == 0 else 0
     else:
         raise ValueError(f"Unknown kind: {kind}")
 
@@ -267,22 +413,48 @@ def increment_mistake(session_id: str, kind: str) -> Dict[str, int]:
     if rest is None:
         raise RuntimeError("Supabase is not configured.")
 
+    patch = {
+        "talqeen": counts["talqeen"],
+        "tanbeeh": counts["tanbeeh"],
+        "repeat_mistake": counts["repeat_mistake"],
+        "mutashabehat": counts["mutashabehat"],
+        "irab": counts["irab"],
+        "updated_at": now_utc_iso(),
+    }
+    
+    new_cols = [
+        "awakhir_ul_ayat",
+        "irab_talqeen",
+        "irab_tanbeeh",
+        "repeat_mistake_talqeen",
+        "repeat_mistake_tanbeeh",
+        "mutashabehat_talqeen",
+        "mutashabehat_tanbeeh",
+        "awakhir_ul_ayat_talqeen",
+        "awakhir_ul_ayat_tanbeeh",
+        "ikhfa",
+        "izhaar",
+        "qalqalah",
+        "ism_jalalah",
+        "tahreek_sakin",
+        "gunnah",
+        "idgham",
+        "madd_lazim",
+        "madd_muttasil",
+        "mad_tabaiee",
+    ] + MAKHARIJ_COLS
+    for col in new_cols:
+        if _db_supported_columns and col in _db_supported_columns:
+            patch[col] = counts.get(col, 0)
+
     rest.update(
         "mistake_counts",
         match={"session_id": session_id},
-        patch={
-            "talqeen": counts["talqeen"],
-            "tanbeeh": counts["tanbeeh"],
-            "repeat_mistake": counts["repeat_mistake"],
-            "mutashabehat": counts["mutashabehat"],
-            "irab": counts["irab"],
-            "updated_at": now_utc_iso(),
-        },
+        patch=patch,
     )
 
     rest.insert(
         "mistake_events",
-        # Rely on DB defaults for dates/timestamps to avoid schema mismatch.
         [{"session_id": session_id, "kind": kind}],
         returning="minimal",
     )
@@ -301,17 +473,44 @@ def increment_mistake_bg(session_id: str, kind: str, counts: Dict[str, int]) -> 
 
 def _bg_update_mistake(rest: SupabaseRest, session_id: str, kind: str, counts: Dict[str, int]) -> None:
     try:
+        patch = {
+            "talqeen": counts["talqeen"],
+            "tanbeeh": counts["tanbeeh"],
+            "repeat_mistake": counts["repeat_mistake"],
+            "mutashabehat": counts["mutashabehat"],
+            "irab": counts["irab"],
+            "updated_at": now_utc_iso(),
+        }
+        
+        new_cols = [
+            "awakhir_ul_ayat",
+            "irab_talqeen",
+            "irab_tanbeeh",
+            "repeat_mistake_talqeen",
+            "repeat_mistake_tanbeeh",
+            "mutashabehat_talqeen",
+            "mutashabehat_tanbeeh",
+            "awakhir_ul_ayat_talqeen",
+            "awakhir_ul_ayat_tanbeeh",
+            "ikhfa",
+            "izhaar",
+            "qalqalah",
+            "ism_jalalah",
+            "tahreek_sakin",
+            "gunnah",
+            "idgham",
+            "madd_lazim",
+            "madd_muttasil",
+            "mad_tabaiee",
+        ] + MAKHARIJ_COLS
+        for col in new_cols:
+            if _db_supported_columns and col in _db_supported_columns:
+                patch[col] = counts.get(col, 0)
+
         rest.update(
             "mistake_counts",
             match={"session_id": session_id},
-            patch={
-                "talqeen": counts["talqeen"],
-                "tanbeeh": counts["tanbeeh"],
-                "repeat_mistake": counts["repeat_mistake"],
-                "mutashabehat": counts["mutashabehat"],
-                "irab": counts["irab"],
-                "updated_at": now_utc_iso(),
-            },
+            patch=patch,
         )
         rest.insert(
             "mistake_events",

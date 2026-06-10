@@ -10,12 +10,17 @@ from app.ui.student import current_student_badge
 
 
 def render_jadeed() -> None:
-    back_home_button()
-    st.subheader("Jadeed")
-    st.caption("Enter new work (no mistake buttons).")
-    current_student_badge()
-
     student_id = st.session_state.get("student_id")
+    
+    with st.container():
+        st.markdown('<div class="sticky-anchor"></div>', unsafe_allow_html=True)
+        col_back, col_title = st.columns([1, 4])
+        with col_back:
+            back_home_button()
+        with col_title:
+            st.markdown("<h3 style='margin: 0; padding: 0;'>Jadeed</h3>", unsafe_allow_html=True)
+        current_student_badge()
+
     if not student_id:
         st.warning("Please select a student on Home first.")
         return
