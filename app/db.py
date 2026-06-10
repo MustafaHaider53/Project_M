@@ -721,7 +721,7 @@ def fetch_monthly_report(*, student_id: str, year: int, month: int) -> List[Dict
         repeat_mistake = int(counts.get("repeat_mistake", 0) or 0)
         mutashabehat = int(counts.get("mutashabehat", 0) or 0)
         irab = int(counts.get("irab", 0) or 0)
-        marks = 10 - talqeen - (0.5 * tanbeeh)
+        marks = 10.0 - (0.5 * talqeen) - (0.25 * tanbeeh)
         row = {
             "talqeen": talqeen,
             "tanbeeh": tanbeeh,
