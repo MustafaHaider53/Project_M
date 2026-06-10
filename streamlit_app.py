@@ -13,7 +13,104 @@ def main() -> None:
     st.set_page_config(page_title="Al Madrasa-tus-Saifiyah-tul-Burhaniyah", layout="wide")
     apply_islamic_theme()
 
-    st.markdown("<h2 style='text-align: center; font-size: 1.15rem; margin: 0; padding: 2px 0 6px 0; color: var(--emerald); font-weight: bold;'>Al Madrasa-tus-Saifiyah-tul-Burhaniyah</h2>", unsafe_allow_html=True)
+    st.iframe("""
+        <script>
+            (function() {
+                const parentDoc = window.parent.document;
+                
+                // Wake Lock API
+                let wakeLock = null;
+                async function requestWakeLock() {
+                    try {
+                        if ('wakeLock' in window.parent.navigator) {
+                            wakeLock = await window.parent.navigator.wakeLock.request('screen');
+                            console.log('Screen Wake Lock acquired');
+                        }
+                    } catch (err) {
+                        console.warn('Wake Lock request failed:', err);
+                    }
+                }
+                parentDoc.addEventListener('visibilitychange', () => {
+                    if (parentDoc.visibilityState === 'visible') requestWakeLock();
+                });
+                ['click', 'touchstart', 'scroll'].forEach(e => {
+                    parentDoc.addEventListener(e, requestWakeLock, { once: true });
+                });
+                requestWakeLock();
+
+                // Fullscreen Toggle
+                parentDoc.addEventListener('click', function(e) {
+                    const btn = e.target.closest('#fullscreen-toggle-btn');
+                    if (btn) {
+                        const docEl = parentDoc.documentElement;
+                        const isFull = parentDoc.fullscreenElement ? true : (parentDoc.webkitFullscreenElement ? true : false);
+                        if (!isFull) {
+                            if (docEl.requestFullscreen) {
+                                docEl.requestFullscreen().then(() => {
+                                    btn.textContent = '📱 Exit Full';
+                                    if (window.parent.screen && window.parent.screen.orientation && window.parent.screen.orientation.lock) {
+                                        window.parent.screen.orientation.lock('landscape').catch(err => {
+                                            console.warn('Orientation lock failed:', err);
+                                        });
+                                    }
+                                }).catch(err => {
+                                    console.warn('Fullscreen request failed:', err);
+                                });
+                            } else if (docEl.webkitRequestFullscreen) {
+                                docEl.webkitRequestFullscreen();
+                                btn.textContent = '📱 Exit Full';
+                                if (window.parent.screen && window.parent.screen.orientation && window.parent.screen.orientation.lock) {
+                                    window.parent.screen.orientation.lock('landscape').catch(err => {
+                                        console.warn('Orientation lock failed:', err);
+                                    });
+                                }
+                            }
+                        } else {
+                            if (parentDoc.exitFullscreen) {
+                                parentDoc.exitFullscreen().then(() => {
+                                    btn.textContent = '📱 Fullscreen';
+                                    if (window.parent.screen && window.parent.screen.orientation && window.parent.screen.orientation.unlock) {
+                                        window.parent.screen.orientation.unlock();
+                                    }
+                                });
+                            } else if (parentDoc.webkitExitFullscreen) {
+                                parentDoc.webkitExitFullscreen();
+                                btn.textContent = '📱 Fullscreen';
+                                if (window.parent.screen && window.parent.screen.orientation && window.parent.screen.orientation.unlock) {
+                                    window.parent.screen.orientation.unlock();
+                                }
+                            }
+                        }
+                    }
+                });
+
+                function updateFullscreenButton() {
+                    const btn = parentDoc.getElementById('fullscreen-toggle-btn');
+                    if (btn) {
+                        const isFull = parentDoc.fullscreenElement ? true : (parentDoc.webkitFullscreenElement ? true : false);
+                        if (isFull) {
+                            btn.textContent = '📱 Exit Full';
+                        } else {
+                            btn.textContent = '📱 Fullscreen';
+                            if (window.parent.screen && window.parent.screen.orientation && window.parent.screen.orientation.unlock) {
+                                window.parent.screen.orientation.unlock();
+                            }
+                        }
+                    }
+                }
+
+                parentDoc.addEventListener('fullscreenchange', updateFullscreenButton);
+                parentDoc.addEventListener('webkitfullscreenchange', updateFullscreenButton);
+            })();
+        </script>
+    """, height=1)
+
+    st.markdown("""
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+            <h2 style='font-size: 1.15rem; margin: 0; padding: 2px 0; color: var(--emerald); font-weight: bold; font-family: sans-serif;'>Al Madrasa-tus-Saifiyah-tul-Burhaniyah</h2>
+            <button id="fullscreen-toggle-btn" style="background: linear-gradient(180deg, var(--emerald), #0a4d3a); color: white; border: none; border-radius: 8px; padding: 6px 12px; font-weight: bold; cursor: pointer; font-size: 0.75rem; box-shadow: 0 2px 4px rgba(0,0,0,0.12); display: flex; align-items: center; gap: 4px; font-family: sans-serif;">📱 Fullscreen</button>
+        </div>
+    """, unsafe_allow_html=True)
 
     # 1. Check if student is selected
     student_id = st.session_state.get("student_id")
