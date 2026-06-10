@@ -48,7 +48,6 @@ def main() -> None:
                             if (docEl.requestFullscreen) {
                                 docEl.requestFullscreen().then(() => {
                                     btn.textContent = '📱 Exit Full';
-                                    parentDoc.body.classList.add('force-landscape');
                                     if (window.parent.screen && window.parent.screen.orientation && window.parent.screen.orientation.lock) {
                                         window.parent.screen.orientation.lock('landscape').catch(err => {
                                             console.warn('Orientation lock failed:', err);
@@ -60,7 +59,6 @@ def main() -> None:
                             } else if (docEl.webkitRequestFullscreen) {
                                 docEl.webkitRequestFullscreen();
                                 btn.textContent = '📱 Exit Full';
-                                parentDoc.body.classList.add('force-landscape');
                                 if (window.parent.screen && window.parent.screen.orientation && window.parent.screen.orientation.lock) {
                                     window.parent.screen.orientation.lock('landscape').catch(err => {
                                         console.warn('Orientation lock failed:', err);
@@ -71,7 +69,6 @@ def main() -> None:
                             if (parentDoc.exitFullscreen) {
                                 parentDoc.exitFullscreen().then(() => {
                                     btn.textContent = '📱 Fullscreen';
-                                    parentDoc.body.classList.remove('force-landscape');
                                     if (window.parent.screen && window.parent.screen.orientation && window.parent.screen.orientation.unlock) {
                                         window.parent.screen.orientation.unlock();
                                     }
@@ -79,7 +76,6 @@ def main() -> None:
                             } else if (parentDoc.webkitExitFullscreen) {
                                 parentDoc.webkitExitFullscreen();
                                 btn.textContent = '📱 Fullscreen';
-                                parentDoc.body.classList.remove('force-landscape');
                                 if (window.parent.screen && window.parent.screen.orientation && window.parent.screen.orientation.unlock) {
                                     window.parent.screen.orientation.unlock();
                                 }
@@ -94,10 +90,8 @@ def main() -> None:
                         const isFull = parentDoc.fullscreenElement ? true : (parentDoc.webkitFullscreenElement ? true : false);
                         if (isFull) {
                             btn.textContent = '📱 Exit Full';
-                            parentDoc.body.classList.add('force-landscape');
                         } else {
                             btn.textContent = '📱 Fullscreen';
-                            parentDoc.body.classList.remove('force-landscape');
                             if (window.parent.screen && window.parent.screen.orientation && window.parent.screen.orientation.unlock) {
                                 window.parent.screen.orientation.unlock();
                             }

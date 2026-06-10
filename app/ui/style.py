@@ -403,26 +403,6 @@ def apply_islamic_theme() -> None:
             padding: 0 !important;
             position: absolute !important;
           }
-
-          /* Simulated Landscape mode via CSS rotation when portrait */
-          @media (orientation: portrait) {
-            body.force-landscape {
-              overflow: hidden !important;
-              width: 100vw !important;
-              height: 100vh !important;
-            }
-            body.force-landscape div[data-testid="stAppViewContainer"] {
-              position: fixed !important;
-              top: 0 !important;
-              left: 100% !important;
-              width: 100vh !important;
-              height: 100vw !important;
-              transform: rotate(90deg) !important;
-              transform-origin: top left !important;
-              overflow-x: hidden !important;
-              overflow-y: auto !important;
-            }
-          }
         </style>
         """,
         unsafe_allow_html=True,
