@@ -659,7 +659,7 @@ def fetch_monthly_report(*, student_id: str, year: int, month: int) -> List[Dict
     # Sessions + counts + surah
     sessions = rest.select(
         "listening_sessions",
-        select="id,activity_date,mode,surah_id,page_number,created_at,surahs(number,name_en,name_ar),mistake_counts(talqeen,tanbeeh,repeat_mistake,mutashabehat,irab)",
+        select="id,activity_date,mode,surah_id,page_number,created_at,surahs(number,name_en,name_ar),mistake_counts(*)",
         params={
             "student_id": f"eq.{student_id}",
             "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
@@ -729,7 +729,20 @@ def fetch_monthly_report(*, student_id: str, year: int, month: int) -> List[Dict
             "mutashabehat": mutashabehat,
             "irab": irab,
             "marks": marks,
+            # Ahkam
+            "ikhfa": int(counts.get("ikhfa", 0) or 0),
+            "izhaar": int(counts.get("izhaar", 0) or 0),
+            "qalqalah": int(counts.get("qalqalah", 0) or 0),
+            "ism_jalalah": int(counts.get("ism_jalalah", 0) or 0),
+            "tahreek_sakin": int(counts.get("tahreek_sakin", 0) or 0),
+            "gunnah": int(counts.get("gunnah", 0) or 0),
+            "idgham": int(counts.get("idgham", 0) or 0),
+            "madd_lazim": int(counts.get("madd_lazim", 0) or 0),
+            "madd_muttasil": int(counts.get("madd_muttasil", 0) or 0),
+            "mad_tabaiee": int(counts.get("mad_tabaiee", 0) or 0),
         }
+        for col in MAKHARIJ_COLS:
+            row[col] = int(counts.get(col, 0) or 0)
         if s.get("mode") == "murajat":
             surah = s.get("surahs") or {}
             if isinstance(surah, list):
@@ -805,7 +818,7 @@ def get_student_daily_summary(*, student_id: str, date_str: str) -> Dict[str, An
 
     sessions = rest.select(
         "listening_sessions",
-        select="id,mode,surah_id,page_number,created_at,surahs(number,name_en,name_ar),mistake_counts(talqeen,tanbeeh,repeat_mistake,mutashabehat,irab)",
+        select="id,mode,surah_id,page_number,created_at,surahs(number,name_en,name_ar),mistake_counts(*)",
         params={
             "student_id": f"eq.{student_id}",
             "activity_date": f"eq.{date_str}",

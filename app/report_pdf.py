@@ -2,11 +2,51 @@ from __future__ import annotations
 
 from html import escape
 from typing import Any, Dict, List
-from datetime import datetime
+from datetime import datetime, date
 
+AHKAM_LABELS = {
+    "ikhfa": "Ikhfa",
+    "izhaar": "Izhaar",
+    "qalqalah": "Qalqalah",
+    "ism_jalalah": "Ism Jalal",
+    "tahreek_sakin": "Tahreek",
+    "gunnah": "Gunnah",
+    "idgham": "Idgham",
+    "madd_lazim": "M. Lazim",
+    "madd_muttasil": "M. Mutta.",
+    "mad_tabaiee": "M. Tabai."
+}
 
-def _to_arabic_numeral(n: int) -> str:
-    return str(n)
+MAKHRAJ_CHARS = {
+    "makhraj_alif": "أ",
+    "makhraj_baa": "ب",
+    "makhraj_taa": "ت",
+    "makhraj_thaa": "ث",
+    "makhraj_jeem": "ج",
+    "makhraj_haa": "ح",
+    "makhraj_khaa": "خ",
+    "makhraj_daal": "د",
+    "makhraj_dhaal": "ذ",
+    "makhraj_raa": "ر",
+    "makhraj_zaa": "ز",
+    "makhraj_seen": "س",
+    "makhraj_sheen": "ش",
+    "makhraj_saad": "ص",
+    "makhraj_daad": "ض",
+    "makhraj_taa_thick": "ط",
+    "makhraj_zaa_thick": "ظ",
+    "makhraj_ain": "ع",
+    "makhraj_ghain": "غ",
+    "makhraj_faa": "ف",
+    "makhraj_qaaf": "ق",
+    "makhraj_kaaf": "ك",
+    "makhraj_laam": "ل",
+    "makhraj_meem": "م",
+    "makhraj_noon": "ن",
+    "makhraj_haa_weak": "هـ",
+    "makhraj_waw": "و",
+    "makhraj_yaa": "ي"
+}
 
 
 def _get_month_year_str(rows: List[Dict[str, Any]]) -> str:
@@ -25,46 +65,213 @@ def _get_month_year_str(rows: List[Dict[str, Any]]) -> str:
         return datetime.now().strftime("%B %Y")
 
 
-def _format_takhteet_cell(tak: Dict[str, str]) -> str:
-    parts = []
-    m = tak.get("murajat", "").strip()
-    j = tak.get("juzulhali", "").strip()
-    jd = tak.get("jadeed", "").strip()
+def _format_mistake_badges(m: Dict[str, Any]) -> str:
+    badges = []
+    # Ahkam
+    for col, label in AHKAM_LABELS.items():
+        val = m.get(col, 0)
+        if val > 0:
+            badges.append(
+                f'<span class="badge badge-ahkam">{label} ({val})</span>'
+            )
+    # Makharij
+    for col, char in MAKHRAJ_CHARS.items():
+        val = m.get(col, 0)
+        if val > 0:
+            lbl = f"{char}" if val == 1 else f"{char} ({val})"
+            badges.append(
+                f'<span class="badge badge-makhraj">{lbl}</span>'
+            )
+    return " ".join(badges) if badges else '<span class="muted">-</span>'
 
-    if m:
-        parts.append(f'<div class="hw-item"><span class="hw-prefix">M:</span> {escape(m)}</div>')
-    if j:
-        parts.append(f'<div class="hw-item"><span class="hw-prefix">J:</span> {escape(j)}</div>')
-    if jd:
-        parts.append(f'<div class="hw-item"><span class="hw-prefix">D:</span> {escape(jd)}</div>')
 
-    if not parts:
-        return '<span class="muted">-</span>'
-    return "".join(parts)
+def _format_grade_badge(marks: float) -> str:
+    if marks >= 9.0:
+        return f'<span class="grade-badge grade-excellent">{marks:.1f}/10</span>'
+    elif marks >= 7.5:
+        return f'<span class="grade-badge grade-passing">{marks:.1f}/10</span>'
+    else:
+        return f'<span class="grade-badge grade-warning">{marks:.1f}/10</span>'
 
 
-def build_report_html(student_name: str, rows: List[Dict[str, Any]]) -> str:
-    # Ensure rows are sorted by date ascending (Day 1 to Day 30)
-    sorted_rows = sorted(rows, key=lambda x: x.get("activity_date", ""))
+def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type: str = "murajat") -> str:
+    report_type = report_type.lower()
     
+    # Sort rows chronologically
+    sorted_rows = sorted(rows, key=lambda x: x.get("activity_date", ""))
     month_year_str = _get_month_year_str(sorted_rows)
+
+    theme_colors = {
+        "murajat": {
+            "bg": "linear-gradient(135deg, #0E6B50 0%, #1b4d3e 100%)",
+            "border": "#0E6B50",
+            "title": "Monthly Murajat Report",
+            "arabic_title": "تقرير المراجعة الشهري",
+            "colspan": 8
+        },
+        "juzulhali": {
+            "bg": "linear-gradient(135deg, #d35400 0%, #a04000 100%)",
+            "border": "#d35400",
+            "title": "Monthly Juzulhali Report",
+            "arabic_title": "تقرير الجزء الحالي الشهري",
+            "colspan": 8
+        },
+        "jadeed": {
+            "bg": "linear-gradient(135deg, #8e44ad 0%, #6c3483 100%)",
+            "border": "#8e44ad",
+            "title": "Monthly Jadeed Report",
+            "arabic_title": "تقرير الجديد الشهري",
+            "colspan": 4
+        },
+        "takhteet": {
+            "bg": "linear-gradient(135deg, #2980b9 0%, #1b4f72 100%)",
+            "border": "#2980b9",
+            "title": "Monthly Takhteet Report",
+            "arabic_title": "تقرير التخطيط الشهري",
+            "colspan": 3
+        }
+    }
+    
+    cfg = theme_colors.get(report_type, theme_colors["murajat"])
+
+    # Calculate statistics dynamically
+    total_active_days = 0
+    total_items = 0
+    grades_sum = 0.0
+    grades_count = 0
+    
+    ahkam_totals = {col: 0 for col in AHKAM_LABELS.keys()}
+    makharij_totals = {col: 0 for col in MAKHRAJ_CHARS.keys()}
+    
+    for r in sorted_rows:
+        murajat = r.get("murajat", [])
+        juzulhali = r.get("juzulhali", [])
+        jadeed = r.get("jadeed", [])
+        
+        # Determine if day is weekend
+        activity_date = r.get("activity_date", "")
+        try:
+            dt = datetime.strptime(activity_date, "%Y-%m-%d")
+            wd = dt.weekday()
+        except Exception:
+            wd = 0
+        is_weekend = wd in (5, 6)
+        
+        # Check presence
+        is_present = bool(murajat or juzulhali or jadeed or not (
+            r.get("no_jadeed", True)
+            and not (r.get("takhteet") or {}).get("murajat", "").strip()
+            and not (r.get("takhteet") or {}).get("juzulhali", "").strip()
+            and not (r.get("takhteet") or {}).get("jadeed", "").strip()
+        ))
+        
+        if report_type == "murajat" and murajat:
+            total_active_days += 1
+            for m in murajat:
+                total_items += 1
+                for col in AHKAM_LABELS.keys():
+                    ahkam_totals[col] += m.get(col, 0)
+                for col in MAKHRAJ_CHARS.keys():
+                    makharij_totals[col] += m.get(col, 0)
+                grades_sum += m.get("marks", 10.0)
+                grades_count += 1
+                
+        elif report_type == "juzulhali" and juzulhali:
+            total_active_days += 1
+            for j in juzulhali:
+                total_items += 1
+                for col in AHKAM_LABELS.keys():
+                    ahkam_totals[col] += j.get(col, 0)
+                for col in MAKHRAJ_CHARS.keys():
+                    makharij_totals[col] += j.get(col, 0)
+                grades_sum += j.get("marks", 10.0)
+                grades_count += 1
+                
+        elif report_type == "jadeed":
+            if jadeed:
+                total_active_days += 1
+                total_items += len(jadeed)
+            elif not r.get("no_jadeed") and is_present:
+                # Active day but jadeed entry list empty (e.g. absent/empty day excluded)
+                pass
+                
+        elif report_type == "takhteet":
+            t = r.get("takhteet") or {}
+            if t.get("murajat", "").strip() or t.get("juzulhali", "").strip() or t.get("jadeed", "").strip():
+                total_active_days += 1
+
+    # Render Stats Cards HTML
+    stats_html = ""
+    if report_type in ("murajat", "juzulhali"):
+        avg_grade = (grades_sum / grades_count) if grades_count > 0 else 10.0
+        
+        # Sort and fetch Top 5 Ahkam mistakes
+        sorted_ahkam = sorted(
+            [(label, count) for col, label in AHKAM_LABELS.items() if (count := ahkam_totals.get(col, 0)) > 0],
+            key=lambda x: x[1],
+            reverse=True
+        )[:5]
+        ahkam_display = ", ".join([lbl for lbl, cnt in sorted_ahkam]) if sorted_ahkam else "None"
+        
+        # Sort and fetch Top 5 Makharij mistakes
+        sorted_makharij = sorted(
+            [(char, count) for col, char in MAKHRAJ_CHARS.items() if (count := makharij_totals.get(col, 0)) > 0],
+            key=lambda x: x[1],
+            reverse=True
+        )[:5]
+        makharij_display = ", ".join([char for char, cnt in sorted_makharij]) if sorted_makharij else "None"
+
+        stats_html = f"""
+        <div class="stats-container">
+            <div class="stat-card">
+                <span class="stat-title">Days Recited</span>
+                <span class="stat-value">{total_active_days} Days</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-title">Top 5 Ahkam Mistakes</span>
+                <span class="stat-value" style="font-size: 9.5pt; font-weight: 600; color: #9b2c2c; line-height: 1.25; margin-top: 2px;">{ahkam_display}</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-title">Average Score</span>
+                <span class="stat-value">{avg_grade:.2f} / 10</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-title">Top 5 Makharij Mistakes</span>
+                <span class="stat-value" style="font-size: 11pt; font-weight: 700; color: #2b6cb0; font-family: 'Amiri', serif; line-height: 1.2; margin-top: 2px;">{makharij_display}</span>
+            </div>
+        </div>
+        """
+    elif report_type == "jadeed":
+        stats_html = f"""
+        <div class="stats-container">
+            <div class="stat-card">
+                <span class="stat-title">Days Recited</span>
+                <span class="stat-value">{total_active_days} Days</span>
+            </div>
+        </div>
+        """
+    else: # takhteet
+        stats_html = f"""
+        <div class="stats-container">
+            <div class="stat-card">
+                <span class="stat-title">Homework Days Assigned</span>
+                <span class="stat-value">{total_active_days} Days</span>
+            </div>
+        </div>
+        """
 
     table_rows = []
     for idx, r in enumerate(sorted_rows):
         activity_date = r.get("activity_date", "")
+        date_num = idx + 1
         
-        # Format the date number (Arabic ١, ٢, ٣...)
-        date_num = _to_arabic_numeral(idx + 1)
-        
-        # Calendar date suffix e.g., 04/05
         date_sub = ""
         if len(activity_date) == 10:
             date_sub = f"{activity_date[8:10]}/{activity_date[5:7]}"
             
-        from datetime import datetime
         try:
             dt = datetime.strptime(activity_date, "%Y-%m-%d")
-            wd = dt.weekday()  # 0=Monday, ..., 5=Saturday, 6=Sunday
+            wd = dt.weekday()
         except Exception:
             wd = 0
             
@@ -76,8 +283,6 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]]) -> str:
         juzulhali = r.get("juzulhali", [])
         jadeed = r.get("jadeed", [])
         
-        # Check if student is absent (absolutely no record of any kind for this day, only for weekdays, and only for past/today days)
-        from datetime import date
         today_str = date.today().isoformat()
         is_absent = (
             not is_weekend
@@ -86,174 +291,269 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]]) -> str:
             and not juzulhali 
             and not jadeed 
             and not r.get("no_jadeed") 
-            and not (r.get("takhteet") or {}).get("murajat", "").strip()
-            and not (r.get("takhteet") or {}).get("juzulhali", "").strip()
-            and not (r.get("takhteet") or {}).get("jadeed", "").strip()
+            and not str((r.get("takhteet") or {}).get("murajat") or "").strip()
+            and not str((r.get("takhteet") or {}).get("juzulhali") or "").strip()
+            and not str((r.get("takhteet") or {}).get("jadeed") or "").strip()
         )
         
-        # Check if weekend is completely empty (no made-up tasks/recitations)
         is_weekend_empty = (
             is_weekend
             and not murajat 
             and not juzulhali 
             and not jadeed 
             and not r.get("no_jadeed") 
-            and not (r.get("takhteet") or {}).get("murajat", "").strip()
-            and not (r.get("takhteet") or {}).get("juzulhali", "").strip()
-            and not (r.get("takhteet") or {}).get("jadeed", "").strip()
+            and not str((r.get("takhteet") or {}).get("murajat") or "").strip()
+            and not str((r.get("takhteet") or {}).get("juzulhali") or "").strip()
+            and not str((r.get("takhteet") or {}).get("jadeed") or "").strip()
         )
         
+        # 1. Render Absent Row
         if is_absent:
             cells = []
             cells.append(
-                f'<td class="date-col col-date absent-row">'
-                f'  <div class="day-number">{date_num}</div>'
-                f'  <div class="day-date">{date_sub}</div>'
-                f'  <div class="day-name">{day_name_en}</div>'
+                f'<td class="date-col">'
+                f'  <div class="day-title">Day {date_num}</div>'
+                f'  <div class="day-subtitle">{day_name_en} {date_sub}</div>'
                 f'</td>'
             )
             cells.append(
-                f'<td colspan="19" class="absent-cell">Absent / غائب ({day_name_en})</td>'
+                f'<td colspan="{cfg["colspan"]}" class="absent-cell">Absent / غائب</td>'
             )
             row_class = ' class="day-separator week-end-separator"' if wd == 6 else ' class="day-separator"'
             table_rows.append(f'<tr{row_class}>{"".join(cells)}</tr>')
-            if wd == 6 and idx < len(sorted_rows) - 1:
-                table_rows.append('<tr class="week-spacer-row"><td colspan="20"></td></tr>')
             continue
 
+        # 2. Render Empty Weekend Row
         if is_weekend_empty:
             cells = []
             cells.append(
-                f'<td class="date-col col-date weekend-date-cell">'
-                f'  <div class="day-number">{date_num}</div>'
-                f'  <div class="day-date">{date_sub}</div>'
-                f'  <div class="day-name">{day_name_en}</div>'
+                f'<td class="date-col">'
+                f'  <div class="day-title">Day {date_num}</div>'
+                f'  <div class="day-subtitle">{day_name_en} {date_sub}</div>'
                 f'</td>'
             )
-            weekend_label_en = "Saturday - Weekend" if wd == 5 else "Sunday - Weekend"
-            weekend_label_ar = "السبت - عطلة نهاية الأسبوع" if wd == 5 else "الأحد - عطلة نهاية الأسبوع"
+            weekend_label = "Saturday - Weekend" if wd == 5 else "Sunday - Weekend"
             cells.append(
-                f'<td colspan="19" class="weekend-cell">{weekend_label_en} / {weekend_label_ar}</td>'
+                f'<td colspan="{cfg["colspan"]}" class="weekend-cell">{weekend_label}</td>'
             )
             row_class = ' class="day-separator week-end-separator"' if wd == 6 else ' class="day-separator"'
             table_rows.append(f'<tr{row_class}>{"".join(cells)}</tr>')
-            if wd == 6 and idx < len(sorted_rows) - 1:
-                table_rows.append('<tr class="week-spacer-row"><td colspan="20"></td></tr>')
             continue
 
-        # Calculate sub-rows needed for this day to keep grid columns aligned
-        N_rows = max(len(murajat), len(juzulhali), len(jadeed), 1)
-        
-        for sub_idx in range(N_rows):
-            cells = []
-            
-            # 1. Date column (rowspanned)
-            if sub_idx == 0:
-                date_class = "date-col col-date weekend-date-cell" if is_weekend else "date-col col-date"
-                cells.append(
-                    f'<td class="{date_class}" rowspan="{N_rows}">'
-                    f'  <div class="day-number">{date_num}</div>'
-                    f'  <div class="day-date">{date_sub}</div>'
-                    f'  <div class="day-name">{day_name_en}</div>'
-                    f'</td>'
-                )
+        # 3. Render Active Rows
+        if report_type == "murajat":
+            N_rows = max(len(murajat), 1)
+            for sub_idx in range(N_rows):
+                cells = []
+                if sub_idx == 0:
+                    cells.append(
+                        f'<td class="date-col" rowspan="{N_rows}">'
+                        f'  <div class="day-title">Day {date_num}</div>'
+                        f'  <div class="day-subtitle">{day_name_en} {date_sub}</div>'
+                        f'</td>'
+                    )
                 
-            # 2. Murajat columns (Juz/Surah, Talqeen, Tanbeeh, I'rab, Repeat, Mutashabehat, Grade)
-            if sub_idx < len(murajat):
-                m = murajat[sub_idx]
-                surah_name = m.get("surah_name_ar") or m.get("surat") or ""
-                # If Surah name contains the number (like "1 - Al-Fatiha"), clean it up or translate
-                if surah_name and " - " in surah_name:
-                    parts = surah_name.split(" - ")
-                    surah_name = parts[1] if len(parts) > 1 else surah_name
+                if sub_idx < len(murajat):
+                    m = murajat[sub_idx]
+                    surah_name = m.get("surah_name_ar") or m.get("surat") or ""
+                    if surah_name and " - " in surah_name:
+                        parts = surah_name.split(" - ")
+                        surah_name = parts[1] if len(parts) > 1 else surah_name
+                        
+                    counts = m
+                    talqeen = counts.get("talqeen", 0)
+                    tanbeeh = counts.get("tanbeeh", 0)
+                    irab = counts.get("irab", 0)
+                    repeat = counts.get("repeat_mistake", 0)
+                    mutashabehat = counts.get("mutashabehat", 0)
                     
-                talqeen = _to_arabic_numeral(m.get("talqeen", 0)) if m.get("talqeen", 0) > 0 else "0"
-                tanbeeh = _to_arabic_numeral(m.get("tanbeeh", 0)) if m.get("tanbeeh", 0) > 0 else "0"
-                irab = _to_arabic_numeral(m.get("irab", 0)) if m.get("irab", 0) > 0 else "0"
-                repeat = _to_arabic_numeral(m.get("repeat_mistake", 0)) if m.get("repeat_mistake", 0) > 0 else "0"
-                mutashabehat = _to_arabic_numeral(m.get("mutashabehat", 0)) if m.get("mutashabehat", 0) > 0 else "0"
-                marks = f"{m.get('marks', 0.0):.1f}"
-                marks_ar = _to_arabic_numeral(int(float(marks))) + "." + _to_arabic_numeral(int(round((float(marks) - int(float(marks))) * 10)))
-                
-                cells.append(f'<td class="text-left col-murajat" style="font-weight: 600;">{escape(surah_name)}</td>')
-                cells.append(f'<td class="col-murajat">{talqeen}</td>')
-                cells.append(f'<td class="col-murajat">{tanbeeh}</td>')
-                cells.append(f'<td class="col-murajat">{irab}</td>')
-                cells.append(f'<td class="col-murajat">{repeat}</td>')
-                cells.append(f'<td class="col-murajat">{mutashabehat}</td>')
-                cells.append(f'<td class="col-murajat" style="font-weight: bold; color: #1b4d3e;">{marks_ar}</td>')
-            else:
-                cells.extend(['<td class="col-murajat"></td>'] * 7)
-                
-            # 3. Juzulhali columns (Page, Talqeen, Tanbeeh, I'rab, Repeat, Mutashabehat, Grade)
-            if sub_idx < len(juzulhali):
-                j = juzulhali[sub_idx]
-                page = _to_arabic_numeral(j.get("page_number", 0)) if j.get("page_number", 0) > 0 else "-"
-                talqeen = _to_arabic_numeral(j.get("talqeen", 0)) if j.get("talqeen", 0) > 0 else "0"
-                tanbeeh = _to_arabic_numeral(j.get("tanbeeh", 0)) if j.get("tanbeeh", 0) > 0 else "0"
-                irab = _to_arabic_numeral(j.get("irab", 0)) if j.get("irab", 0) > 0 else "0"
-                repeat = _to_arabic_numeral(j.get("repeat_mistake", 0)) if j.get("repeat_mistake", 0) > 0 else "0"
-                mutashabehat = _to_arabic_numeral(j.get("mutashabehat", 0)) if j.get("mutashabehat", 0) > 0 else "0"
-                marks = f"{j.get('marks', 0.0):.1f}"
-                marks_ar = _to_arabic_numeral(int(float(marks))) + "." + _to_arabic_numeral(int(round((float(marks) - int(float(marks))) * 10)))
-                
-                cells.append(f'<td class="col-juzulhali">{page}</td>')
-                cells.append(f'<td class="col-juzulhali">{talqeen}</td>')
-                cells.append(f'<td class="col-juzulhali">{tanbeeh}</td>')
-                cells.append(f'<td class="col-juzulhali">{irab}</td>')
-                cells.append(f'<td class="col-juzulhali">{repeat}</td>')
-                cells.append(f'<td class="col-juzulhali">{mutashabehat}</td>')
-                cells.append(f'<td class="col-juzulhali" style="font-weight: bold; color: #1b4d3e;">{marks_ar}</td>')
-            else:
-                cells.extend(['<td class="col-juzulhali"></td>'] * 7)
-                
-            # 4. Jadeed columns (Surah, Page, Ayah, Volume)
-            if sub_idx < len(jadeed):
-                jd = jadeed[sub_idx]
-                surah_name = jd.get("surah_name_ar") or jd.get("surat") or ""
-                if surah_name and " - " in surah_name:
-                    parts = surah_name.split(" - ")
-                    surah_name = parts[1] if len(parts) > 1 else surah_name
+                    mistake_badges = _format_mistake_badges(counts)
+                    marks = m.get("marks", 0.0)
+                    grade_badge = _format_grade_badge(marks)
                     
-                page = _to_arabic_numeral(jd.get("page_number", 0)) if jd.get("page_number", 0) > 0 else "-"
-                ayah = _to_arabic_numeral(jd.get("ayah_number", 0)) if jd.get("ayah_number", 0) > 0 else "-"
-                volume = jd.get("volume") or "-"
-                
-                cells.append(f'<td class="text-left col-jadeed">{escape(surah_name)}</td>')
-                cells.append(f'<td class="col-jadeed">{page}</td>')
-                cells.append(f'<td class="col-jadeed">{ayah}</td>')
-                cells.append(f'<td class="col-jadeed">{escape(volume)}</td>')
-            else:
-                cells.extend(['<td class="col-jadeed"></td>'] * 4)
-                
-            # 5. Homework/Takhteet column (rowspanned)
-            if sub_idx == 0:
-                cells.append(
-                    f'<td class="hw-col col-takhteet" rowspan="{N_rows}">'
-                    f'  {_format_takhteet_cell(r.get("takhteet", {}))}'
-                    f'</td>'
-                )
-                
-            is_last_sub = (sub_idx == N_rows - 1)
-            row_class = ''
-            if is_last_sub:
-                if wd == 6:
-                    row_class = ' class="day-separator week-end-separator"'
+                    cells.append(f'<td class="text-left" style="font-weight: 600; font-size: 9pt;">{escape(surah_name)}</td>')
+                    cells.append(f'<td>{talqeen}</td>')
+                    cells.append(f'<td>{tanbeeh}</td>')
+                    cells.append(f'<td>{irab}</td>')
+                    cells.append(f'<td>{repeat}</td>')
+                    cells.append(f'<td>{mutashabehat}</td>')
+                    cells.append(f'<td style="text-align: left;">{mistake_badges}</td>')
+                    cells.append(f'<td>{grade_badge}</td>')
                 else:
-                    row_class = ' class="day-separator"'
+                    cells.extend(['<td></td>'] * 8)
+                
+                is_last_sub = (sub_idx == N_rows - 1)
+                row_class = ' class="day-separator week-end-separator"' if (is_last_sub and wd == 6) else (' class="day-separator"' if is_last_sub else '')
+                table_rows.append(f"<tr{row_class}>{''.join(cells)}</tr>")
+
+        elif report_type == "juzulhali":
+            N_rows = max(len(juzulhali), 1)
+            for sub_idx in range(N_rows):
+                cells = []
+                if sub_idx == 0:
+                    cells.append(
+                        f'<td class="date-col" rowspan="{N_rows}">'
+                        f'  <div class="day-title">Day {date_num}</div>'
+                        f'  <div class="day-subtitle">{day_name_en} {date_sub}</div>'
+                        f'</td>'
+                    )
+                
+                if sub_idx < len(juzulhali):
+                    j = juzulhali[sub_idx]
+                    page = j.get("page_number", 0)
+                    page_display = f"Page {page}" if page > 0 else "-"
+                    
+                    counts = j
+                    talqeen = counts.get("talqeen", 0)
+                    tanbeeh = counts.get("tanbeeh", 0)
+                    irab = counts.get("irab", 0)
+                    repeat = counts.get("repeat_mistake", 0)
+                    mutashabehat = counts.get("mutashabehat", 0)
+                    
+                    mistake_badges = _format_mistake_badges(counts)
+                    marks = j.get("marks", 0.0)
+                    grade_badge = _format_grade_badge(marks)
+                    
+                    cells.append(f'<td style="font-weight: 600; font-size: 9pt;">{page_display}</td>')
+                    cells.append(f'<td>{talqeen}</td>')
+                    cells.append(f'<td>{tanbeeh}</td>')
+                    cells.append(f'<td>{irab}</td>')
+                    cells.append(f'<td>{repeat}</td>')
+                    cells.append(f'<td>{mutashabehat}</td>')
+                    cells.append(f'<td style="text-align: left;">{mistake_badges}</td>')
+                    cells.append(f'<td>{grade_badge}</td>')
+                else:
+                    cells.extend(['<td></td>'] * 8)
+                
+                is_last_sub = (sub_idx == N_rows - 1)
+                row_class = ' class="day-separator week-end-separator"' if (is_last_sub and wd == 6) else (' class="day-separator"' if is_last_sub else '')
+                table_rows.append(f"<tr{row_class}>{''.join(cells)}</tr>")
+
+        elif report_type == "jadeed":
+            if r.get("no_jadeed"):
+                cells = []
+                cells.append(
+                    f'<td class="date-col">'
+                    f'  <div class="day-title">Day {date_num}</div>'
+                    f'  <div class="day-subtitle">{day_name_en} {date_sub}</div>'
+                    f'</td>'
+                )
+                cells.append(f'<td colspan="4" style="font-style: italic; color: #7f8c8d; font-size: 8.5pt; text-align: center;">No Jadeed Lesson / لا جديد اليوم</td>')
+                row_class = ' class="day-separator week-end-separator"' if wd == 6 else ' class="day-separator"'
+                table_rows.append(f"<tr{row_class}>{''.join(cells)}</tr>")
+            else:
+                N_rows = max(len(jadeed), 1)
+                for sub_idx in range(N_rows):
+                    cells = []
+                    if sub_idx == 0:
+                        cells.append(
+                            f'<td class="date-col" rowspan="{N_rows}">'
+                            f'  <div class="day-title">Day {date_num}</div>'
+                            f'  <div class="day-subtitle">{day_name_en} {date_sub}</div>'
+                            f'</td>'
+                        )
+                    
+                    if sub_idx < len(jadeed):
+                        jd = jadeed[sub_idx]
+                        surah_name = jd.get("surah_name_ar") or jd.get("surat") or ""
+                        if surah_name and " - " in surah_name:
+                            parts = surah_name.split(" - ")
+                            surah_name = parts[1] if len(parts) > 1 else surah_name
+                            
+                        page = jd.get("page_number", 0)
+                        ayah = jd.get("ayah_number", 0)
+                        volume = jd.get("volume") or "-"
+                        
+                        cells.append(f'<td class="text-left" style="font-weight: 600; font-size: 9pt;">{escape(surah_name)}</td>')
+                        cells.append(f'<td>{page if page > 0 else "-"}</td>')
+                        cells.append(f'<td>{ayah if ayah > 0 else "-"}</td>')
+                        cells.append(f'<td>{escape(volume)}</td>')
+                    else:
+                        cells.extend(['<td></td>'] * 4)
+                    
+                    is_last_sub = (sub_idx == N_rows - 1)
+                    row_class = ' class="day-separator week-end-separator"' if (is_last_sub and wd == 6) else (' class="day-separator"' if is_last_sub else '')
+                    table_rows.append(f"<tr{row_class}>{''.join(cells)}</tr>")
+
+        elif report_type == "takhteet":
+            cells = []
+            cells.append(
+                f'<td class="date-col">'
+                f'  <div class="day-title">Day {date_num}</div>'
+                f'  <div class="day-subtitle">{day_name_en} {date_sub}</div>'
+                f'</td>'
+            )
+            
+            t = r.get("takhteet") or {}
+            m_hw = t.get("murajat") or ""
+            j_hw = t.get("juzulhali") or ""
+            jd_hw = t.get("jadeed") or ""
+            
+            cells.append(f'<td class="text-left" style="font-size: 8.5pt;">{escape(m_hw) if m_hw.strip() else "-"}</td>')
+            cells.append(f'<td class="text-left" style="font-size: 8.5pt;">{escape(j_hw) if j_hw.strip() else "-"}</td>')
+            cells.append(f'<td class="text-left" style="font-size: 8.5pt;">{escape(jd_hw) if jd_hw.strip() else "-"}</td>')
+            
+            row_class = ' class="day-separator week-end-separator"' if wd == 6 else ' class="day-separator"'
             table_rows.append(f"<tr{row_class}>{''.join(cells)}</tr>")
-            if is_last_sub and wd == 6 and idx < len(sorted_rows) - 1:
-                table_rows.append('<tr class="week-spacer-row"><td colspan="20"></td></tr>')
+
+    # Column headers depending on category
+    if report_type == "murajat":
+        thead_html = """
+      <tr>
+        <th style="width: 15%;">Date / Day</th>
+        <th style="width: 20%;">Surah</th>
+        <th style="width: 7%;">Talqeen</th>
+        <th style="width: 7%;">Tanbeeh</th>
+        <th style="width: 7%;">I'rab</th>
+        <th style="width: 7%;">Repeat</th>
+        <th style="width: 7%;">Mutash.</th>
+        <th style="width: 24%;">Mistake Details</th>
+        <th style="width: 10%;">Grade</th>
+      </tr>
+        """
+    elif report_type == "juzulhali":
+        thead_html = """
+      <tr>
+        <th style="width: 15%;">Date / Day</th>
+        <th style="width: 20%;">Page</th>
+        <th style="width: 7%;">Talqeen</th>
+        <th style="width: 7%;">Tanbeeh</th>
+        <th style="width: 7%;">I'rab</th>
+        <th style="width: 7%;">Repeat</th>
+        <th style="width: 7%;">Mutash.</th>
+        <th style="width: 24%;">Mistake Details</th>
+        <th style="width: 10%;">Grade</th>
+      </tr>
+        """
+    elif report_type == "jadeed":
+        thead_html = """
+      <tr>
+        <th style="width: 15%;">Date / Day</th>
+        <th style="width: 40%;">Surah</th>
+        <th style="width: 15%;">Page</th>
+        <th style="width: 15%;">Ayah</th>
+        <th style="width: 15%;">Volume</th>
+      </tr>
+        """
+    else:  # takhteet
+        thead_html = """
+      <tr>
+        <th style="width: 15%;">Date / Day</th>
+        <th style="width: 28%;">Murajat Homework</th>
+        <th style="width: 28%;">Juzulhali Homework</th>
+        <th style="width: 29%;">Jadeed Homework</th>
+      </tr>
+        """
 
     return f"""<!doctype html>
 <html lang="en" dir="ltr">
 <head>
   <meta charset="utf-8"/>
-  <title>Monthly Tasmee Report - {escape(student_name)}</title>
+  <title>{escape(cfg["title"])} - {escape(student_name)}</title>
   <style>
     @page {{
-      size: A4 landscape;
-      margin: 5mm 6mm 5mm 6mm;
+      size: A4 portrait;
+      margin: 10mm 12mm 10mm 12mm;
     }}
     @media print {{
       .print-btn {{ display: none !important; }}
@@ -265,6 +565,7 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]]) -> str:
     * {{
       -webkit-print-color-adjust: exact !important;
       print-color-adjust: exact !important;
+      box-sizing: border-box;
     }}
     .print-btn {{
       position: fixed;
@@ -273,257 +574,228 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]]) -> str:
       z-index: 9999;
       background: linear-gradient(135deg, #D4AF37 0%, #B88917 100%);
       color: #1E1A12;
-      border: 2px solid #0E6B50;
+      border: 2px solid {cfg["border"]};
       border-radius: 12px;
       padding: 10px 24px;
       font-size: 10.5pt;
       font-weight: 700;
       cursor: pointer;
-      box-shadow: 0 4px 18px rgba(212,175,55,0.45), 0 2px 6px rgba(14,107,80,0.2);
+      box-shadow: 0 4px 18px rgba(212,175,55,0.45);
       letter-spacing: 0.4px;
       transition: all 0.2s ease;
     }}
     .print-btn:hover {{
       background: linear-gradient(135deg, #e0bf4a 0%, #c99b1e 100%);
-      box-shadow: 0 6px 24px rgba(212,175,55,0.55), 0 2px 8px rgba(14,107,80,0.25);
       transform: translateY(-1px);
     }}
     body {{
       font-family: "Segoe UI", Arial, sans-serif;
       direction: ltr;
-      color: #1e1a12;
-      font-size: 6.8pt;
-      line-height: 1.15;
+      color: #2d3748;
+      font-size: 8.5pt;
+      line-height: 1.4;
       margin: 0;
       padding: 0;
       background-color: #ffffff;
     }}
-    .header-container {{
+    
+    /* Stats cards styling */
+    .stats-container {{
       display: flex;
-      justify-content: space-between;
-      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      width: 100%;
+    }}
+    .stat-card {{
+      flex: 1;
+      background: #fdfcf9;
+      border: 1px solid #e2dccf;
+      border-left: 4px solid {cfg["border"]};
+      border-radius: 8px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+    }}
+    .stat-title {{
+      font-size: 7.5pt;
+      font-weight: 600;
+      color: #718096;
       margin-bottom: 4px;
-      border-bottom: 1.5px solid #1b4d3e;
-      padding-bottom: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }}
-    .header-title {{
-      font-size: 11pt;
+    .stat-value {{
+      font-size: 13.5pt;
       font-weight: bold;
-      color: #1b4d3e;
-      margin: 0;
-      text-align: center;
+      color: {cfg["border"]};
     }}
-    .meta-item {{
-      font-size: 8pt;
-      font-weight: bold;
-      color: #333;
-      width: 33%;
-    }}
-    .meta-item.right-align {{
-      text-align: right;
-    }}
-    .meta-item.center-align {{
-      text-align: center;
-    }}
-    .meta-item.left-align {{
-      text-align: left;
-    }}
-    .meta-val {{
-      font-weight: normal;
-      color: #111;
-      border-bottom: 1px dashed #666;
-      padding: 0 4px;
-    }}
+
+    /* Table styling */
     table {{
       width: 100%;
       border-collapse: collapse;
       table-layout: fixed;
-      margin-top: 1px;
-      border: 1px solid #1b4d3e;
+      margin-top: 5px;
+      border: 1.5px solid {cfg["border"]};
     }}
     th {{
-      color: #1b4d3e;
+      color: #ffffff;
       font-weight: bold;
-      border: 0.5px solid #1b4d3e;
-      font-size: 6.8pt;
-      padding: 2px 1px;
+      border: 1px solid {cfg["border"]};
+      font-size: 9pt;
+      padding: 10px 8px;
       text-align: center;
       vertical-align: middle;
-    }}
-    thead tr:nth-child(1) th {{
-      background-color: #f5da8b;
-    }}
-    thead tr:nth-child(2) th {{
-      background-color: #fff4cc;
+      background: {cfg["bg"]};
     }}
     td {{
-      border: 0.5px solid #a89f91;
-      padding: 1.8px 2px;
+      border: 1px solid #e2e8f0;
+      padding: 7px 8px;
       vertical-align: middle;
-      font-size: 6.5pt;
+      font-size: 8.5pt;
       text-align: center;
-      height: 10px;
+      word-wrap: break-word;
+      word-break: break-word;
+      overflow-wrap: break-word;
     }}
-    .week-spacer-row td {{
-      border: none !important;
-      background: transparent !important;
-      height: 16px !important;
-      padding: 0 !important;
+    
+    .date-col {{
+      background-color: #f7f5f0 !important;
+      text-align: left !important;
+      padding: 8px 12px !important;
+      border-right: 2.5px solid {cfg["border"]} !important;
     }}
-    .col-date {{
-      background-color: #fff4cc !important;
-    }}
-    .col-murajat {{
-      background-color: #ebfaeb !important;
-    }}
-    .col-juzulhali {{
-      background-color: #ffefe2 !important;
-    }}
-    .col-jadeed {{
-      background-color: #f4ecff !important;
-    }}
-    .col-takhteet {{
-      background-color: #e8f3ff !important;
-    }}
-    .absent-row {{
-      background-color: #ffeaea !important;
-    }}
-    .absent-cell {{
-      background-color: #ffeaea !important;
-      color: #b03a2e !important;
+    .day-title {{
       font-weight: bold;
-      font-size: 8pt;
-      letter-spacing: 0.5px;
-      text-align: center;
+      font-size: 9.5pt;
+      color: {cfg["border"]};
     }}
-    .weekend-date-cell {{
-      background-color: #ebdcb9 !important;
+    .day-subtitle {{
+      font-size: 7.5pt;
+      color: #718096;
+      margin-top: 2px;
+    }}
+    
+    .absent-cell {{
+      background-color: #fff5f5 !important;
+      color: #e53e3e !important;
+      font-weight: bold;
+      font-size: 9.5pt;
+      text-align: center;
     }}
     .weekend-cell {{
-      background-color: #fcf8e3 !important;
-      color: #8a6d3b !important;
+      background-color: #f7fafc !important;
+      color: #4a5568 !important;
       font-weight: bold;
-      font-size: 8pt;
+      font-size: 9.5pt;
       text-align: center;
-      letter-spacing: 0.5px;
     }}
-    .date-col {{
+    
+    /* Tag Pills styling */
+    .badge {{
+      display: inline-block;
+      padding: 2.5px 7px;
+      font-size: 7.5pt;
       font-weight: bold;
-      color: #1b4d3e;
-      border-left: 0.5px solid #1b4d3e;
-      border-right: 0.5px solid #1b4d3e;
-      padding: 0;
+      border-radius: 20px;
+      margin: 2px;
+      white-space: nowrap;
     }}
-    .day-number {{
-      font-size: 8.5pt;
-      margin-bottom: 0px;
+    .badge-ahkam {{
+      background-color: #fff5f5;
+      color: #9b2c2c;
+      border: 1.2px solid #fed7d7;
     }}
-    .day-date {{
-      font-size: 5.2pt;
-      color: #555;
-      font-weight: normal;
+    .badge-makhraj {{
+      background-color: #ebf8ff;
+      color: #2b6cb0;
+      border: 1.2px solid #bee3f8;
+      font-family: 'Amiri', 'Traditional Arabic', serif;
+      font-size: 9pt;
     }}
-    .day-name {{
-      font-size: 5pt;
-      color: #666;
+    
+    /* Grade badges */
+    .grade-badge {{
+      display: inline-block;
+      padding: 4px 10px;
+      font-size: 9pt;
       font-weight: bold;
-      text-transform: uppercase;
-      margin-top: 1px;
+      border-radius: 6px;
+      text-align: center;
     }}
+    .grade-excellent {{
+      background-color: #c6f6d5;
+      color: #22543d;
+      border: 1px solid #98e2b1;
+    }}
+    .grade-passing {{
+      background-color: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fde68a;
+    }}
+    .grade-warning {{
+      background-color: #fed7d7;
+      color: #9b2c2c;
+      border: 1px solid #feb2b2;
+    }}
+
     .text-left {{
       text-align: left;
-      padding-left: 4px;
+      padding-left: 10px;
     }}
     .day-separator td {{
-      border-bottom: 2.2px solid #1b4d3e !important;
+      border-bottom: 2px solid {cfg["border"]} !important;
     }}
     .week-end-separator td {{
-      border-bottom: 4.5px double #1b4d3e !important;
+      border-bottom: 4px double {cfg["border"]} !important;
     }}
     .muted {{
-      color: #a89f91;
+      color: #a0aec0;
       font-style: italic;
-    }}
-    .hw-col {{
-      text-align: left;
-      padding-left: 4px;
-    }}
-    .hw-item {{
-      text-align: left;
-      margin-bottom: 1px;
-      line-height: 1.1;
-    }}
-    .hw-item:last-child {{
-      margin-bottom: 0;
-    }}
-    .hw-prefix {{
-      font-weight: bold;
-      color: #1b4d3e;
     }}
   </style>
 </head>
 <body>
-  <!-- Themed Banner -->
+  <!-- Header Banner -->
   <div style="
-    background: linear-gradient(135deg, #0E6B50 0%, #1b4d3e 60%, #0a3d2e 100%);
-    border-bottom: 3px solid #D4AF37;
-    padding: 7px 14px 6px 14px;
-    margin-bottom: 5px;
+    background: {cfg["bg"]};
+    border-bottom: 4px solid #D4AF37;
+    padding: 14px 20px;
+    margin-bottom: 15px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: space-between;
   ">
-    <div style="text-align:left;">
-      <div style="color:#D4AF37; font-size:7pt; font-weight:600; letter-spacing:0.5px; text-transform:uppercase; opacity:0.85;">Student</div>
-      <div style="color:#FBF6EA; font-size:10pt; font-weight:800; letter-spacing:0.3px;">{escape(student_name)}</div>
+    <div style="text-align: left; width: 30%;">
+      <div style="color: #D4AF37; font-size: 7.5pt; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;">Student</div>
+      <div style="color: #ffffff; font-size: 11pt; font-weight: 800; margin-top: 1px;">{escape(student_name)}</div>
     </div>
-    <div style="text-align:center; flex:1; padding: 0 10px;">
-      <div style="color:#D4AF37; font-size:8pt; font-weight:700; letter-spacing:1.5px; text-transform:uppercase; opacity:0.75;">Al Madrasa-tus-Saifiyah-tul-Burhaniyah</div>
-      <div style="color:#FBF6EA; font-size:12pt; font-weight:900; letter-spacing:0.5px; margin-top:1px;">Monthly Tasmee Report</div>
+    <div style="text-align: center; flex: 1; padding: 0 10px;">
+      <div style="color: #D4AF37; font-size: 8.5pt; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;">Al Madrasa-tus-Saifiyah-tul-Burhaniyah</div>
+      <div style="color: #ffffff; font-size: 13.5pt; font-weight: 950; letter-spacing: 0.5px; margin-top: 2px;">{escape(cfg["title"])}</div>
     </div>
-    <div style="text-align:right;">
-      <div style="color:#D4AF37; font-size:7pt; font-weight:600; letter-spacing:0.5px; text-transform:uppercase; opacity:0.85;">Month</div>
-      <div style="color:#FBF6EA; font-size:10pt; font-weight:800; letter-spacing:0.3px;">{escape(month_year_str)}</div>
+    <div style="text-align: right; width: 30%;">
+      <div style="color: #D4AF37; font-size: 7.5pt; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;">Month</div>
+      <div style="color: #ffffff; font-size: 11pt; font-weight: 800; margin-top: 1px;">{escape(month_year_str)}</div>
     </div>
   </div>
+
+  <!-- Summary Statistics Grid -->
+  {stats_html}
+
+  <!-- Report Data Table -->
   <table>
     <thead>
-      <tr>
-        <th rowspan="2" style="width: 4.5%;">Date</th>
-        <th colspan="7" style="width: 32%;">Murajat</th>
-        <th colspan="7" style="width: 27.5%;">Juzulhali</th>
-        <th colspan="4" style="width: 22%;">Jadeed</th>
-        <th rowspan="2" style="width: 14%;">Takhteet</th>
-      </tr>
-      <tr>
-        <!-- Murajat -->
-        <th style="width: 10%;">Juz/Surah</th>
-        <th style="width: 3.2%;">Talqeen</th>
-        <th style="width: 3.2%;">Tanbeeh</th>
-        <th style="width: 3.2%;">I'rab</th>
-        <th style="width: 3.2%;">Repeat</th>
-        <th style="width: 3.2%;">Mutash.</th>
-        <th style="width: 6%;">Grade</th>
-        <!-- Juzulhali -->
-        <th style="width: 4.9%;">Page</th>
-        <th style="width: 3.2%;">Talqeen</th>
-        <th style="width: 3.2%;">Tanbeeh</th>
-        <th style="width: 3.2%;">I'rab</th>
-        <th style="width: 3.2%;">Repeat</th>
-        <th style="width: 3.2%;">Mutash.</th>
-        <th style="width: 6.6%;">Grade</th>
-        <!-- Jadeed -->
-        <th style="width: 10%;">Surah</th>
-        <th style="width: 4%;">Page</th>
-        <th style="width: 4%;">Ayah</th>
-        <th style="width: 4%;">Volume</th>
-      </tr>
+      {thead_html}
     </thead>
     <tbody>
       {"".join(table_rows)}
     </tbody>
   </table>
 
+  <!-- Floating Print Button -->
   <button class="print-btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
 
 </body>
@@ -533,7 +805,7 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]]) -> str:
 
 def export_html_to_pdf_bytes(html: str) -> bytes:
     """
-    Uses Playwright (Chromium) for reliable single-page A4 landscape PDF export.
+    Uses Playwright (Chromium) for reliable single-page A4 portrait PDF export.
     """
     from playwright.sync_api import sync_playwright
 

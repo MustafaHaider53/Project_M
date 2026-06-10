@@ -18,6 +18,20 @@ def main() -> None:
             (function() {
                 const parentDoc = window.parent.document;
                 
+                // Auto-blur all inputs on rerun to close mobile keyboard (immediate + delayed to handle React async renders)
+                function forceBlur() {
+                    try {
+                        parentDoc.querySelectorAll('input, textarea, select').forEach(el => el.blur());
+                        if (parentDoc.activeElement) {
+                            parentDoc.activeElement.blur();
+                        }
+                    } catch (e) {}
+                }
+                forceBlur();
+                setTimeout(forceBlur, 100);
+                setTimeout(forceBlur, 300);
+                setTimeout(forceBlur, 500);
+                
                 // Wake Lock API
                 let wakeLock = null;
                 async function requestWakeLock() {

@@ -393,7 +393,10 @@ def apply_islamic_theme() -> None:
           }
 
           /* Hide background communication iframe completely */
-          iframe, div[data-testid="stIframe"] {
+          iframe[height="1"], 
+          iframe[style*="height: 1px"],
+          div[data-testid="stIframe"]:has(iframe[height="1"]),
+          div[data-testid="stIframe"]:has(iframe[style*="height: 1px"]) {
             display: none !important;
             height: 0 !important;
             width: 0 !important;

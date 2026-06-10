@@ -8,6 +8,52 @@ from datetime import datetime
 import streamlit as st
 
 
+AHKAM_MAP = {
+    "ghunna": "Ghunna",
+    "ikhfa": "Ikhfa",
+    "idgham": "Idgham",
+    "iqlab": "Iqlab",
+    "izhhar": "Izhhar",
+    "qalaqah": "Qalaqah",
+    "madd_munfasil": "Madd Munfasil",
+    "madd_lazim": "Madd Lazim",
+    "madd_muttasil": "Madd Muttasil",
+    "mad_tabaiee": "Madd Taba'iee",
+}
+
+MAKHRAJ_CHARS = {
+    "makhraj_alif": "أ", "makhraj_baa": "ب", "makhraj_taa": "ت", "makhraj_thaa": "ث",
+    "makhraj_jeem": "ج", "makhraj_haa": "ح", "makhraj_khaa": "خ", "makhraj_daal": "د",
+    "makhraj_dhaal": "ذ", "makhraj_raa": "ر", "makhraj_zaay": "ز", "makhraj_seen": "س",
+    "makhraj_sheen": "ش", "makhraj_saad": "ص", "makhraj_daad": "ض", "makhraj_taa_makhraj": "ط",
+    "makhraj_zaa": "ظ", "makhraj_ayn": "ع", "makhraj_ghayn": "غ", "makhraj_faa": "ف",
+    "makhraj_qaaf": "ق", "makhraj_kaaf": "ك", "makhraj_laam": "ل", "makhraj_meem": "م",
+    "makhraj_noon": "ن", "makhraj_haaa": "ه", "makhraj_waaw": "و", "makhraj_yaa": "ي"
+}
+
+def _format_ahkam_email(counts: Dict[str, Any]) -> str:
+    badges = []
+    for col, label in AHKAM_MAP.items():
+        val = counts.get(col, 0)
+        if val > 0:
+            lbl = f"{label}" if val == 1 else f"{label} ({val})"
+            badges.append(
+                f'<span style="display: inline-block; padding: 2px 6px; font-size: 10px; font-weight: bold; border-radius: 12px; margin: 2px; white-space: nowrap; background-color: #fff5f5; color: #9b2c2c; border: 1px solid #fed7d7;">{lbl}</span>'
+            )
+    return "".join(badges)
+
+def _format_makharij_email(counts: Dict[str, Any]) -> str:
+    badges = []
+    for col, char in MAKHRAJ_CHARS.items():
+        val = counts.get(col, 0)
+        if val > 0:
+            lbl = f"{char}" if val == 1 else f"{char} ({val})"
+            badges.append(
+                f'<span style="display: inline-block; padding: 2px 6px; font-size: 11px; font-weight: bold; border-radius: 12px; margin: 2px; white-space: nowrap; background-color: #ebf8ff; color: #2b6cb0; border: 1px solid #bee3f8; font-family: \'Amiri\', \'Traditional Arabic\', serif;">{lbl}</span>'
+            )
+    return "".join(badges)
+
+
 def generate_progress_html(summary: Dict[str, Any]) -> str:
     student_name = summary.get("student_name", "Student")
     activity_date = summary.get("activity_date", "")
@@ -32,11 +78,27 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
             repeat = counts.get("repeat_mistake", 0)
             mutashabehat = counts.get("mutashabehat", 0)
             
+            # format mistakes
+            ahkam_str = _format_ahkam_email(counts)
+            makharij_str = _format_makharij_email(counts)
+            
+            mistakes_detail = ""
+            if ahkam_str or makharij_str:
+                mistakes_detail += '<div style="margin-top: 5px; padding-top: 4px; border-top: 1px dotted #e0dcd5; text-align: left; line-height: 1.5;">'
+                if ahkam_str:
+                    mistakes_detail += ahkam_str
+                if makharij_str:
+                    mistakes_detail += makharij_str
+                mistakes_detail += '</div>'
+            
             # calculate grade/marks (consistent with 10 - talqeen - 0.5 * tanbeeh)
             marks = 10.0 - talqeen - (0.5 * tanbeeh)
             murajat_rows += f"""
             <tr>
-                <td style="border: 1px solid #e0dcd5; padding: 8px 4px; font-weight: bold; color: #1b4d3e;">{surah_name} <span style="font-size: 11px; color: #888; display: block;">({surah_ar})</span></td>
+                <td style="border: 1px solid #e0dcd5; padding: 8px 4px; font-weight: bold; color: #1b4d3e;">
+                    {surah_name} <span style="font-size: 11px; color: #888; display: block;">({surah_ar})</span>
+                    {mistakes_detail}
+                </td>
                 <td style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center;">{talqeen}</td>
                 <td style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center;">{tanbeeh}</td>
                 <td style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center;">{irab}</td>
@@ -89,10 +151,26 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
             repeat = counts.get("repeat_mistake", 0)
             mutashabehat = counts.get("mutashabehat", 0)
             
+            # format mistakes
+            ahkam_str = _format_ahkam_email(counts)
+            makharij_str = _format_makharij_email(counts)
+            
+            mistakes_detail = ""
+            if ahkam_str or makharij_str:
+                mistakes_detail += '<div style="margin-top: 5px; padding-top: 4px; border-top: 1px dotted #e0dcd5; text-align: left; line-height: 1.5;">'
+                if ahkam_str:
+                    mistakes_detail += ahkam_str
+                if makharij_str:
+                    mistakes_detail += makharij_str
+                mistakes_detail += '</div>'
+            
             marks = 10.0 - talqeen - (0.5 * tanbeeh)
             juzulhali_rows += f"""
             <tr>
-                <td style="border: 1px solid #e0dcd5; padding: 8px 4px; font-weight: bold; color: #1b4d3e; text-align: center;">{page}</td>
+                <td style="border: 1px solid #e0dcd5; padding: 8px 4px; font-weight: bold; color: #1b4d3e; text-align: center;">
+                    Page {page}
+                    {mistakes_detail}
+                </td>
                 <td style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center;">{talqeen}</td>
                 <td style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center;">{tanbeeh}</td>
                 <td style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center;">{irab}</td>
@@ -480,9 +558,9 @@ def send_daily_report_email(*, summary: Dict[str, Any], is_absent: bool) -> Tupl
     try:
         # Connect and send
         if int(smtp_port) == 465:
-            server = smtplib.SMTP_SSL(str(smtp_server), int(smtp_port))
+            server = smtplib.SMTP_SSL(str(smtp_server), int(smtp_port), timeout=15)
         else:
-            server = smtplib.SMTP(str(smtp_server), int(smtp_port))
+            server = smtplib.SMTP(str(smtp_server), int(smtp_port), timeout=15)
             server.ehlo()
             server.starttls()
         server.login(str(sender_email), str(sender_password))
@@ -491,3 +569,64 @@ def send_daily_report_email(*, summary: Dict[str, Any], is_absent: bool) -> Tupl
         return True, f"Email successfully sent to {recipient}."
     except Exception as e:
         return False, f"Failed to send email: {e}"
+
+
+def send_monthly_report_email(*, student_name: str, recipient_email: str, rows: List[Dict[str, Any]], report_type: str, year: int, month: int) -> Tuple[bool, str]:
+    """
+    Sends the monthly category-focused report email. Returns (success, message).
+    """
+    email_secrets = st.secrets.get("email")
+    if not email_secrets:
+        return False, "Email configuration ('email' block in st.secrets) is missing."
+
+    smtp_server = email_secrets.get("smtp_server")
+    smtp_port = email_secrets.get("smtp_port")
+    sender_email = email_secrets.get("sender_email")
+    sender_password = email_secrets.get("sender_password")
+
+    if not all([smtp_server, smtp_port, sender_email, sender_password]):
+        return False, "SMTP credentials inside st.secrets['email'] are incomplete."
+
+    if not recipient_email or not recipient_email.strip():
+        return False, f"No email address found for {student_name}."
+
+    # Build the HTML content
+    from app.report_pdf import build_report_html, _get_month_year_str
+    month_year_str = _get_month_year_str(rows)
+    
+    body_html = build_report_html(student_name, rows, report_type)
+    # Remove the print button
+    body_html = body_html.replace('<button class="print-btn" onclick="window.print()">🖨️ Print / Save as PDF</button>', '')
+
+    # Set subject based on report type
+    report_titles = {
+        "murajat": "Monthly Murajat Report",
+        "juzulhali": "Monthly Juzulhali Report",
+        "jadeed": "Monthly Jadeed Report",
+        "takhteet": "Monthly Takhteet Report"
+    }
+    title = report_titles.get(report_type.lower(), "Monthly Report")
+    subject = f"{title} - {month_year_str} ({student_name})"
+
+    # Build the message
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = sender_email
+    msg["To"] = recipient_email
+
+    msg.attach(MIMEText(body_html, "html"))
+
+    try:
+        # Connect and send
+        if int(smtp_port) == 465:
+            server = smtplib.SMTP_SSL(str(smtp_server), int(smtp_port), timeout=15)
+        else:
+            server = smtplib.SMTP(str(smtp_server), int(smtp_port), timeout=15)
+            server.ehlo()
+            server.starttls()
+        server.login(str(sender_email), str(sender_password))
+        server.sendmail(str(sender_email), [str(recipient_email)], msg.as_string())
+        server.close()
+        return True, f"Monthly {report_type.capitalize()} report email successfully sent to {recipient_email}."
+    except Exception as e:
+        return False, f"Failed to send monthly email: {e}"
