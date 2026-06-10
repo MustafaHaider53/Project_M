@@ -225,7 +225,7 @@ def apply_islamic_theme() -> None:
           }
 
           /* Target 3-column rows (label + 2 buttons) on desktop to align buttons next to each other on the right side */
-          div[data-testid="column"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) {
+          div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
@@ -234,17 +234,17 @@ def apply_islamic_theme() -> None:
             gap: 4px !important;
             width: 100% !important;
           }
-          div[data-testid="column"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(1) {
+          div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(1) {
             flex: 0 1 auto !important;
             margin-right: auto !important;
             min-width: 0 !important;
           }
-          div[data-testid="column"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(2),
-          div[data-testid="column"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(3) {
+          div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(2),
+          div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(3) {
             flex: 0 0 auto !important;
             width: auto !important;
           }
-          div[data-testid="column"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) .stButton > button {
+          div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) .stButton > button {
             width: 26px !important;
             max-width: 26px !important;
             height: 26px !important;
@@ -281,7 +281,7 @@ def apply_islamic_theme() -> None:
           }
 
           /* Mobile responsive layout overrides to prevent vertical column stacking and scrolling */
-          @media (max-width: 768px) {
+          @media (max-width: 991px) {
             .block-container {
               padding: 0.5rem 0.15rem 0.25rem 0.15rem !important;
             }
@@ -291,8 +291,8 @@ def apply_islamic_theme() -> None:
               gap: 3px !important;
             }
 
-            /* 1. Force nested columns (horizontal blocks) to stay in a row on mobile */
-            div[data-testid="column"] div[data-testid="stHorizontalBlock"] {
+            /* 1. Force nested mistake columns (horizontal blocks) to stay in a row on mobile */
+            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"] {
               display: flex !important;
               flex-direction: row !important;
               flex-wrap: nowrap !important;
@@ -301,30 +301,30 @@ def apply_islamic_theme() -> None:
               align-items: center !important;
             }
 
-            /* 2. Force nested columns to shrink appropriately without overflowing */
-            div[data-testid="column"] div[data-testid="column"] {
+            /* 2. Force nested columns inside mistake cards to shrink appropriately without overflowing */
+            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="column"] {
               min-width: 0 !important;
               flex: 1 1 0% !important;
               padding: 0 !important;
             }
 
             /* Allow navigation row (7 columns) to wrap on mobile so buttons do not overlap */
-            div[data-testid="stHorizontalBlock"]:not(div[data-testid="column"] div[data-testid="stHorizontalBlock"]):has(div[data-testid="column"]:nth-child(7)) {
+            div[data-testid="stHorizontalBlock"]:not(div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]):has(div[data-testid="column"]:nth-child(7)) {
               flex-wrap: wrap !important;
               gap: 5px 3px !important;
             }
-            div[data-testid="stHorizontalBlock"]:not(div[data-testid="column"] div[data-testid="stHorizontalBlock"]):has(div[data-testid="column"]:nth-child(7)) div[data-testid="column"] {
+            div[data-testid="stHorizontalBlock"]:not(div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]):has(div[data-testid="column"]:nth-child(7)) div[data-testid="column"] {
               flex: 1 1 28% !important;
               min-width: 80px !important;
             }
 
             /* Restrict width and flex for 3-column mistake rows on mobile to prevent overlapping */
-            div[data-testid="column"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(1) {
+            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(1) {
               flex: 1 1 60% !important;
               min-width: 60% !important;
             }
-            div[data-testid="column"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(2),
-            div[data-testid="column"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(3) {
+            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(2),
+            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(3) {
               flex: 0 0 18% !important;
               min-width: 26px !important;
               max-width: 32px !important;
@@ -356,7 +356,7 @@ def apply_islamic_theme() -> None:
             }
 
             /* Override the global button style for emoji buttons to keep them square on mobile */
-            div[data-testid="column"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) .stButton > button {
+            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) .stButton > button {
               width: 23px !important;
               max-width: 23px !important;
               height: 23px !important;
@@ -391,41 +391,19 @@ def apply_islamic_theme() -> None:
               margin: 0.4rem 0 !important;
             }
           }
+
+          /* Hide background communication iframe completely */
+          iframe, div[data-testid="stIframe"] {
+            display: none !important;
+            height: 0 !important;
+            width: 0 !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            position: absolute !important;
+          }
         </style>
-        <script>
-          // Prevent screen sleep using Wake Lock API
-          (function() {
-              let wakeLock = null;
-              async function requestWakeLock() {
-                  try {
-                      if ('wakeLock' in navigator) {
-                          wakeLock = await navigator.wakeLock.request('screen');
-                          console.log('Screen Wake Lock acquired successfully');
-                      }
-                  } catch (err) {
-                      console.warn('Wake Lock request failed:', err);
-                  }
-              }
-
-              // Attempt to request on interaction or visibility change
-              document.addEventListener('visibilitychange', () => {
-                  if (document.visibilityState === 'visible') {
-                      requestWakeLock();
-                  }
-              });
-
-              // Also request on first interaction
-              const events = ['click', 'touchstart', 'scroll'];
-              const handleInteraction = () => {
-                  requestWakeLock();
-                  events.forEach(e => document.removeEventListener(e, handleInteraction));
-              };
-              events.forEach(e => document.addEventListener(e, handleInteraction));
-              
-              // Initial call
-              requestWakeLock();
-          })();
-        </script>
         """,
         unsafe_allow_html=True,
     )
