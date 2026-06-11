@@ -119,12 +119,31 @@ def main() -> None:
         </script>
     """, height=1)
 
-    st.markdown("""
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
-            <h2 style='font-size: 1.15rem; margin: 0; padding: 2px 0; color: var(--emerald); font-weight: bold; font-family: sans-serif;'>Al Madrasa-tus-Saifiyah-tul-Burhaniyah</h2>
-            <button id="fullscreen-toggle-btn" style="background: linear-gradient(180deg, var(--emerald), #0a4d3a); color: white; border: none; border-radius: 8px; padding: 6px 12px; font-weight: bold; cursor: pointer; font-size: 0.75rem; box-shadow: 0 2px 4px rgba(0,0,0,0.12); display: flex; align-items: center; gap: 4px; font-family: sans-serif;">📱 Fullscreen</button>
-        </div>
-    """, unsafe_allow_html=True)
+    # 0. Check if user is logged in
+    if not st.session_state.get("logged_in"):
+        header_cols = st.columns([8.5, 1.5])
+        with header_cols[0]:
+            st.markdown("<h2 style='font-size: 1.15rem; margin: 0; padding: 2px 0; color: var(--emerald); font-weight: bold; font-family: sans-serif;'>Al Madrasa-tus-Saifiyah-tul-Burhaniyah</h2>", unsafe_allow_html=True)
+        with header_cols[1]:
+            st.markdown('<button id="fullscreen-toggle-btn" style="width: 100%; background: linear-gradient(180deg, var(--emerald), #0a4d3a); color: white; border: none; border-radius: 8px; padding: 2px 4px; font-weight: bold; cursor: pointer; font-size: 10px; height: 26px; min-height: 26px; line-height: 1.2; display: flex; align-items: center; justify-content: center; gap: 4px; font-family: sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.12);">📱 Fullscreen</button>', unsafe_allow_html=True)
+            
+        from app.ui.login import render_login
+        render_login()
+        return
+
+    # Render header when logged in
+    header_cols = st.columns([7, 1.5, 1.5])
+    with header_cols[0]:
+        st.markdown("<h2 style='font-size: 1.15rem; margin: 0; padding: 2px 0; color: var(--emerald); font-weight: bold; font-family: sans-serif;'>Al Madrasa-tus-Saifiyah-tul-Burhaniyah</h2>", unsafe_allow_html=True)
+    with header_cols[1]:
+        st.markdown('<button id="fullscreen-toggle-btn" style="width: 100%; background: linear-gradient(180deg, var(--emerald), #0a4d3a); color: white; border: none; border-radius: 8px; padding: 2px 4px; font-weight: bold; cursor: pointer; font-size: 10px; height: 26px; min-height: 26px; line-height: 1.2; display: flex; align-items: center; justify-content: center; gap: 4px; font-family: sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.12);">📱 Fullscreen</button>', unsafe_allow_html=True)
+    with header_cols[2]:
+        if st.button("🔒 Logout", use_container_width=True, key="header_logout_btn"):
+            st.session_state.logged_in = False
+            st.session_state.student_id = None
+            st.session_state.student_name = None
+            st.session_state.page = "home"
+            st.rerun()
 
     # 1. Check if student is selected
     student_id = st.session_state.get("student_id")
