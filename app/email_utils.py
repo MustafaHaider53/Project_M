@@ -9,26 +9,47 @@ import streamlit as st
 
 
 AHKAM_MAP = {
-    "ghunna": "Ghunna",
     "ikhfa": "Ikhfa",
+    "izhaar": "Izhaar",
+    "qalqalah": "Qalqalah",
+    "ism_jalalah": "Ism Jalal",
+    "tahreek_sakin": "Tahreek",
+    "gunnah": "Gunnah",
     "idgham": "Idgham",
-    "iqlab": "Iqlab",
-    "izhhar": "Izhhar",
-    "qalaqah": "Qalaqah",
-    "madd_munfasil": "Madd Munfasil",
-    "madd_lazim": "Madd Lazim",
-    "madd_muttasil": "Madd Muttasil",
-    "mad_tabaiee": "Madd Taba'iee",
+    "madd_lazim": "M. Lazim",
+    "madd_muttasil": "M. Mutta.",
+    "mad_tabaiee": "M. Tabai."
 }
 
 MAKHRAJ_CHARS = {
-    "makhraj_alif": "أ", "makhraj_baa": "ب", "makhraj_taa": "ت", "makhraj_thaa": "ث",
-    "makhraj_jeem": "ج", "makhraj_haa": "ح", "makhraj_khaa": "خ", "makhraj_daal": "د",
-    "makhraj_dhaal": "ذ", "makhraj_raa": "ر", "makhraj_zaay": "ز", "makhraj_seen": "س",
-    "makhraj_sheen": "ش", "makhraj_saad": "ص", "makhraj_daad": "ض", "makhraj_taa_makhraj": "ط",
-    "makhraj_zaa": "ظ", "makhraj_ayn": "ع", "makhraj_ghayn": "غ", "makhraj_faa": "ف",
-    "makhraj_qaaf": "ق", "makhraj_kaaf": "ك", "makhraj_laam": "ل", "makhraj_meem": "م",
-    "makhraj_noon": "ن", "makhraj_haaa": "ه", "makhraj_waaw": "و", "makhraj_yaa": "ي"
+    "makhraj_alif": "أ",
+    "makhraj_baa": "ب",
+    "makhraj_taa": "ت",
+    "makhraj_thaa": "ث",
+    "makhraj_jeem": "ج",
+    "makhraj_haa": "ح",
+    "makhraj_khaa": "خ",
+    "makhraj_daal": "د",
+    "makhraj_thaal": "ذ",
+    "makhraj_raa": "ر",
+    "makhraj_zaa": "ز",
+    "makhraj_seen": "س",
+    "makhraj_sheen": "ش",
+    "makhraj_saad": "ص",
+    "makhraj_daad": "ض",
+    "makhraj_taa_thick": "ط",
+    "makhraj_zaa_thick": "ظ",
+    "makhraj_ain": "ع",
+    "makhraj_ghain": "غ",
+    "makhraj_faa": "ف",
+    "makhraj_qaaf": "ق",
+    "makhraj_kaaf": "ك",
+    "makhraj_laam": "ل",
+    "makhraj_meem": "م",
+    "makhraj_noon": "ن",
+    "makhraj_haa_weak": "هـ",
+    "makhraj_waw": "و",
+    "makhraj_yaa": "ي"
 }
 
 def _format_ahkam_email(counts: Dict[str, Any]) -> str:
@@ -72,6 +93,8 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
             surah_name = surah.get("name_en") or "Surah"
             surah_ar = surah.get("name_ar") or ""
             counts = m.get("mistake_counts") or {}
+            if isinstance(counts, list):
+                counts = counts[0] if counts else {}
             talqeen = counts.get("talqeen", 0)
             tanbeeh = counts.get("tanbeeh", 0)
             irab = counts.get("irab", 0)
@@ -145,6 +168,8 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
         for j in summary["juzulhali"]:
             page = j.get("page_number") or "-"
             counts = j.get("mistake_counts") or {}
+            if isinstance(counts, list):
+                counts = counts[0] if counts else {}
             talqeen = counts.get("talqeen", 0)
             tanbeeh = counts.get("tanbeeh", 0)
             irab = counts.get("irab", 0)
