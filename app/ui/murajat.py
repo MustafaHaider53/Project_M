@@ -100,44 +100,95 @@ def render_murajat() -> None:
             st.session_state.murajat_counts_session_id = sid
             
         local_counts = st.session_state.murajat_counts
+        sub_mode = st.session_state.get("sub_mode_toggle", False)
+        diff = -1 if sub_mode else 1
+        
         if kind == "talqeen":
-            local_counts["talqeen"] += 1
+            local_counts["talqeen"] = max(0, local_counts.get("talqeen", 0) + diff)
         elif kind == "tanbeeh":
-            local_counts["tanbeeh"] += 1
+            local_counts["tanbeeh"] = max(0, local_counts.get("tanbeeh", 0) + diff)
         elif kind in ("irab", "irab_talqeen"):
-            local_counts["irab_talqeen"] = local_counts.get("irab_talqeen", 0) + 1
-            local_counts["irab"] = local_counts.get("irab", 0) + 1
-            local_counts["talqeen"] += 1
+            if sub_mode:
+                if local_counts.get("irab_talqeen", 0) > 0:
+                    local_counts["irab_talqeen"] -= 1
+                    local_counts["irab"] = max(0, local_counts.get("irab", 0) - 1)
+                    local_counts["talqeen"] = max(0, local_counts.get("talqeen", 0) - 1)
+            else:
+                local_counts["irab_talqeen"] = local_counts.get("irab_talqeen", 0) + 1
+                local_counts["irab"] = local_counts.get("irab", 0) + 1
+                local_counts["talqeen"] += 1
         elif kind == "irab_tanbeeh":
-            local_counts["irab_tanbeeh"] = local_counts.get("irab_tanbeeh", 0) + 1
-            local_counts["irab"] = local_counts.get("irab", 0) + 1
-            local_counts["tanbeeh"] += 1
+            if sub_mode:
+                if local_counts.get("irab_tanbeeh", 0) > 0:
+                    local_counts["irab_tanbeeh"] -= 1
+                    local_counts["irab"] = max(0, local_counts.get("irab", 0) - 1)
+                    local_counts["tanbeeh"] = max(0, local_counts.get("tanbeeh", 0) - 1)
+            else:
+                local_counts["irab_tanbeeh"] = local_counts.get("irab_tanbeeh", 0) + 1
+                local_counts["irab"] = local_counts.get("irab", 0) + 1
+                local_counts["tanbeeh"] += 1
         elif kind in ("repeat_mistake", "repeat_mistake_talqeen"):
-            local_counts["repeat_mistake_talqeen"] = local_counts.get("repeat_mistake_talqeen", 0) + 1
-            local_counts["repeat_mistake"] = local_counts.get("repeat_mistake", 0) + 1
-            local_counts["talqeen"] += 1
+            if sub_mode:
+                if local_counts.get("repeat_mistake_talqeen", 0) > 0:
+                    local_counts["repeat_mistake_talqeen"] -= 1
+                    local_counts["repeat_mistake"] = max(0, local_counts.get("repeat_mistake", 0) - 1)
+                    local_counts["talqeen"] = max(0, local_counts.get("talqeen", 0) - 1)
+            else:
+                local_counts["repeat_mistake_talqeen"] = local_counts.get("repeat_mistake_talqeen", 0) + 1
+                local_counts["repeat_mistake"] = local_counts.get("repeat_mistake", 0) + 1
+                local_counts["talqeen"] += 1
         elif kind == "repeat_mistake_tanbeeh":
-            local_counts["repeat_mistake_tanbeeh"] = local_counts.get("repeat_mistake_tanbeeh", 0) + 1
-            local_counts["repeat_mistake"] = local_counts.get("repeat_mistake", 0) + 1
-            local_counts["tanbeeh"] += 1
+            if sub_mode:
+                if local_counts.get("repeat_mistake_tanbeeh", 0) > 0:
+                    local_counts["repeat_mistake_tanbeeh"] -= 1
+                    local_counts["repeat_mistake"] = max(0, local_counts.get("repeat_mistake", 0) - 1)
+                    local_counts["tanbeeh"] = max(0, local_counts.get("tanbeeh", 0) - 1)
+            else:
+                local_counts["repeat_mistake_tanbeeh"] = local_counts.get("repeat_mistake_tanbeeh", 0) + 1
+                local_counts["repeat_mistake"] = local_counts.get("repeat_mistake", 0) + 1
+                local_counts["tanbeeh"] += 1
         elif kind in ("mutashabehat", "mutashabehat_talqeen"):
-            local_counts["mutashabehat_talqeen"] = local_counts.get("mutashabehat_talqeen", 0) + 1
-            local_counts["mutashabehat"] = local_counts.get("mutashabehat", 0) + 1
-            local_counts["talqeen"] += 1
+            if sub_mode:
+                if local_counts.get("mutashabehat_talqeen", 0) > 0:
+                    local_counts["mutashabehat_talqeen"] -= 1
+                    local_counts["mutashabehat"] = max(0, local_counts.get("mutashabehat", 0) - 1)
+                    local_counts["talqeen"] = max(0, local_counts.get("talqeen", 0) - 1)
+            else:
+                local_counts["mutashabehat_talqeen"] = local_counts.get("mutashabehat_talqeen", 0) + 1
+                local_counts["mutashabehat"] = local_counts.get("mutashabehat", 0) + 1
+                local_counts["talqeen"] += 1
         elif kind == "mutashabehat_tanbeeh":
-            local_counts["mutashabehat_tanbeeh"] = local_counts.get("mutashabehat_tanbeeh", 0) + 1
-            local_counts["mutashabehat"] = local_counts.get("mutashabehat", 0) + 1
-            local_counts["tanbeeh"] += 1
+            if sub_mode:
+                if local_counts.get("mutashabehat_tanbeeh", 0) > 0:
+                    local_counts["mutashabehat_tanbeeh"] -= 1
+                    local_counts["mutashabehat"] = max(0, local_counts.get("mutashabehat", 0) - 1)
+                    local_counts["tanbeeh"] = max(0, local_counts.get("tanbeeh", 0) - 1)
+            else:
+                local_counts["mutashabehat_tanbeeh"] = local_counts.get("mutashabehat_tanbeeh", 0) + 1
+                local_counts["mutashabehat"] = local_counts.get("mutashabehat", 0) + 1
+                local_counts["tanbeeh"] += 1
         elif kind in ("awakhir_ul_ayat", "awakhir_ul_ayat_talqeen"):
-            local_counts["awakhir_ul_ayat_talqeen"] = local_counts.get("awakhir_ul_ayat_talqeen", 0) + 1
-            local_counts["awakhir_ul_ayat"] = local_counts.get("awakhir_ul_ayat", 0) + 1
-            local_counts["talqeen"] += 1
+            if sub_mode:
+                if local_counts.get("awakhir_ul_ayat_talqeen", 0) > 0:
+                    local_counts["awakhir_ul_ayat_talqeen"] -= 1
+                    local_counts["awakhir_ul_ayat"] = max(0, local_counts.get("awakhir_ul_ayat", 0) - 1)
+                    local_counts["talqeen"] = max(0, local_counts.get("talqeen", 0) - 1)
+            else:
+                local_counts["awakhir_ul_ayat_talqeen"] = local_counts.get("awakhir_ul_ayat_talqeen", 0) + 1
+                local_counts["awakhir_ul_ayat"] = local_counts.get("awakhir_ul_ayat", 0) + 1
+                local_counts["talqeen"] += 1
         elif kind == "awakhir_ul_ayat_tanbeeh":
-            local_counts["awakhir_ul_ayat_tanbeeh"] = local_counts.get("awakhir_ul_ayat_tanbeeh", 0) + 1
-            local_counts["awakhir_ul_ayat"] = local_counts.get("awakhir_ul_ayat", 0) + 1
-            local_counts["tanbeeh"] += 1
+            if sub_mode:
+                if local_counts.get("awakhir_ul_ayat_tanbeeh", 0) > 0:
+                    local_counts["awakhir_ul_ayat_tanbeeh"] -= 1
+                    local_counts["awakhir_ul_ayat"] = max(0, local_counts.get("awakhir_ul_ayat", 0) - 1)
+                    local_counts["tanbeeh"] = max(0, local_counts.get("tanbeeh", 0) - 1)
+            else:
+                local_counts["awakhir_ul_ayat_tanbeeh"] = local_counts.get("awakhir_ul_ayat_tanbeeh", 0) + 1
+                local_counts["awakhir_ul_ayat"] = local_counts.get("awakhir_ul_ayat", 0) + 1
+                local_counts["tanbeeh"] += 1
         elif kind in ("ikhfa", "izhaar", "qalqalah", "ism_jalalah", "tahreek_sakin", "gunnah", "idgham", "madd_lazim", "madd_muttasil", "mad_tabaiee"):
-            local_counts[kind] = local_counts.get(kind, 0) + 1
+            local_counts[kind] = max(0, local_counts.get(kind, 0) + diff)
         elif kind.startswith("makhraj_"):
             local_counts[kind] = 1 if local_counts.get(kind, 0) == 0 else 0
             
