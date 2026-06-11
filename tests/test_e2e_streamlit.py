@@ -125,6 +125,11 @@ def test_full_flow_student_murajat_juzulhali_jadeed(driver):
         base = f"http://127.0.0.1:{srv.port}"
         driver.get(base)
 
+        # Login
+        _fill_text_input(driver, "Username", "mukhayyam")
+        _fill_text_input(driver, "Password", "mukhayyam12")
+        _click_button_by_text(driver, "Sign In")
+
         # Home: add student
         _click_button_by_text(driver, "Add new student") if False else None  # expander handled by Streamlit
         # Expanders render a <summary> with text; click it to expand.

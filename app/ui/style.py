@@ -133,14 +133,14 @@ def apply_islamic_theme() -> None:
           }
 
           /* Buttons */
-          .stButton {
+          .stButton, div[data-testid="stFormSubmitButton"] {
             border: none !important;
             background: transparent !important;
             box-shadow: none !important;
             padding: 0 !important;
             margin: 0 !important;
           }
-          .stButton > button {
+          .stButton > button, div[data-testid="stFormSubmitButton"] > button {
             width: 100% !important;
             padding: 2px 4px !important;
             font-size: 10px !important;
@@ -160,26 +160,44 @@ def apply_islamic_theme() -> None:
             color: var(--ink) !important;
             font-weight: 600 !important;
           }
-          .stButton > button:hover {
+          .stButton > button:hover, div[data-testid="stFormSubmitButton"] > button:hover {
             border-color: rgba(212,175,55,0.55) !important;
             background: linear-gradient(180deg, rgba(212,175,55,0.38), rgba(212,175,55,0.18)) !important;
           }
 
           /* Primary button (Streamlit applies different classes; this catches most cases) */
           .stButton > button[kind="primary"],
-          .stButton > button:has(span[data-testid="stText"]) {
+          div[data-testid="stFormSubmitButton"] > button[kind="primary"],
+          .stButton > button:has(span[data-testid="stText"]),
+          div[data-testid="stFormSubmitButton"] > button:has(span[data-testid="stText"]) {
             box-shadow: 0 10px 30px rgba(212,175,55,0.10);
           }
 
           /* Inputs */
           [data-baseweb="select"] > div,
-          .stTextInput input,
-          .stNumberInput input,
+          div[data-baseweb="input"],
           .stTextArea textarea {
             border-radius: 12px !important;
             border: 1.5px solid var(--border) !important;
             background: rgba(255, 255, 255, 0.85) !important;
             color: var(--ink) !important;
+            transition: all 0.2s ease-in-out !important;
+          }
+
+          /* Ensure all inner elements of inputs are transparent and borderless */
+          div[data-baseweb="input"] * {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+          }
+
+          /* Focus state for inputs */
+          div[data-baseweb="input"]:focus-within,
+          [data-baseweb="select"] > div:focus-within,
+          .stTextArea textarea:focus {
+            border-color: var(--emerald) !important;
+            box-shadow: 0 0 0 1px var(--emerald) !important;
+            background: #ffffff !important;
           }
 
           /* Dataframe / editor container */
@@ -331,14 +349,14 @@ def apply_islamic_theme() -> None:
             }
 
             /* 3. Make ALL buttons very compact and prevent overlapping via ellipsis truncation */
-            .stButton {
+            .stButton, div[data-testid="stFormSubmitButton"] {
               border: none !important;
               background: transparent !important;
               box-shadow: none !important;
               padding: 0 !important;
               margin: 0 !important;
             }
-            .stButton > button {
+            .stButton > button, div[data-testid="stFormSubmitButton"] > button {
               width: 100% !important;
               padding: 2px 1px !important;
               font-size: 8.5px !important;
