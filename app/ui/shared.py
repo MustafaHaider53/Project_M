@@ -126,6 +126,13 @@ def mistake_buttons(*, session_id: str, counts: Dict[str, int], on_click) -> Non
             with ar5_c2:
                 st.button(f"{prefix}M. Tabai. ({counts.get('mad_tabaiee', 0)})", use_container_width=True, on_click=on_click, kwargs={"kind": "mad_tabaiee"}, key="btn_mad_tabaiee")
 
+            # Row 6: Ikhfa Shafawi & Iqlab
+            ar6_c1, ar6_c2 = st.columns(2)
+            with ar6_c1:
+                st.button(f"{prefix}Ikh. Shaf. ({counts.get('ikhfa_shafawi', 0)})", use_container_width=True, on_click=on_click, kwargs={"kind": "ikhfa_shafawi"}, key="btn_ikhfa_shafawi")
+            with ar6_c2:
+                st.button(f"{prefix}Iqlab ({counts.get('iqlab', 0)})", use_container_width=True, on_click=on_click, kwargs={"kind": "iqlab"}, key="btn_iqlab")
+
     with col_makharij:
         with st.container(border=True):
             st.markdown("<div class='makharij-card-anchor' style='text-align: center; font-weight: bold; margin-bottom: 8px; color: var(--emerald);'>Makharij Mistakes</div>", unsafe_allow_html=True)
