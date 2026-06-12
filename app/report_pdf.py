@@ -14,7 +14,9 @@ AHKAM_LABELS = {
     "idgham": "Idgham",
     "madd_lazim": "M. Lazim",
     "madd_muttasil": "M. Mutta.",
-    "mad_tabaiee": "M. Tabai."
+    "mad_tabaiee": "M. Tabai.",
+    "ikhfa_shafawi": "Ikh. Shaf.",
+    "iqlab": "Iqlab"
 }
 
 MAKHRAJ_CHARS = {

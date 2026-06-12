@@ -314,6 +314,8 @@ def get_session_counts(session_id: str) -> Dict[str, int]:
             "madd_lazim": 0,
             "madd_muttasil": 0,
             "mad_tabaiee": 0,
+            "ikhfa_shafawi": 0,
+            "iqlab": 0,
         }
         for col in MAKHARIJ_COLS:
             res[col] = 0
@@ -344,6 +346,8 @@ def get_session_counts(session_id: str) -> Dict[str, int]:
         "madd_lazim": int(row.get("madd_lazim", 0) or 0),
         "madd_muttasil": int(row.get("madd_muttasil", 0) or 0),
         "mad_tabaiee": int(row.get("mad_tabaiee", 0) or 0),
+        "ikhfa_shafawi": int(row.get("ikhfa_shafawi", 0) or 0),
+        "iqlab": int(row.get("iqlab", 0) or 0),
     }
     for col in MAKHARIJ_COLS:
         res[col] = int(row.get(col, 0) or 0)
@@ -402,7 +406,7 @@ def increment_mistake(session_id: str, kind: str) -> Dict[str, int]:
         counts["awakhir_ul_ayat"] = counts.get("awakhir_ul_ayat", 0) + 1
         counts["tanbeeh"] += 1
         
-    elif kind in ("ikhfa", "izhaar", "qalqalah", "ism_jalalah", "tahreek_sakin", "gunnah", "idgham", "madd_lazim", "madd_muttasil", "mad_tabaiee"):
+    elif kind in ("ikhfa", "izhaar", "qalqalah", "ism_jalalah", "tahreek_sakin", "gunnah", "idgham", "madd_lazim", "madd_muttasil", "mad_tabaiee", "ikhfa_shafawi", "iqlab"):
         counts[kind] = counts.get(kind, 0) + 1
     elif kind in MAKHARIJ_COLS:
         counts[kind] = 1 if counts.get(kind, 0) == 0 else 0
@@ -442,6 +446,8 @@ def increment_mistake(session_id: str, kind: str) -> Dict[str, int]:
         "madd_lazim",
         "madd_muttasil",
         "mad_tabaiee",
+        "ikhfa_shafawi",
+        "iqlab",
     ] + MAKHARIJ_COLS
     for col in new_cols:
         if _db_supported_columns and col in _db_supported_columns:
@@ -502,6 +508,8 @@ def _bg_update_mistake(rest: SupabaseRest, session_id: str, kind: str, counts: D
             "madd_lazim",
             "madd_muttasil",
             "mad_tabaiee",
+            "ikhfa_shafawi",
+            "iqlab",
         ] + MAKHARIJ_COLS
         for col in new_cols:
             if _db_supported_columns and col in _db_supported_columns:
@@ -740,6 +748,8 @@ def fetch_monthly_report(*, student_id: str, year: int, month: int) -> List[Dict
             "madd_lazim": int(counts.get("madd_lazim", 0) or 0),
             "madd_muttasil": int(counts.get("madd_muttasil", 0) or 0),
             "mad_tabaiee": int(counts.get("mad_tabaiee", 0) or 0),
+            "ikhfa_shafawi": int(counts.get("ikhfa_shafawi", 0) or 0),
+            "iqlab": int(counts.get("iqlab", 0) or 0),
         }
         for col in MAKHARIJ_COLS:
             row[col] = int(counts.get(col, 0) or 0)
