@@ -31,6 +31,79 @@ def surah_selector(*, surahs: List[Dict[str, Any]], key: str) -> Tuple[Optional[
 
 
 def mistake_buttons(*, session_id: str, counts: Dict[str, int], on_click) -> None:
+    # Trigger auditory/visual feedback when a button is clicked
+    if st.session_state.pop("play_sound", False):
+        is_sub = st.session_state.get("sub_mode_toggle", False)
+        is_sub_js = "true" if is_sub else "false"
+        color = "#c53030" if is_sub else "#0E6B50"
+        st.markdown(
+            f"""
+            <div class="tap-indicator-dot"></div>
+            <style>
+            @keyframes dot-pulse {{
+                0% {{
+                    transform: scale(0.5);
+                    opacity: 1;
+                    box-shadow: 0 0 0 0px {color}88;
+                }}
+                100% {{
+                    transform: scale(2);
+                    opacity: 0;
+                    box-shadow: 0 0 0 10px {color}00;
+                }}
+            }}
+            .tap-indicator-dot {{
+                position: fixed;
+                top: 15px;
+                right: 15px;
+                width: 10px;
+                height: 10px;
+                background-color: {color};
+                border-radius: 50%;
+                z-index: 999999;
+                animation: dot-pulse 0.4s ease-out forwards;
+                pointer-events: none;
+            }}
+            </style>
+            <script>
+                (function() {{
+                    try {{
+                        const AudioContext = window.AudioContext || window.webkitAudioContext;
+                        if (!AudioContext) return;
+                        const audioCtx = new AudioContext();
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        
+                        osc.connect(gain);
+                        gain.connect(audioCtx.destination);
+                        
+                        const isSubtract = {is_sub_js};
+                        if (isSubtract) {{
+                            osc.type = 'triangle';
+                            osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+                            osc.frequency.exponentialRampToValueAtTime(261.63, audioCtx.currentTime + 0.12); // C4
+                            gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
+                            osc.start();
+                            osc.stop(audioCtx.currentTime + 0.12);
+                        }} else {{
+                            osc.type = 'sine';
+                            osc.frequency.setValueAtTime(659.25, audioCtx.currentTime); // E5
+                            osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.08); // A5
+                            gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+                            osc.start();
+                            osc.stop(audioCtx.currentTime + 0.08);
+                        }}
+                    }} catch (e) {{
+                        console.error("Audio play error", e);
+                    }}
+                }})();
+            </script>
+            """,
+            unsafe_allow_html=True
+        )
+
     # Subtraction Mode Toggle (very clean, zero layout size change for columns)
     sub_mode = st.toggle("➖ **Subtraction Mode** (Click any button to reduce mistake count)", value=False, key="sub_mode_toggle")
     
@@ -51,39 +124,39 @@ def mistake_buttons(*, session_id: str, counts: Dict[str, int], on_click) -> Non
             with r1_c2:
                 st.button(f"{tb_ico} Tb ({counts.get('tanbeeh', 0)})", use_container_width=True, on_click=on_click, kwargs={"kind": "tanbeeh"}, key="btn_tanbeeh")
             
-            # Row 2: I'rab (split)
-            r2_c1, r2_c2, r2_c3 = st.columns([4.5, 0.75, 0.75])
+            # Row 2: I'rab (symmetrical)
+            r2_c1, r2_c2, r2_c3 = st.columns([0.75, 4.5, 0.75])
             with r2_c1:
-                st.markdown(f"<div style='font-size: 0.8rem; font-weight: bold; line-height: 26px; white-space: nowrap;'>I'rab ({counts.get('irab_talqeen', 0)}-{counts.get('irab_tanbeeh', 0)})</div>", unsafe_allow_html=True)
-            with r2_c2:
                 st.button(tq_ico, on_click=on_click, kwargs={"kind": "irab_talqeen"}, key="btn_irab_tq")
+            with r2_c2:
+                st.markdown(f"<div style='font-size: 0.8rem; font-weight: bold; line-height: 26px; text-align: center; width: 100%; white-space: nowrap;'>I'rab ({counts.get('irab_talqeen', 0)}-{counts.get('irab_tanbeeh', 0)})</div>", unsafe_allow_html=True)
             with r2_c3:
                 st.button(tb_ico, on_click=on_click, kwargs={"kind": "irab_tanbeeh"}, key="btn_irab_tb")
 
-            # Row 3: Repeat (split)
-            r3_c1, r3_c2, r3_c3 = st.columns([4.5, 0.75, 0.75])
+            # Row 3: Repeat (symmetrical)
+            r3_c1, r3_c2, r3_c3 = st.columns([0.75, 4.5, 0.75])
             with r3_c1:
-                st.markdown(f"<div style='font-size: 0.8rem; font-weight: bold; line-height: 26px; white-space: nowrap;'>Repeat ({counts.get('repeat_mistake_talqeen', 0)}-{counts.get('repeat_mistake_tanbeeh', 0)})</div>", unsafe_allow_html=True)
-            with r3_c2:
                 st.button(tq_ico, on_click=on_click, kwargs={"kind": "repeat_mistake_talqeen"}, key="btn_repeat_tq")
+            with r3_c2:
+                st.markdown(f"<div style='font-size: 0.8rem; font-weight: bold; line-height: 26px; text-align: center; width: 100%; white-space: nowrap;'>Repeat ({counts.get('repeat_mistake_talqeen', 0)}-{counts.get('repeat_mistake_tanbeeh', 0)})</div>", unsafe_allow_html=True)
             with r3_c3:
                 st.button(tb_ico, on_click=on_click, kwargs={"kind": "repeat_mistake_tanbeeh"}, key="btn_repeat_tb")
 
-            # Row 4: Mutashab. (split)
-            r4_c1, r4_c2, r4_c3 = st.columns([4.5, 0.75, 0.75])
+            # Row 4: Mutashab. (symmetrical)
+            r4_c1, r4_c2, r4_c3 = st.columns([0.75, 4.5, 0.75])
             with r4_c1:
-                st.markdown(f"<div style='font-size: 0.75rem; font-weight: bold; line-height: 26px; white-space: nowrap;'>Mutashab. ({counts.get('mutashabehat_talqeen', 0)}-{counts.get('mutashabehat_tanbeeh', 0)})</div>", unsafe_allow_html=True)
-            with r4_c2:
                 st.button(tq_ico, on_click=on_click, kwargs={"kind": "mutashabehat_talqeen"}, key="btn_mutashab_tq")
+            with r4_c2:
+                st.markdown(f"<div style='font-size: 0.75rem; font-weight: bold; line-height: 26px; text-align: center; width: 100%; white-space: nowrap;'>Mutashab. ({counts.get('mutashabehat_talqeen', 0)}-{counts.get('mutashabehat_tanbeeh', 0)})</div>", unsafe_allow_html=True)
             with r4_c3:
                 st.button(tb_ico, on_click=on_click, kwargs={"kind": "mutashabehat_tanbeeh"}, key="btn_mutashab_tb")
 
-            # Row 5: Awakhir (split)
-            r5_c1, r5_c2, r5_c3 = st.columns([4.5, 0.75, 0.75])
+            # Row 5: Awakhir (symmetrical)
+            r5_c1, r5_c2, r5_c3 = st.columns([0.75, 4.5, 0.75])
             with r5_c1:
-                st.markdown(f"<div style='font-size: 0.8rem; font-weight: bold; line-height: 26px; white-space: nowrap;'>Awakhir ({counts.get('awakhir_ul_ayat_talqeen', 0)}-{counts.get('awakhir_ul_ayat_tanbeeh', 0)})</div>", unsafe_allow_html=True)
-            with r5_c2:
                 st.button(tq_ico, on_click=on_click, kwargs={"kind": "awakhir_ul_ayat_talqeen"}, key="btn_awakhir_tq")
+            with r5_c2:
+                st.markdown(f"<div style='font-size: 0.8rem; font-weight: bold; line-height: 26px; text-align: center; width: 100%; white-space: nowrap;'>Awakhir ({counts.get('awakhir_ul_ayat_talqeen', 0)}-{counts.get('awakhir_ul_ayat_tanbeeh', 0)})</div>", unsafe_allow_html=True)
             with r5_c3:
                 st.button(tb_ico, on_click=on_click, kwargs={"kind": "awakhir_ul_ayat_tanbeeh"}, key="btn_awakhir_tb")
                 
