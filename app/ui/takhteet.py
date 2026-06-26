@@ -22,7 +22,8 @@ def render_takhteet() -> None:
     today = today_iso()
     init_key = f"takhteet_init::{student_id}::{today}"
     if st.session_state.get("takhteet_init_key") != init_key:
-        st.session_state.takhteet_today = get_takhteet_today(student_id=student_id) or {}
+        with st.spinner("Loading today's homework..."):
+            st.session_state.takhteet_today = get_takhteet_today(student_id=student_id) or {}
         st.session_state.takhteet_init_key = init_key
 
     existing = st.session_state.takhteet_today
@@ -35,12 +36,13 @@ def render_takhteet() -> None:
     jadeed_text = st.text_area("Jadeed", value=default_j, height=120, key="takhteet_jadeed")
 
     if st.button("Save Takhteet", type="primary", width="stretch"):
-        upsert_takhteet_today(
-            student_id=student_id,
-            murajat_text_raw=murajat_text,
-            juzulhali_text_raw=juzulhali_text,
-            jadeed_text_raw=jadeed_text,
-        )
+        with st.spinner("Saving homework..."):
+            upsert_takhteet_today(
+                student_id=student_id,
+                murajat_text_raw=murajat_text,
+                juzulhali_text_raw=juzulhali_text,
+                jadeed_text_raw=jadeed_text,
+            )
         st.session_state.takhteet_today = {
             "murajat_text_raw": murajat_text,
             "juzulhali_text_raw": juzulhali_text,

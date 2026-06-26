@@ -35,7 +35,8 @@ def render_report() -> None:
         selected_month_name = st.selectbox("Month", options=months, index=now.month - 1)
         selected_month_num = months.index(selected_month_name) + 1
 
-    rows = fetch_monthly_report(student_id=student_id, year=selected_year, month=selected_month_num)
+    with st.spinner("Fetching monthly report data..."):
+        rows = fetch_monthly_report(student_id=student_id, year=selected_year, month=selected_month_num)
     if not rows:
         st.info("No report data found.")
         return

@@ -50,7 +50,8 @@ def render_jadeed() -> None:
     today = today_iso()
     init_key = f"jadeed_init::{student_id}::{today}"
     if st.session_state.get("jadeed_init_key") != init_key:
-        existing = list_jadeed_entries(student_id=student_id, limit=200)
+        with st.spinner("Loading today's Jadeed entries..."):
+            existing = list_jadeed_entries(student_id=student_id, limit=200)
         todays = [r for r in existing if str(r.get("activity_date") or "") == today]
         loaded_rows = [
             {
@@ -102,14 +103,16 @@ def render_jadeed() -> None:
                     }
                 )
 
-            insert_jadeed_rows(student_id=student_id, rows=payload)
+            with st.spinner("Saving Jadeed entries..."):
+                insert_jadeed_rows(student_id=student_id, rows=payload)
             st.session_state.jadeed_flash = f"Saved {len(payload)} row(s) for today."
             st.session_state.pop("jadeed_init_key", None)  # force refresh from DB
             st.session_state.pop("jadeed_existing_keys", None)
             st.rerun()
     else:
         if st.button("No Jadeed today", type="primary", width="stretch"):
-            insert_jadeed_rows(student_id=student_id, rows=[])
+            with st.spinner("Saving Jadeed status..."):
+                insert_jadeed_rows(student_id=student_id, rows=[])
             st.session_state.jadeed_flash = "Marked: No Jadeed for today."
             st.rerun()
 
