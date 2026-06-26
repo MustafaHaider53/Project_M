@@ -24,7 +24,8 @@ def render_email_page() -> None:
 
     # Fetch daily summary to get student's email and details
     today = today_iso()
-    summary = get_student_daily_summary(student_id=student_id, date_str=today)
+    with st.spinner("Loading student daily summary..."):
+        summary = get_student_daily_summary(student_id=student_id, date_str=today)
     
     # Check if student has email
     email = summary.get("student_email")
@@ -141,7 +142,8 @@ def render_email_page() -> None:
             selected_category_val = categories[selected_category_name]
 
         # Fetch Monthly data
-        rows = fetch_monthly_report(student_id=student_id, year=selected_year, month=selected_month_num)
+        with st.spinner("Fetching monthly report data..."):
+            rows = fetch_monthly_report(student_id=student_id, year=selected_year, month=selected_month_num)
         
         if not rows:
             st.info("No report data found for this month.")

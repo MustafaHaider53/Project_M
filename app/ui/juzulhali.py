@@ -59,46 +59,47 @@ def render_juzulhali() -> None:
             st.button("Next ▶", disabled=(page_number is None or page_number >= 20), use_container_width=True, on_click=click_next)
 
     if page_number is not None:
-        if (
-            st.session_state.get("juzulhali_page_number") != page_number
-            or st.session_state.get("juzulhali_student_id") != student_id
-            or not st.session_state.get("juzulhali_session_id")
-        ):
-            st.session_state.juzulhali_page_number = page_number
-            st.session_state.juzulhali_student_id = student_id
-            # Check if there is an existing session for this student, mode, and page today using local cache
-            ensure_today_sessions(student_id)
-            key = ("juzulhali", None, int(page_number))
-            existing_id = st.session_state.today_sessions.get(key)
-            if existing_id:
-                st.session_state.juzulhali_session_id = existing_id
-            else:
-                # Automatically create session
-                session = create_listening_session(student_id=student_id, mode="juzulhali", surah_id=None, page_number=int(page_number))
-                st.session_state.juzulhali_session_id = session["id"]
-                st.session_state.today_sessions[key] = session["id"]
-            st.session_state.pop("juzulhali_counts", None)
-            st.session_state.pop("juzulhali_counts_session_id", None)
+        with st.spinner("Preparing recitation session..."):
+            if (
+                st.session_state.get("juzulhali_page_number") != page_number
+                or st.session_state.get("juzulhali_student_id") != student_id
+                or not st.session_state.get("juzulhali_session_id")
+            ):
+                st.session_state.juzulhali_page_number = page_number
+                st.session_state.juzulhali_student_id = student_id
+                # Check if there is an existing session for this student, mode, and page today using local cache
+                ensure_today_sessions(student_id)
+                key = ("juzulhali", None, int(page_number))
+                existing_id = st.session_state.today_sessions.get(key)
+                if existing_id:
+                    st.session_state.juzulhali_session_id = existing_id
+                else:
+                    # Automatically create session
+                    session = create_listening_session(student_id=student_id, mode="juzulhali", surah_id=None, page_number=int(page_number))
+                    st.session_state.juzulhali_session_id = session["id"]
+                    st.session_state.today_sessions[key] = session["id"]
+                st.session_state.pop("juzulhali_counts", None)
+                st.session_state.pop("juzulhali_counts_session_id", None)
 
-    session_id = st.session_state.get("juzulhali_session_id")
-    if session_id:
-        if "juzulhali_counts" not in st.session_state or st.session_state.get("juzulhali_counts_session_id") != session_id:
-            st.session_state.juzulhali_counts = get_session_counts(session_id)
-            st.session_state.juzulhali_counts_session_id = session_id
-        counts = st.session_state.juzulhali_counts
-    else:
-        counts = {
-            "talqeen": 0, "tanbeeh": 0, "repeat_mistake": 0, "mutashabehat": 0, "irab": 0, "awakhir_ul_ayat": 0,
-            "irab_talqeen": 0, "irab_tanbeeh": 0,
-            "repeat_mistake_talqeen": 0, "repeat_mistake_tanbeeh": 0,
-            "mutashabehat_talqeen": 0, "mutashabehat_tanbeeh": 0,
-            "awakhir_ul_ayat_talqeen": 0, "awakhir_ul_ayat_tanbeeh": 0,
-            "ikhfa": 0, "izhaar": 0, "qalqalah": 0, "ism_jalalah": 0, "tahreek_sakin": 0, "gunnah": 0,
-            "idgham": 0, "madd_lazim": 0, "madd_muttasil": 0, "mad_tabaiee": 0, "ikhfa_shafawi": 0, "iqlab": 0
-        }
-        from app.db import MAKHARIJ_COLS
-        for col in MAKHARIJ_COLS:
-            counts[col] = 0
+            session_id = st.session_state.get("juzulhali_session_id")
+            if session_id:
+                if "juzulhali_counts" not in st.session_state or st.session_state.get("juzulhali_counts_session_id") != session_id:
+                    st.session_state.juzulhali_counts = get_session_counts(session_id)
+                    st.session_state.juzulhali_counts_session_id = session_id
+                counts = st.session_state.juzulhali_counts
+            else:
+                counts = {
+                    "talqeen": 0, "tanbeeh": 0, "repeat_mistake": 0, "mutashabehat": 0, "irab": 0, "awakhir_ul_ayat": 0,
+                    "irab_talqeen": 0, "irab_tanbeeh": 0,
+                    "repeat_mistake_talqeen": 0, "repeat_mistake_tanbeeh": 0,
+                    "mutashabehat_talqeen": 0, "mutashabehat_tanbeeh": 0,
+                    "awakhir_ul_ayat_talqeen": 0, "awakhir_ul_ayat_tanbeeh": 0,
+                    "ikhfa": 0, "izhaar": 0, "qalqalah": 0, "ism_jalalah": 0, "tahreek_sakin": 0, "gunnah": 0,
+                    "idgham": 0, "madd_lazim": 0, "madd_muttasil": 0, "mad_tabaiee": 0, "ikhfa_shafawi": 0, "iqlab": 0
+                }
+                from app.db import MAKHARIJ_COLS
+                for col in MAKHARIJ_COLS:
+                    counts[col] = 0
 
     def _on_click(kind: str) -> None:
         sid = st.session_state.get("juzulhali_session_id")

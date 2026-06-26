@@ -34,48 +34,49 @@ def render_murajat() -> None:
         surah_id, surah = surah_selector(surahs=surahs, key="murajat_surah")
 
     if surah_id is not None:
-        if (
-            st.session_state.get("murajat_surah_id") != surah_id
-            or st.session_state.get("murajat_student_id") != student_id
-            or not st.session_state.get("murajat_session_id")
-        ):
-            st.session_state.murajat_surah_id = surah_id
-            st.session_state.murajat_student_id = student_id
-            
-            # Check if there is an existing session for this student, mode, and surah today using local cache
-            ensure_today_sessions(student_id)
-            key = ("murajat", int(surah_id), None)
-            existing_id = st.session_state.today_sessions.get(key)
-            if existing_id:
-                st.session_state.murajat_session_id = existing_id
+        with st.spinner("Preparing recitation session..."):
+            if (
+                st.session_state.get("murajat_surah_id") != surah_id
+                or st.session_state.get("murajat_student_id") != student_id
+                or not st.session_state.get("murajat_session_id")
+            ):
+                st.session_state.murajat_surah_id = surah_id
+                st.session_state.murajat_student_id = student_id
+                
+                # Check if there is an existing session for this student, mode, and surah today using local cache
+                ensure_today_sessions(student_id)
+                key = ("murajat", int(surah_id), None)
+                existing_id = st.session_state.today_sessions.get(key)
+                if existing_id:
+                    st.session_state.murajat_session_id = existing_id
+                else:
+                    # Automatically create session
+                    session = create_listening_session(student_id=student_id, mode="murajat", surah_id=surah_id, page_number=None)
+                    st.session_state.murajat_session_id = session["id"]
+                    st.session_state.today_sessions[key] = session["id"]
+                st.session_state.pop("murajat_counts", None)
+                st.session_state.pop("murajat_counts_session_id", None)
+
+            session_id = st.session_state.get("murajat_session_id")
+
+            if session_id:
+                if "murajat_counts" not in st.session_state or st.session_state.get("murajat_counts_session_id") != session_id:
+                    st.session_state.murajat_counts = get_session_counts(session_id)
+                    st.session_state.murajat_counts_session_id = session_id
+                counts = st.session_state.murajat_counts
             else:
-                # Automatically create session
-                session = create_listening_session(student_id=student_id, mode="murajat", surah_id=surah_id, page_number=None)
-                st.session_state.murajat_session_id = session["id"]
-                st.session_state.today_sessions[key] = session["id"]
-            st.session_state.pop("murajat_counts", None)
-            st.session_state.pop("murajat_counts_session_id", None)
-
-    session_id = st.session_state.get("murajat_session_id")
-
-    if session_id:
-        if "murajat_counts" not in st.session_state or st.session_state.get("murajat_counts_session_id") != session_id:
-            st.session_state.murajat_counts = get_session_counts(session_id)
-            st.session_state.murajat_counts_session_id = session_id
-        counts = st.session_state.murajat_counts
-    else:
-        counts = {
-            "talqeen": 0, "tanbeeh": 0, "repeat_mistake": 0, "mutashabehat": 0, "irab": 0, "awakhir_ul_ayat": 0,
-            "irab_talqeen": 0, "irab_tanbeeh": 0,
-            "repeat_mistake_talqeen": 0, "repeat_mistake_tanbeeh": 0,
-            "mutashabehat_talqeen": 0, "mutashabehat_tanbeeh": 0,
-            "awakhir_ul_ayat_talqeen": 0, "awakhir_ul_ayat_tanbeeh": 0,
-            "ikhfa": 0, "izhaar": 0, "qalqalah": 0, "ism_jalalah": 0, "tahreek_sakin": 0, "gunnah": 0,
-            "idgham": 0, "madd_lazim": 0, "madd_muttasil": 0, "mad_tabaiee": 0, "ikhfa_shafawi": 0, "iqlab": 0
-        }
-        from app.db import MAKHARIJ_COLS
-        for col in MAKHARIJ_COLS:
-            counts[col] = 0
+                counts = {
+                    "talqeen": 0, "tanbeeh": 0, "repeat_mistake": 0, "mutashabehat": 0, "irab": 0, "awakhir_ul_ayat": 0,
+                    "irab_talqeen": 0, "irab_tanbeeh": 0,
+                    "repeat_mistake_talqeen": 0, "repeat_mistake_tanbeeh": 0,
+                    "mutashabehat_talqeen": 0, "mutashabehat_tanbeeh": 0,
+                    "awakhir_ul_ayat_talqeen": 0, "awakhir_ul_ayat_tanbeeh": 0,
+                    "ikhfa": 0, "izhaar": 0, "qalqalah": 0, "ism_jalalah": 0, "tahreek_sakin": 0, "gunnah": 0,
+                    "idgham": 0, "madd_lazim": 0, "madd_muttasil": 0, "mad_tabaiee": 0, "ikhfa_shafawi": 0, "iqlab": 0
+                }
+                from app.db import MAKHARIJ_COLS
+                for col in MAKHARIJ_COLS:
+                    counts[col] = 0
 
     def _on_click(kind: str) -> None:
         if surah_id is None:
