@@ -216,6 +216,7 @@ def render_juzulhali() -> None:
             
         from app.db import increment_mistake_bg
         increment_mistake_bg(sid, kind, local_counts)
+        st.session_state.play_sound = True
 
     if page_number is None:
         st.info("Please select a Page to start Juzulhali recitation.")

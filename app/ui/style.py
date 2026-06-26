@@ -242,25 +242,26 @@ def apply_islamic_theme() -> None:
             height: auto !important;
           }
 
-          /* Target 3-column rows (label + 2 buttons) on desktop to align buttons next to each other on the right side */
+          /* Target 3-column rows (button + label + button) on desktop to align them symmetrically */
           div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
-            justify-content: flex-end !important;
+            justify-content: space-between !important;
             align-items: center !important;
             gap: 4px !important;
             width: 100% !important;
           }
-          div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(1) {
-            flex: 0 1 auto !important;
-            margin-right: auto !important;
-            min-width: 0 !important;
-          }
-          div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(2),
+          div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(1),
           div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(3) {
-            flex: 0 0 auto !important;
-            width: auto !important;
+            flex: 0 0 26px !important;
+            width: 26px !important;
+            max-width: 26px !important;
+            min-width: 26px !important;
+          }
+          div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(2) {
+            flex: 1 1 0% !important;
+            min-width: 0 !important;
           }
           div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) .stButton > button {
             width: 26px !important;
@@ -336,16 +337,17 @@ def apply_islamic_theme() -> None:
               min-width: 80px !important;
             }
 
-            /* Restrict width and flex for 3-column mistake rows on mobile to prevent overlapping */
-            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(1) {
-              flex: 1 1 60% !important;
-              min-width: 60% !important;
-            }
-            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(2),
+            /* Symmetrical 3-column mistake rows on mobile */
+            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(1),
             div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(3) {
-              flex: 0 0 18% !important;
-              min-width: 26px !important;
-              max-width: 32px !important;
+              flex: 0 0 23px !important;
+              width: 23px !important;
+              max-width: 23px !important;
+              min-width: 23px !important;
+            }
+            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(2) {
+              flex: 1 1 0% !important;
+              min-width: 0 !important;
             }
 
             /* 3. Make ALL buttons very compact and prevent overlapping via ellipsis truncation */

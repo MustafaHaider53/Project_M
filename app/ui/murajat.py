@@ -195,6 +195,7 @@ def render_murajat() -> None:
             
         from app.db import increment_mistake_bg
         increment_mistake_bg(sid, kind, local_counts)
+        st.session_state.play_sound = True
 
     if surah_id is None:
         st.info("Please select a Surah to start Murajat recitation.")
