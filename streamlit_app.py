@@ -13,11 +13,48 @@ def main() -> None:
     st.set_page_config(page_title="Al Madrasa-tus-Saifiyah-tul-Burhaniyah", layout="wide")
     apply_islamic_theme()
 
-    st.iframe("""
+    # Restore login from query parameter if present
+    if not st.session_state.get("logged_in"):
+        if st.query_params.get("logged_in") == "true":
+            st.session_state.logged_in = True
+
+    is_logged_in = "true" if st.session_state.get("logged_in") else "false"
+    is_manual_logout = "true" if st.session_state.pop("manual_logout", False) else "false"
+
+    iframe_js = """
         <script>
             (function() {
                 const parentDoc = window.parent.document;
+                const parentWin = window.parent;
                 
+                // Session Persistence Logic
+                const isLoggedIn = {is_logged_in};
+                const isManualLogout = {is_manual_logout};
+                
+                if (isManualLogout) {
+                    parentWin.localStorage.removeItem('mukhayyam_logged_in');
+                    const url = new URL(parentWin.location.href);
+                    if (url.searchParams.has('logged_in')) {
+                        url.searchParams.delete('logged_in');
+                        parentWin.history.replaceState({}, '', url.toString());
+                    }
+                } else if (isLoggedIn) {
+                    parentWin.localStorage.setItem('mukhayyam_logged_in', 'true');
+                    const url = new URL(parentWin.location.href);
+                    if (url.searchParams.get('logged_in') !== 'true') {
+                        url.searchParams.set('logged_in', 'true');
+                        parentWin.history.replaceState({}, '', url.toString());
+                    }
+                } else {
+                    if (parentWin.localStorage.getItem('mukhayyam_logged_in') === 'true') {
+                        const url = new URL(parentWin.location.href);
+                        if (url.searchParams.get('logged_in') !== 'true') {
+                            url.searchParams.set('logged_in', 'true');
+                            parentWin.location.href = url.toString();
+                        }
+                    }
+                }
+
                 // Auto-blur all inputs on rerun to close mobile keyboard (immediate + delayed to handle React async renders)
                 function forceBlur() {
                     try {
@@ -117,7 +154,8 @@ def main() -> None:
                 parentDoc.addEventListener('webkitfullscreenchange', updateFullscreenButton);
             })();
         </script>
-    """, height=1)
+    """
+    st.iframe(iframe_js.replace("{is_logged_in}", is_logged_in).replace("{is_manual_logout}", is_manual_logout), height=1)
 
     # 0. Check if user is logged in
     if not st.session_state.get("logged_in"):
@@ -143,6 +181,8 @@ def main() -> None:
             st.session_state.student_id = None
             st.session_state.student_name = None
             st.session_state.page = "home"
+            st.query_params.clear()
+            st.session_state.manual_logout = True
             st.rerun()
 
     # 1. Check if student is selected

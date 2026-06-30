@@ -30,13 +30,17 @@ def render_login() -> None:
 
             with st.form("login_form", border=False):
                 username = st.text_input(
-                    "Username", placeholder="Enter username", key="login_username_input"
+                    "Username",
+                    placeholder="Enter username",
+                    key="login_username_input",
+                    autocomplete="username",
                 )
                 password = st.text_input(
                     "Password",
                     type="password",
                     placeholder="Enter password",
                     key="login_password_input",
+                    autocomplete="current-password",
                 )
 
                 st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
@@ -46,7 +50,7 @@ def render_login() -> None:
                 )
 
                 if submitted:
-                    if username == CORRECT_USERNAME and password == CORRECT_PASSWORD:
+                    if username.strip() == CORRECT_USERNAME and password == CORRECT_PASSWORD:
                         st.session_state.logged_in = True
                         st.session_state.login_error = None
                         st.rerun()
