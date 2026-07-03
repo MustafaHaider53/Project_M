@@ -805,6 +805,406 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type
 """
 
 
+def build_current_jadeed_report_html(
+    student_name: str,
+    current_entry: Optional[Dict[str, Any]],
+    all_students_data: List[Dict[str, Any]]
+) -> str:
+    """
+    Generates a beautifully-designed HTML report displaying:
+    1. A prominent card showing the student's current memorization position (latest Jadeed).
+    2. A comprehensive class-wide table showing every student's current Jadeed.
+    """
+    # 1. Format Selected Student's Current Jadeed Card
+    card_html = ""
+    if not current_entry:
+        card_html = """
+        <div class="current-card no-entry">
+            <h3>No Jadeed Recorded</h3>
+            <p>This student does not have any Jadeed entries logged in the database yet.</p>
+        </div>
+        """
+    elif current_entry.get("no_jadeed"):
+        card_html = f"""
+        <div class="current-card no-entry">
+            <h3>Marked 'No Jadeed'</h3>
+            <p>The student was marked as "No Jadeed today" on their last session date: <strong>{current_entry.get('activity_date')}</strong>.</p>
+        </div>
+        """
+    else:
+        surah = current_entry.get("surahs") or {}
+        if isinstance(surah, list):
+            surah = surah[0] if surah else {}
+        surah_en = surah.get("name_en", "?")
+        surah_ar = surah.get("name_ar", "")
+        surah_num = surah.get("number", "?")
+        
+        page = current_entry.get("page_number", "-")
+        ayah = current_entry.get("ayah_number", "-")
+        volume = current_entry.get("volume", "-")
+        date_recited = current_entry.get("activity_date", "-")
+        
+        card_html = f"""
+        <div class="current-card">
+            <div class="card-header">
+                <span class="card-badge">Current Position / الموقع الحالي</span>
+                <h2>Surah {surah_num}: {escape(surah_en)} <span class="arabic-text">{escape(surah_ar)}</span></h2>
+            </div>
+            <div class="card-grid">
+                <div class="grid-item">
+                    <span class="grid-label">Page / الصفحة</span>
+                    <span class="grid-value">{page}</span>
+                </div>
+                <div class="grid-item">
+                    <span class="grid-label">Ayah / الآية</span>
+                    <span class="grid-value">{ayah}</span>
+                </div>
+                <div class="grid-item">
+                    <span class="grid-label">Volume / المقدار</span>
+                    <span class="grid-value">{escape(volume)}</span>
+                </div>
+                <div class="grid-item">
+                    <span class="grid-label">Recited Date / تاريخ التلاوة</span>
+                    <span class="grid-value">{date_recited}</span>
+                </div>
+            </div>
+        </div>
+        """
+
+    # 2. Render Class Overview Table
+    table_rows = []
+    for idx, s in enumerate(all_students_data):
+        is_current = s["student_name"] == student_name
+        row_class = ' class="selected-student-row"' if is_current else ""
+        name_display = f"⭐ {escape(s['student_name'])}" if is_current else escape(s['student_name'])
+        
+        status_badge = ""
+        if s["status"] == "Active":
+            status_badge = '<span class="status-pill active-status">Active</span>'
+        elif s["status"] == "Marked 'No Jadeed'":
+            status_badge = '<span class="status-pill warning-status">No Jadeed</span>'
+        else:
+            status_badge = '<span class="status-pill muted-status">None</span>'
+            
+        table_rows.append(f"""
+        <tr{row_class}>
+            <td>{idx + 1}</td>
+            <td class="text-left" style="font-weight: 600;">{name_display}</td>
+            <td>{s['last_date']}</td>
+            <td class="text-left">{escape(s['surah'])}</td>
+            <td>{s['page']}</td>
+            <td>{s['ayah']}</td>
+            <td>{escape(s['volume'])}</td>
+            <td>{status_badge}</td>
+        </tr>
+        """)
+
+    theme_bg = "linear-gradient(135deg, #0e6b50 0%, #114e3b 100%)"
+    theme_border = "#0e6b50"
+    
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Current Jadeed Overview - {escape(student_name)}</title>
+  <style>
+    @page {{
+      size: A4 portrait;
+      margin: 10mm 12mm 10mm 12mm;
+    }}
+    @media print {{
+      .print-btn {{ display: none !important; }}
+      * {{
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }}
+    }}
+    * {{
+      box-sizing: border-box;
+    }}
+    body {{
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: #2d3748;
+      font-size: 8.5pt;
+      line-height: 1.4;
+      margin: 0;
+      padding: 0;
+      background-color: #ffffff;
+    }}
+    
+    /* Header Banner */
+    .header-banner {{
+      background: {theme_bg};
+      border-bottom: 4px solid #D4AF37;
+      padding: 14px 20px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }}
+    .header-left, .header-right {{
+      width: 30%;
+    }}
+    .header-left {{ text-align: left; }}
+    .header-right {{ text-align: right; }}
+    .header-center {{
+      text-align: center;
+      flex: 1;
+    }}
+    .header-label {{
+      color: #D4AF37;
+      font-size: 7.5pt;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }}
+    .header-value {{
+      color: #ffffff;
+      font-size: 11pt;
+      font-weight: 800;
+      margin-top: 1px;
+    }}
+    .header-title {{
+      color: #ffffff;
+      font-size: 13.5pt;
+      font-weight: 950;
+      letter-spacing: 0.5px;
+      margin-top: 2px;
+    }}
+    
+    /* Current Jadeed Card */
+    .current-card {{
+      background: #fcfbfa;
+      border: 2px solid #e2dccf;
+      border-top: 6px solid #D4AF37;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 25px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    }}
+    .current-card.no-entry {{
+      border-top-color: #e53e3e;
+      text-align: center;
+      padding: 30px;
+    }}
+    .current-card.no-entry h3 {{
+      color: #e53e3e;
+      margin-top: 0;
+      font-size: 13pt;
+    }}
+    .current-card.no-entry p {{
+      color: #718096;
+      font-size: 9.5pt;
+      margin-bottom: 0;
+    }}
+    .card-header {{
+      border-bottom: 1.5px solid #e2e8f0;
+      padding-bottom: 12px;
+      margin-bottom: 16px;
+    }}
+    .card-badge {{
+      display: inline-block;
+      background-color: #e6fffa;
+      color: #0e6b50;
+      font-weight: 800;
+      font-size: 8pt;
+      padding: 3px 8px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+      border: 1px solid #b2f5ea;
+    }}
+    .card-header h2 {{
+      margin: 0;
+      font-size: 14pt;
+      color: #0e6b50;
+      font-weight: 800;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }}
+    .arabic-text {{
+      font-family: "Amiri", "Traditional Arabic", serif;
+      font-size: 18pt;
+      color: #1a202c;
+      font-weight: normal;
+    }}
+    .card-grid {{
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+    }}
+    .grid-item {{
+      background: #ffffff;
+      border: 1.5px solid #edf2f7;
+      border-radius: 8px;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+    }}
+    .grid-label {{
+      font-size: 7.5pt;
+      font-weight: 600;
+      color: #a0aec0;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }}
+    .grid-value {{
+      font-size: 12pt;
+      font-weight: bold;
+      color: #2d3748;
+    }}
+    
+    /* Table styling */
+    h3.section-title {{
+      font-size: 11pt;
+      font-weight: 800;
+      color: #0e6b50;
+      margin: 0 0 10px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }}
+    table {{
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      border: 1.5px solid {theme_border};
+    }}
+    th {{
+      color: #ffffff;
+      font-weight: bold;
+      border: 1px solid {theme_border};
+      font-size: 9pt;
+      padding: 10px 8px;
+      text-align: center;
+      vertical-align: middle;
+      background: {theme_bg};
+    }}
+    td {{
+      border: 1px solid #e2e8f0;
+      padding: 8px 8px;
+      vertical-align: middle;
+      font-size: 8.5pt;
+      text-align: center;
+    }}
+    .selected-student-row {{
+      background-color: #e6fffa !important;
+      border-top: 2px solid #319795 !important;
+      border-bottom: 2px solid #319795 !important;
+    }}
+    .selected-student-row td {{
+      font-weight: bold;
+      color: #004b39;
+    }}
+    .text-left {{
+      text-align: left;
+      padding-left: 12px;
+    }}
+    
+    /* Status pills */
+    .status-pill {{
+      display: inline-block;
+      padding: 2px 8px;
+      font-size: 7.5pt;
+      font-weight: bold;
+      border-radius: 4px;
+      text-align: center;
+    }}
+    .active-status {{
+      background-color: #c6f6d5;
+      color: #22543d;
+      border: 1px solid #98e2b1;
+    }}
+    .warning-status {{
+      background-color: #feebc8;
+      color: #744210;
+      border: 1px solid #fbd38d;
+    }}
+    .muted-status {{
+      background-color: #edf2f7;
+      color: #4a5568;
+      border: 1px solid #e2e8f0;
+    }}
+    
+    /* Print Button */
+    .print-btn {{
+      position: fixed;
+      bottom: 22px;
+      right: 22px;
+      z-index: 9999;
+      background: linear-gradient(135deg, #D4AF37 0%, #B88917 100%);
+      color: #1E1A12;
+      border: 2px solid {theme_border};
+      border-radius: 12px;
+      padding: 10px 24px;
+      font-size: 10.5pt;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 18px rgba(212,175,55,0.45);
+      letter-spacing: 0.4px;
+      transition: all 0.2s ease;
+    }}
+    .print-btn:hover {{
+      background: linear-gradient(135deg, #e0bf4a 0%, #c99b1e 100%);
+      transform: translateY(-1px);
+    }}
+  </style>
+</head>
+<body>
+  <!-- Header Banner -->
+  <div class="header-banner">
+    <div class="header-left">
+      <div class="header-label">Selected Student</div>
+      <div class="header-value">{escape(student_name)}</div>
+    </div>
+    <div class="header-center">
+      <div class="header-label" style="letter-spacing: 1.5px;">Al Madrasa-tus-Saifiyah-tul-Burhaniyah</div>
+      <div class="header-title">Current Memorization Position</div>
+    </div>
+    <div class="header-right">
+      <div class="header-label">Class Year</div>
+      <div class="header-value">2026 Mukhayyam</div>
+    </div>
+  </div>
+
+  <!-- Prominent Card -->
+  {card_html}
+
+  <!-- Section Title -->
+  <h3 class="section-title">👥 Class-Wide Jadeed Progress Overview</h3>
+
+  <!-- Class Table -->
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 5%;">S.No</th>
+        <th style="width: 25%;">Student Name</th>
+        <th style="width: 15%;">Last Recited Date</th>
+        <th style="width: 25%;">Current Surah</th>
+        <th style="width: 8%;">Page</th>
+        <th style="width: 8%;">Ayah</th>
+        <th style="width: 8%;">Volume</th>
+        <th style="width: 8%;">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {"".join(table_rows)}
+    </tbody>
+  </table>
+
+  <!-- Floating Print Button -->
+  <button class="print-btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
+
+</body>
+</html>
+"""
+
+
 def export_html_to_pdf_bytes(html: str) -> bytes:
     """
     Uses Playwright (Chromium) for reliable single-page A4 portrait PDF export.
