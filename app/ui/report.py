@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import streamlit as st
 
-from app.db import fetch_monthly_report
-from app.report_pdf import build_report_html
+from app.db import fetch_monthly_report, get_student_current_jadeed, get_all_students_current_jadeed
+from app.report_pdf import build_report_html, build_current_jadeed_report_html
 from app.ui.shared import back_home_button
 from app.ui.student import current_student_badge
 
@@ -42,11 +42,12 @@ def render_report() -> None:
         return
 
     st.markdown("### Report Category Select")
-    t1, t2, t3, t4 = st.tabs([
+    t1, t2, t3, t4, t5 = st.tabs([
         "👥 Murajat Report",
         "📖 Juzulhali Report",
         "📝 Jadeed Report",
-        "📋 Takhteet Report"
+        "📋 Takhteet Report",
+        "🌟 Current Jadeed"
     ])
     
     with t1:
@@ -64,4 +65,15 @@ def render_report() -> None:
     with t4:
         html_takhteet = build_report_html(student_name=student_name, rows=rows, report_type="takhteet")
         st.iframe(html_takhteet, height=700)
+
+    with t5:
+        with st.spinner("Fetching current jadeed progress..."):
+            current_entry = get_student_current_jadeed(student_id=student_id)
+            all_students_data = get_all_students_current_jadeed()
+        html_current = build_current_jadeed_report_html(
+            student_name=student_name,
+            current_entry=current_entry,
+            all_students_data=all_students_data
+        )
+        st.iframe(html_current, height=700)
 

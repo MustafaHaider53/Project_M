@@ -886,3 +886,135 @@ def get_student_daily_summary(*, student_id: str, date_str: str) -> Dict[str, An
         "takhteet": takhteet_row or {},
     }
 
+
+def get_student_current_jadeed(*, student_id: str) -> Optional[Dict[str, Any]]:
+    rest = get_rest()
+    if rest is None:
+        return None
+    
+    select = "id,student_id,activity_date,surah_id,page_number,ayah_number,volume,created_at,surahs(name_en,name_ar,number)"
+    rows = rest.select(
+        "jadeed_entries",
+        select=select,
+        params={
+            "student_id": f"eq.{student_id}",
+            "order": "activity_date.desc,created_at.desc",
+            "limit": "1",
+        },
+    )
+    latest_entry = rows[0] if rows else None
+
+    latest_daily_no = None
+    try:
+        daily_rows = rest.select(
+            "jadeed_daily",
+            select="activity_date,no_jadeed",
+            params={
+                "student_id": f"eq.{student_id}",
+                "no_jadeed": "eq.true",
+                "order": "activity_date.desc",
+                "limit": "1"
+            }
+        )
+        if daily_rows:
+            latest_daily_no = daily_rows[0]
+    except Exception:
+        pass
+
+    entry_date = latest_entry["activity_date"] if latest_entry else None
+    daily_date = latest_daily_no["activity_date"] if latest_daily_no else None
+
+    if entry_date and (not daily_date or entry_date >= daily_date):
+        return latest_entry
+    elif latest_daily_no:
+        return {
+            "no_jadeed": True,
+            "activity_date": daily_date
+        }
+    return None
+
+
+def get_all_students_current_jadeed() -> List[Dict[str, Any]]:
+    rest = get_rest()
+    if rest is None:
+        return []
+    
+    students = rest.select("students", select="id,full_name", params={"order": "full_name.asc"})
+    if not students:
+        return []
+
+    entries = rest.select(
+        "jadeed_entries",
+        select="student_id,activity_date,surah_id,page_number,ayah_number,volume,created_at,surahs(name_en,name_ar,number)",
+        params={"order": "activity_date.desc,created_at.desc"}
+    )
+    
+    daily = rest.select(
+        "jadeed_daily",
+        select="student_id,activity_date,no_jadeed",
+        params={"no_jadeed": "eq.true", "order": "activity_date.desc"}
+    )
+    
+    entries_by_student = defaultdict(list)
+    for e in entries:
+        entries_by_student[e["student_id"]].append(e)
+        
+    daily_by_student = defaultdict(list)
+    for d in daily:
+        daily_by_student[d["student_id"]].append(d)
+        
+    result = []
+    for s in students:
+        s_id = s["id"]
+        s_name = s["full_name"]
+        
+        s_entries = entries_by_student.get(s_id, [])
+        s_daily = daily_by_student.get(s_id, [])
+        
+        latest_entry = s_entries[0] if s_entries else None
+        latest_daily_no = s_daily[0] if s_daily else None
+        
+        current_status = "None recorded"
+        last_date = "N/A"
+        surah_display = "-"
+        page_num = "-"
+        ayah_num = "-"
+        volume_val = "-"
+        is_no_jadeed = False
+        
+        entry_date = latest_entry["activity_date"] if latest_entry else None
+        daily_date = latest_daily_no["activity_date"] if latest_daily_no else None
+        
+        if entry_date and (not daily_date or entry_date >= daily_date):
+            surah = latest_entry.get("surahs") or {}
+            if isinstance(surah, list):
+                surah = surah[0] if surah else {}
+            surah_name = surah.get("name_en", "?")
+            surah_ar = surah.get("name_ar", "")
+            surah_num = surah.get("number", "?")
+            surah_display = f"{surah_num} - {surah_name} ({surah_ar})"
+            page_num = str(latest_entry.get("page_number", "-"))
+            ayah_num = str(latest_entry.get("ayah_number", "-"))
+            volume_val = latest_entry.get("volume", "-")
+            last_date = entry_date
+            current_status = "Active"
+        elif daily_date:
+            last_date = daily_date
+            current_status = "Marked 'No Jadeed'"
+            is_no_jadeed = True
+            
+        result.append({
+            "student_id": s_id,
+            "student_name": s_name,
+            "last_date": last_date,
+            "surah": surah_display,
+            "page": page_num,
+            "ayah": ayah_num,
+            "volume": volume_val,
+            "status": current_status,
+            "is_no_jadeed": is_no_jadeed
+        })
+        
+    return result
+
+
