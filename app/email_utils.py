@@ -655,3 +655,68 @@ def send_monthly_report_email(*, student_name: str, recipient_email: str, rows: 
         return True, f"Monthly {report_type.capitalize()} report email successfully sent to {recipient_email}."
     except Exception as e:
         return False, f"Failed to send monthly email: {e}"
+
+
+def send_takhteet_plan_email(*, student_name: str, recipient_email: str, plan_html: str, year: int, month: int, custom_message: str = None) -> Tuple[bool, str]:
+    """
+    Sends the generated monthly Takhteet plan email. Returns (success, message).
+    """
+    email_secrets = st.secrets.get("email")
+    if not email_secrets:
+        return False, "Email configuration ('email' block in st.secrets) is missing."
+
+    smtp_server = email_secrets.get("smtp_server")
+    smtp_port = email_secrets.get("smtp_port")
+    sender_email = email_secrets.get("sender_email")
+    sender_password = email_secrets.get("sender_password")
+
+    if not all([smtp_server, smtp_port, sender_email, sender_password]):
+        return False, "SMTP credentials inside st.secrets['email'] are incomplete."
+
+    if not recipient_email or not recipient_email.strip():
+        return False, f"No email address found for {student_name}."
+
+    import calendar
+    month_name = calendar.month_name[month]
+    subject = f"Monthly Jadeed Takhteet Plan - {month_name} {year} ({student_name})"
+
+    # Clean up printable actions and embed motivational intro for the parent email
+    plan_html = plan_html.replace('<button class="print-btn" onclick="window.print()">🖨️ Print / Save as PDF</button>', '')
+    
+    if custom_message and custom_message.strip():
+        msg_body = custom_message.strip().replace('\n', '<br>')
+    else:
+        msg_body = "This is your monthly Jadeed Takhteet study plan. Consistent daily recitation builds strength and success in Hifz. Stay dedicated, keep reciting, and aim high!"
+
+    intro_html = (
+        "<div style=\"font-family: 'Outfit', 'Inter', 'Segoe UI', sans-serif; background-color: #faf8f5; "
+        "padding: 18px; border-left: 4px solid #1b4d3e; border-radius: 6px; margin-bottom: 20px; "
+        "font-size: 14px; line-height: 1.5; color: #333;\">"
+        "<p style=\"margin: 0 0 8px 0; font-size: 15px; color: #1b4d3e;\"><b>Dear Parent & Student, Salaam Jameel!</b></p>"
+        f"<p style=\"margin: 0;\">{msg_body}</p>"
+        "</div>"
+    )
+    plan_html = plan_html.replace('<div class="planner-card">', f'<div class="planner-card">{intro_html}')
+
+    # Build the message
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = sender_email
+    msg["To"] = recipient_email
+
+    msg.attach(MIMEText(plan_html, "html"))
+
+    try:
+        # Connect and send
+        if int(smtp_port) == 465:
+            server = smtplib.SMTP_SSL(str(smtp_server), int(smtp_port), timeout=15)
+        else:
+            server = smtplib.SMTP(str(smtp_server), int(smtp_port), timeout=15)
+            server.ehlo()
+            server.starttls()
+        server.login(str(sender_email), str(sender_password))
+        server.sendmail(str(sender_email), [str(recipient_email)], msg.as_string())
+        server.close()
+        return True, f"Monthly Takhteet plan email successfully sent to {recipient_email}."
+    except Exception as e:
+        return False, f"Failed to send monthly email: {e}"

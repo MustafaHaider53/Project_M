@@ -886,3 +886,257 @@ def get_student_daily_summary(*, student_id: str, date_str: str) -> Dict[str, An
         "takhteet": takhteet_row or {},
     }
 
+
+# --- SURAH AYAH COUNTS FOR TASK PLANNER ---
+SURAH_AYAH_COUNTS = {
+    1: 7, 2: 286, 3: 200, 4: 176, 5: 120, 6: 165, 7: 206, 8: 75, 9: 129, 10: 109,
+    11: 123, 12: 111, 13: 43, 14: 52, 15: 99, 16: 128, 17: 111, 18: 110, 19: 98, 20: 135,
+    21: 112, 22: 78, 23: 118, 24: 64, 25: 77, 26: 227, 27: 93, 28: 88, 29: 69, 30: 60,
+    31: 34, 32: 30, 33: 73, 34: 54, 35: 45, 36: 83, 37: 182, 38: 88, 39: 75, 40: 85,
+    41: 54, 42: 53, 43: 89, 44: 59, 45: 37, 46: 35, 47: 38, 48: 29, 49: 18, 50: 45,
+    51: 60, 52: 49, 53: 62, 54: 55, 55: 78, 56: 96, 57: 29, 58: 22, 59: 24, 60: 13,
+    61: 14, 62: 11, 63: 11, 64: 18, 65: 12, 66: 12, 67: 30, 68: 52, 69: 52, 70: 44,
+    71: 28, 72: 28, 73: 20, 74: 56, 75: 40, 76: 31, 77: 50, 78: 40, 79: 46, 80: 42,
+    81: 29, 82: 19, 83: 36, 84: 25, 85: 22, 86: 17, 87: 19, 88: 26, 89: 30, 90: 20,
+    91: 15, 92: 21, 93: 11, 94: 8, 95: 8, 96: 19, 97: 5, 98: 8, 99: 8, 100: 11,
+    101: 11, 102: 8, 103: 3, 104: 9, 105: 5, 106: 4, 107: 7, 108: 3, 109: 6, 110: 3,
+    111: 5, 112: 4, 113: 5, 114: 6
+}
+
+
+def get_student_current_jadeed(*, student_id: str) -> Optional[Dict[str, Any]]:
+    rest = get_rest()
+    if rest is None:
+        return None
+    
+    select = "id,student_id,activity_date,surah_id,page_number,ayah_number,volume,created_at,surahs(name_en,name_ar,number)"
+    rows = rest.select(
+        "jadeed_entries",
+        select=select,
+        params={
+            "student_id": f"eq.{student_id}",
+            "order": "activity_date.desc,created_at.desc",
+            "limit": "1",
+        },
+    )
+    latest_entry = rows[0] if rows else None
+
+    latest_daily_no = None
+    try:
+        daily_rows = rest.select(
+            "jadeed_daily",
+            select="activity_date,no_jadeed",
+            params={
+                "student_id": f"eq.{student_id}",
+                "no_jadeed": "eq.true",
+                "order": "activity_date.desc",
+                "limit": "1"
+            }
+        )
+        if daily_rows:
+            latest_daily_no = daily_rows[0]
+    except Exception:
+        pass
+
+    entry_date = latest_entry["activity_date"] if latest_entry else None
+    daily_date = latest_daily_no["activity_date"] if latest_daily_no else None
+
+    if entry_date and (not daily_date or entry_date >= daily_date):
+        return latest_entry
+    elif latest_daily_no:
+        return {
+            "no_jadeed": True,
+            "activity_date": daily_date
+        }
+    return None
+
+
+def get_all_students_current_jadeed() -> List[Dict[str, Any]]:
+    rest = get_rest()
+    if rest is None:
+        return []
+    
+    students = rest.select("students", select="id,full_name", params={"order": "full_name.asc"})
+    if not students:
+        return []
+
+    entries = rest.select(
+        "jadeed_entries",
+        select="student_id,activity_date,surah_id,page_number,ayah_number,volume,created_at,surahs(name_en,name_ar,number)",
+        params={"order": "activity_date.desc,created_at.desc"}
+    )
+    
+    daily = rest.select(
+        "jadeed_daily",
+        select="student_id,activity_date,no_jadeed",
+        params={"no_jadeed": "eq.true", "order": "activity_date.desc"}
+    )
+    
+    entries_by_student = defaultdict(list)
+    for e in entries:
+        entries_by_student[e["student_id"]].append(e)
+        
+    daily_by_student = defaultdict(list)
+    for d in daily:
+        daily_by_student[d["student_id"]].append(d)
+        
+    result = []
+    for s in students:
+        s_id = s["id"]
+        s_name = s["full_name"]
+        
+        s_entries = entries_by_student.get(s_id, [])
+        s_daily = daily_by_student.get(s_id, [])
+        
+        latest_entry = s_entries[0] if s_entries else None
+        latest_daily_no = s_daily[0] if s_daily else None
+        
+        current_status = "None recorded"
+        last_date = "N/A"
+        surah_display = "-"
+        page_num = "-"
+        ayah_num = "-"
+        volume_val = "-"
+        is_no_jadeed = False
+        
+        entry_date = latest_entry["activity_date"] if latest_entry else None
+        daily_date = latest_daily_no["activity_date"] if latest_daily_no else None
+        
+        if entry_date and (not daily_date or entry_date >= daily_date):
+            surah = latest_entry.get("surahs") or {}
+            if isinstance(surah, list):
+                surah = surah[0] if surah else {}
+            surah_name = surah.get("name_en", "?")
+            surah_ar = surah.get("name_ar", "")
+            surah_num = surah.get("number", "?")
+            surah_display = f"{surah_num} - {surah_name} ({surah_ar})"
+            page_num = str(latest_entry.get("page_number", "-"))
+            ayah_num = str(latest_entry.get("ayah_number", "-"))
+            volume_val = latest_entry.get("volume", "-")
+            last_date = entry_date
+            current_status = "Active"
+        elif daily_date:
+            last_date = daily_date
+            current_status = "Marked 'No Jadeed'"
+            is_no_jadeed = True
+            
+        result.append({
+            "student_id": s_id,
+            "student_name": s_name,
+            "last_date": last_date,
+            "surah": surah_display,
+            "page": page_num,
+            "ayah": ayah_num,
+            "volume": volume_val,
+            "status": current_status,
+            "is_no_jadeed": is_no_jadeed
+        })
+        
+    return result
+
+
+def calculate_student_average_pace(*, student_id: str) -> float:
+    rest = get_rest()
+    if rest is None:
+        return 5.0
+    
+    rows = rest.select(
+        "jadeed_entries",
+        select="activity_date,surah_id,ayah_number,created_at,surahs(number)",
+        params={
+            "student_id": f"eq.{student_id}",
+            "order": "activity_date.asc,created_at.asc"
+        }
+    )
+    if len(rows) < 2:
+        return 5.0
+    
+    differences = []
+    for i in range(1, len(rows)):
+        prev = rows[i-1]
+        curr = rows[i]
+        
+        p_surah_info = prev.get("surahs") or {}
+        if isinstance(p_surah_info, list): p_surah_info = p_surah_info[0] if p_surah_info else {}
+        p_surah = int(p_surah_info.get("number") or prev.get("surah_id") or 1)
+        
+        c_surah_info = curr.get("surahs") or {}
+        if isinstance(c_surah_info, list): c_surah_info = c_surah_info[0] if c_surah_info else {}
+        c_surah = int(c_surah_info.get("number") or curr.get("surah_id") or 1)
+        
+        p_ayah = int(prev.get("ayah_number") or 1)
+        c_ayah = int(curr.get("ayah_number") or 1)
+        
+        if c_surah == p_surah:
+            diff = c_ayah - p_ayah
+            if diff > 0:
+                differences.append(diff)
+        elif c_surah < p_surah: # progress to lower Surah number (backward hifz direction)
+            diff = SURAH_AYAH_COUNTS.get(p_surah, 7) - p_ayah
+            for s in range(c_surah + 1, p_surah):
+                diff += SURAH_AYAH_COUNTS.get(s, 0)
+            diff += c_ayah
+            if diff > 0:
+                differences.append(diff)
+        else:
+            # went to higher Surah number, could be revision or restarting
+            if c_ayah > 0:
+                differences.append(c_ayah)
+                
+    if not differences:
+        return 5.0
+    return sum(differences) / len(differences)
+
+
+def get_student_position_before_month(*, student_id: str, year: int, month: int) -> Optional[Dict[str, Any]]:
+    rest = get_rest()
+    if rest is None:
+        return None
+    
+    first_of_month = f"{year:04d}-{month:02d}-01"
+    rows = rest.select(
+        "jadeed_entries",
+        select="id,surah_id,page_number,ayah_number,volume,activity_date,surahs(number,name_en,name_ar)",
+        params={
+            "student_id": f"eq.{student_id}",
+            "activity_date": f"lt.{first_of_month}",
+            "order": "activity_date.desc,created_at.desc",
+            "limit": "1"
+        }
+    )
+    return rows[0] if rows else None
+
+
+def get_student_monthly_actuals(*, student_id: str, year: int, month: int) -> List[Dict[str, Any]]:
+    rest = get_rest()
+    if rest is None:
+        return []
+    
+    import calendar
+    _, last_day = calendar.monthrange(year, month)
+    start_date = f"{year:04d}-{month:02d}-01"
+    end_date = f"{year:04d}-{month:02d}-{last_day:02d}"
+    
+    # Range query in PostgREST using "and" logic
+    rows = rest.select(
+        "jadeed_entries",
+        select="activity_date,surah_id,page_number,ayah_number,volume,surahs(number,name_en,name_ar)",
+        params={
+            "student_id": f"eq.{student_id}",
+            "and": f"(activity_date.gte.{start_date},activity_date.lte.{end_date})",
+            "order": "activity_date.asc,created_at.asc"
+        }
+    )
+    return rows
+
+
+def get_student_email(*, student_id: str) -> Optional[str]:
+    rest = get_rest()
+    if rest is None:
+        return None
+    try:
+        student = rest.select_single("students", select="email", params={"id": f"eq.{student_id}"})
+        return student.get("email") if student else None
+    except Exception:
+        return None
+

@@ -48,5 +48,8 @@ def render_takhteet() -> None:
             "juzulhali_text_raw": juzulhali_text,
             "jadeed_text_raw": jadeed_text,
         }
+        cache_key = f"prev_takhteet_{student_id}"
+        if cache_key in st.session_state:
+            del st.session_state[cache_key]
         st.success("Takhteet saved for today.")
 
