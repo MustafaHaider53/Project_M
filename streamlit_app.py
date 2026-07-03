@@ -7,6 +7,7 @@ from app.ui.murajat import render_murajat
 from app.ui.report import render_report
 from app.ui.style import apply_islamic_theme
 from app.ui.takhteet import render_takhteet
+from app.ui.planner import render_planner
 
 
 def main() -> None:
@@ -200,7 +201,7 @@ def main() -> None:
     # 3. Render Header Navigation buttons
     current_page = st.session_state.get("page", "home")
     
-    cols = st.columns(7)
+    cols = st.columns(8)
     with cols[0]:
         if st.button("👥 Change", use_container_width=True):
             st.session_state.student_id = None
@@ -227,13 +228,18 @@ def main() -> None:
         if st.button("Takhteet", type="primary" if current_page == "takhteet" else "secondary", use_container_width=True):
             st.session_state.page = "takhteet"
             st.rerun()
-            
+
     with cols[5]:
+        if st.button("Planner", type="primary" if current_page == "planner" else "secondary", use_container_width=True):
+            st.session_state.page = "planner"
+            st.rerun()
+            
+    with cols[6]:
         if st.button("Email", type="primary" if current_page == "email" else "secondary", use_container_width=True):
             st.session_state.page = "email"
             st.rerun()
             
-    with cols[6]:
+    with cols[7]:
         if st.button("Report", type="primary" if current_page == "report" else "secondary", use_container_width=True):
             st.session_state.page = "report"
             st.rerun()
@@ -252,6 +258,8 @@ def main() -> None:
         render_jadeed()
     elif current_page == "takhteet":
         render_takhteet()
+    elif current_page == "planner":
+        render_planner()
     elif current_page == "email":
         from app.ui.email_page import render_email_page
         render_email_page()

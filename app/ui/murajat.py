@@ -23,6 +23,27 @@ def render_murajat() -> None:
         st.session_state.murajat_student_id = student_id
 
     surahs = list_surahs()
+    options = [(s["id"], f'{s["number"]:03d} — {s["name_en"]} ({s["name_ar"]})') for s in surahs]
+
+    # Define callbacks to modify widget session state before widget instantiation
+    def click_prev():
+        selected_option = st.session_state.get("murajat_surah")
+        if selected_option in options:
+            curr_idx = options.index(selected_option)
+            if curr_idx > 0:
+                st.session_state.murajat_surah = options[curr_idx - 1]
+
+    def click_next():
+        selected_option = st.session_state.get("murajat_surah")
+        if selected_option in options:
+            curr_idx = options.index(selected_option)
+            if curr_idx < len(options) - 1:
+                st.session_state.murajat_surah = options[curr_idx + 1]
+
+    selected_option = st.session_state.get("murajat_surah")
+    curr_idx = options.index(selected_option) if selected_option in options else -1
+    has_prev = (curr_idx > 0)
+    has_next = (curr_idx >= 0 and curr_idx < len(options) - 1)
 
     # Render the sticky container wrapping header, selectors, badge, and mistake cards
     with st.container():
@@ -31,7 +52,28 @@ def render_murajat() -> None:
         render_header_with_homework("Murajat", student_id)
             
         current_student_badge()
-        surah_id, surah = surah_selector(surahs=surahs, key="murajat_surah")
+        
+        col_sel, col_prev, col_next = st.columns([3, 1, 1])
+        with col_sel:
+            selected = st.selectbox(
+                "Surah",
+                options=options,
+                index=None,
+                placeholder="Select a Surah...",
+                format_func=lambda x: x[1] if x else "",
+                label_visibility="collapsed",
+                key="murajat_surah"
+            )
+        with col_prev:
+            st.button("◀ Prev", disabled=not has_prev, use_container_width=True, on_click=click_prev)
+        with col_next:
+            st.button("Next ▶", disabled=not has_next, use_container_width=True, on_click=click_next)
+
+        surah_id = None
+        surah = None
+        if selected:
+            surah_id = selected[0]
+            surah = next((s for s in surahs if s["id"] == surah_id), None)
 
     if surah_id is not None:
         with st.spinner("Preparing recitation session..."):
