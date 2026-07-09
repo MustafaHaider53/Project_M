@@ -74,6 +74,18 @@ def main() -> None:
                 setTimeout(forceBlur, 300);
                 setTimeout(forceBlur, 500);
                 
+                // Auto-scroll focused inputs into view for mobile landscape readability
+                parentDoc.addEventListener('focusin', function(e) {
+                    const target = e.target;
+                    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+                        setTimeout(() => {
+                            try {
+                                target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                            } catch (err) {}
+                        }, 250);
+                    }
+                });
+                
                 // Wake Lock API
                 let wakeLock = null;
                 async function requestWakeLock() {
