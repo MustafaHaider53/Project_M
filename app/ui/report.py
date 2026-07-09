@@ -42,12 +42,13 @@ def render_report() -> None:
         return
 
     st.markdown("### Report Category Select")
-    t1, t2, t3, t4, t5 = st.tabs([
+    t1, t2, t3, t4, t5, t6 = st.tabs([
         "👥 Murajat Report",
         "📖 Juzulhali Report",
         "📝 Jadeed Report",
         "📋 Takhteet Report",
-        "🌟 Current Jadeed"
+        "🌟 Current Jadeed",
+        "📊 Mistake Analytics"
     ])
     
     with t1:
@@ -76,4 +77,8 @@ def render_report() -> None:
             all_students_data=all_students_data
         )
         st.iframe(html_current, height=700)
+
+    with t6:
+        from app.ui.analytics import render_student_analytics
+        render_student_analytics(student_id=student_id, student_name=student_name)
 

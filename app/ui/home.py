@@ -23,23 +23,23 @@ def render_home() -> None:
 
     c1, c2, c3, c4, c5 = st.columns(5)
     with c1:
-        if st.button("Murajat", use_container_width=True):
+        if st.button("Murajat", width="stretch"):
             st.session_state.page = "murajat"
             st.rerun()
     with c2:
-        if st.button("Juzulhali", use_container_width=True):
+        if st.button("Juzulhali", width="stretch"):
             st.session_state.page = "juzulhali"
             st.rerun()
     with c3:
-        if st.button("Jadeed", use_container_width=True):
+        if st.button("Jadeed", width="stretch"):
             st.session_state.page = "jadeed"
             st.rerun()
     with c4:
-        if st.button("Takhteet", use_container_width=True):
+        if st.button("Takhteet", width="stretch"):
             st.session_state.page = "takhteet"
             st.rerun()
     with c5:
-        if st.button("Report", use_container_width=True):
+        if st.button("Report", width="stretch"):
             st.session_state.page = "report"
             st.rerun()
 

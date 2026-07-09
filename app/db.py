@@ -1141,6 +1141,21 @@ def get_student_email(*, student_id: str) -> Optional[str]:
         return None
 
 
+def get_student_sessions_with_counts(*, student_id: str) -> List[Dict[str, Any]]:
+    rest = get_rest()
+    if rest is None:
+        return []
+    return rest.select(
+        "listening_sessions",
+        select="id,activity_date,mode,surah_id,page_number,created_at,surahs(number,name_en,name_ar),mistake_counts(*)",
+        params={
+            "student_id": f"eq.{student_id}",
+            "order": "activity_date.desc,created_at.desc",
+        },
+    )
+
+
+
 
 
 
