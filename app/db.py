@@ -145,6 +145,27 @@ class SupabaseRest:
         r.raise_for_status()
 
 
+def clear_all_read_caches() -> None:
+    try:
+        get_today_listening_sessions.clear()
+        list_jadeed_entries.clear()
+        get_takhteet_today.clear()
+        get_previous_takhteet.clear()
+        fetch_monthly_report.clear()
+        get_student_daily_summary.clear()
+        get_today_jadeed_state.clear()
+        get_student_current_jadeed.clear()
+        get_all_students_current_jadeed.clear()
+        get_student_sessions_with_counts.clear()
+        get_session_counts.clear()
+        calculate_student_average_pace.clear()
+        get_student_position_before_month.clear()
+        get_student_monthly_actuals.clear()
+        get_student_email.clear()
+    except Exception:
+        pass
+
+
 @st.cache_data(show_spinner=False)
 def list_surahs() -> List[Dict[str, Any]]:
     rest = get_rest()
@@ -172,6 +193,7 @@ def create_student(*, full_name: str) -> Dict[str, Any]:
     try:
         res = rest.insert("students", [{"full_name": full_name}])
         list_students.clear()
+        clear_all_read_caches()
         if res:
             return res[0]
     except requests.HTTPError:
@@ -180,6 +202,7 @@ def create_student(*, full_name: str) -> Dict[str, Any]:
     if not existing:
         raise RuntimeError("Could not create or fetch student.")
     return existing
+
 
 def create_listening_session(
     *,
@@ -201,6 +224,7 @@ def create_listening_session(
         "created_at": now_utc_iso(),
     }
     res = rest.insert("listening_sessions", [payload])
+    clear_all_read_caches()
     return res[0]
 
 
@@ -239,6 +263,7 @@ def get_recent_listening_session(
     return None
 
 
+@st.cache_data(show_spinner=False)
 def get_today_listening_sessions(*, student_id: str) -> List[Dict[str, Any]]:
     rest = get_rest()
     if rest is None:
@@ -263,6 +288,7 @@ MAKHARIJ_COLS = [
     "makhraj_noon", "makhraj_haa_weak", "makhraj_waw", "makhraj_yaa"
 ]
 
+@st.cache_data(show_spinner=False)
 def get_session_counts(session_id: str) -> Dict[str, int]:
     global _db_supported_columns
     rest = get_rest()
@@ -465,6 +491,7 @@ def increment_mistake(session_id: str, kind: str) -> Dict[str, int]:
         returning="minimal",
     )
 
+    clear_all_read_caches()
     return counts
 
 
@@ -472,6 +499,7 @@ def increment_mistake_bg(session_id: str, kind: str, counts: Dict[str, int]) -> 
     rest = get_rest()
     if rest is None:
         return
+    clear_all_read_caches()
     t = threading.Thread(target=_bg_update_mistake, args=(rest, session_id, kind, counts.copy()))
     t.daemon = True
     t.start()
@@ -525,6 +553,7 @@ def _bg_update_mistake(rest: SupabaseRest, session_id: str, kind: str, counts: D
             [{"session_id": session_id, "kind": kind}],
             returning="minimal",
         )
+        clear_all_read_caches()
     except Exception as e:
         import logging
         logging.error(f"Background database update error: {e}")
@@ -551,6 +580,7 @@ def insert_jadeed_rows(*, student_id: str, rows: List[Dict[str, Any]]) -> None:
         on_conflict="student_id,activity_date",
         returning="minimal",
     )
+    clear_all_read_caches()
 
 
 def mark_no_jadeed_today(*, student_id: str) -> None:
@@ -563,8 +593,10 @@ def mark_no_jadeed_today(*, student_id: str) -> None:
         on_conflict="student_id,activity_date",
         returning="minimal",
     )
+    clear_all_read_caches()
 
 
+@st.cache_data(show_spinner=False)
 def list_jadeed_entries(*, student_id: str, limit: int = 200) -> List[Dict[str, Any]]:
     rest = get_rest()
     if rest is None:
@@ -599,8 +631,10 @@ def upsert_takhteet_today(*, student_id: str, murajat_text_raw: str, juzulhali_t
         "updated_at": now_utc_iso(),
     }
     rest.upsert("takhteet_daily", [row], on_conflict="student_id,activity_date", returning="minimal")
+    clear_all_read_caches()
 
 
+@st.cache_data(show_spinner=False)
 def get_takhteet_today(*, student_id: str) -> Optional[Dict[str, Any]]:
     rest = get_rest()
     if rest is None:
@@ -612,6 +646,7 @@ def get_takhteet_today(*, student_id: str) -> Optional[Dict[str, Any]]:
     )
 
 
+@st.cache_data(show_spinner=False)
 def get_previous_takhteet(*, student_id: str) -> Optional[Dict[str, Any]]:
     rest = get_rest()
     if rest is None:
@@ -641,6 +676,7 @@ def _extract_count(value: Any) -> int:
     return int(value or 0)
 
 
+@st.cache_data(show_spinner=False)
 def fetch_monthly_report(*, student_id: str, year: int, month: int) -> List[Dict[str, Any]]:
     """
     Returns date-wise structured report data for web + PDF for a specific month/year:
@@ -813,6 +849,7 @@ def get_student_email(*, student_id: str) -> Optional[str]:
     return None
 
 
+@st.cache_data(show_spinner=False)
 def get_student_daily_summary(*, student_id: str, date_str: str) -> Dict[str, Any]:
     rest = get_rest()
     if rest is None:
@@ -887,6 +924,41 @@ def get_student_daily_summary(*, student_id: str, date_str: str) -> Dict[str, An
     }
 
 
+@st.cache_data(show_spinner=False)
+def get_today_jadeed_state(*, student_id: str, date_str: str) -> Dict[str, Any]:
+    rest = get_rest()
+    if rest is None:
+        return {"jadeed": [], "no_jadeed": False}
+
+    jadeed_rows = rest.select(
+        "jadeed_entries",
+        select="id,surah_id,page_number,ayah_number,volume,created_at,surahs(number,name_en,name_ar)",
+        params={
+            "student_id": f"eq.{student_id}",
+            "activity_date": f"eq.{date_str}",
+            "order": "created_at.asc",
+        },
+    )
+
+    jadeed_daily_row = None
+    try:
+        jadeed_daily_row = rest.select_single(
+            "jadeed_daily",
+            select="no_jadeed",
+            params={
+                "student_id": f"eq.{student_id}",
+                "activity_date": f"eq.{date_str}",
+            },
+        )
+    except Exception:
+        pass
+
+    return {
+        "jadeed": jadeed_rows,
+        "no_jadeed": bool(jadeed_daily_row.get("no_jadeed")) if jadeed_daily_row else False,
+    }
+
+
 # --- SURAH AYAH COUNTS FOR TASK PLANNER ---
 SURAH_AYAH_COUNTS = {
     1: 7, 2: 286, 3: 200, 4: 176, 5: 120, 6: 165, 7: 206, 8: 75, 9: 129, 10: 109,
@@ -904,6 +976,7 @@ SURAH_AYAH_COUNTS = {
 }
 
 
+@st.cache_data(show_spinner=False)
 def get_student_current_jadeed(*, student_id: str) -> Optional[Dict[str, Any]]:
     rest = get_rest()
     if rest is None:
@@ -951,6 +1024,7 @@ def get_student_current_jadeed(*, student_id: str) -> Optional[Dict[str, Any]]:
     return None
 
 
+@st.cache_data(show_spinner=False)
 def get_all_students_current_jadeed() -> List[Dict[str, Any]]:
     rest = get_rest()
     if rest is None:
@@ -1035,6 +1109,7 @@ def get_all_students_current_jadeed() -> List[Dict[str, Any]]:
     return result
 
 
+@st.cache_data(show_spinner=False)
 def calculate_student_average_pace(*, student_id: str) -> float:
     rest = get_rest()
     if rest is None:
@@ -1088,6 +1163,7 @@ def calculate_student_average_pace(*, student_id: str) -> float:
     return sum(differences) / len(differences)
 
 
+@st.cache_data(show_spinner=False)
 def get_student_position_before_month(*, student_id: str, year: int, month: int) -> Optional[Dict[str, Any]]:
     rest = get_rest()
     if rest is None:
@@ -1107,6 +1183,7 @@ def get_student_position_before_month(*, student_id: str, year: int, month: int)
     return rows[0] if rows else None
 
 
+@st.cache_data(show_spinner=False)
 def get_student_monthly_actuals(*, student_id: str, year: int, month: int) -> List[Dict[str, Any]]:
     rest = get_rest()
     if rest is None:
@@ -1130,6 +1207,7 @@ def get_student_monthly_actuals(*, student_id: str, year: int, month: int) -> Li
     return rows
 
 
+@st.cache_data(show_spinner=False)
 def get_student_email(*, student_id: str) -> Optional[str]:
     rest = get_rest()
     if rest is None:
@@ -1141,6 +1219,7 @@ def get_student_email(*, student_id: str) -> Optional[str]:
         return None
 
 
+@st.cache_data(show_spinner=False)
 def get_student_sessions_with_counts(*, student_id: str) -> List[Dict[str, Any]]:
     rest = get_rest()
     if rest is None:
