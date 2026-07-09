@@ -415,13 +415,6 @@ def apply_islamic_theme() -> None:
           /* Float selectbox popover dropdowns to top of screen on short/landscape mobile view to avoid keyboard overlaps */
           @media (max-height: 480px) {
             div[data-baseweb="popover"] {
-              position: absolute !important;
-              top: calc(var(--scroll-top, 0px) + 6px) !important;
-              left: 12px !important;
-              right: 12px !important;
-              width: auto !important;
-              bottom: auto !important;
-              transform: none !important;
               z-index: 999999 !important;
               box-shadow: 0 10px 30px rgba(30,26,18,0.25) !important;
             }
@@ -477,10 +470,55 @@ def apply_islamic_theme() -> None:
               setTimeout(updateScrollTop, 300);
               setTimeout(updateScrollTop, 500);
             });
-            // Initial call
             updateScrollTop();
-            // Periodically check in case of layout changes
-            setInterval(updateScrollTop, 1000);
+
+            // Real-time popover aligner to place selectbox dropdown directly ABOVE the active input on short viewports
+            function alignPopover() {
+              try {
+                // Only activate on short screens (e.g. mobile landscape or keyboard open)
+                if (window.innerHeight > 480) return;
+
+                const popover = document.querySelector('div[data-baseweb="popover"]');
+                if (!popover) return;
+                
+                // Reset Popper.js dynamic translate3d/top offsets on all intermediate wrappers
+                const wrappers = popover.querySelectorAll('div');
+                wrappers.forEach(div => {
+                  if (div.getAttribute('data-baseweb') !== 'menu') {
+                    div.style.setProperty('transform', 'none', 'important');
+                    div.style.setProperty('top', '0', 'important');
+                    div.style.setProperty('left', '0', 'important');
+                    div.style.setProperty('position', 'relative', 'important');
+                  }
+                });
+                
+                const activeInput = document.activeElement;
+                if (!activeInput || activeInput.tagName !== 'INPUT') return;
+                
+                // Check if it is a Streamlit selectbox combobox input
+                const isCombobox = activeInput.getAttribute('role') === 'combobox' || 
+                                   activeInput.getAttribute('aria-autocomplete') === 'list' ||
+                                   activeInput.id.includes('select');
+                if (!isCombobox) return;
+                
+                const inputRect = activeInput.getBoundingClientRect();
+                const scrollTop = window.scrollY || document.documentElement.scrollTop;
+                const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
+                
+                const popoverHeight = popover.offsetHeight || 100;
+                
+                // Position popover directly ABOVE the input field
+                popover.style.setProperty('position', 'absolute', 'important');
+                popover.style.setProperty('top', (inputRect.top + scrollTop - popoverHeight - 4) + 'px', 'important');
+                popover.style.setProperty('left', (inputRect.left + scrollLeft) + 'px', 'important');
+                popover.style.setProperty('width', inputRect.width + 'px', 'important');
+                popover.style.setProperty('transform', 'none', 'important');
+                popover.style.setProperty('bottom', 'auto', 'important');
+              } catch (e) {}
+            }
+            
+            // Run aligner frequently (50ms interval) for real-time tracking
+            setInterval(alignPopover, 50);
           })();
         </script>
         """,
