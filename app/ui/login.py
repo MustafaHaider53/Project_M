@@ -46,7 +46,7 @@ def render_login() -> None:
                 st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
                 submitted = st.form_submit_button(
-                    "Sign In", type="primary", use_container_width=True
+                    "Sign In", type="primary", width="stretch"
                 )
 
                 if submitted:

@@ -54,9 +54,9 @@ def render_juzulhali() -> None:
                 key="juzulhali_selected_page_widget"
             )
         with col_prev:
-            st.button("◀ Prev", disabled=(page_number is None or page_number <= 1), use_container_width=True, on_click=click_prev)
+            st.button("◀ Prev", disabled=(page_number is None or page_number <= 1), width="stretch", on_click=click_prev)
         with col_next:
-            st.button("Next ▶", disabled=(page_number is None or page_number >= 20), use_container_width=True, on_click=click_next)
+            st.button("Next ▶", disabled=(page_number is None or page_number >= 20), width="stretch", on_click=click_next)
 
     if page_number is not None:
         with st.spinner("Preparing recitation session..."):
@@ -218,6 +218,11 @@ def render_juzulhali() -> None:
         increment_mistake_bg(sid, kind, local_counts)
         st.session_state.play_sound = True
 
+    student_name = st.session_state.get("student_name", "Student")
+    with st.expander("📊 View Student Mistake Analytics & Progress", expanded=False):
+        from app.ui.analytics import render_student_analytics
+        render_student_analytics(student_id=student_id, student_name=student_name)
+
     if page_number is None:
         st.info("Please select a Page to start Juzulhali recitation.")
         return
@@ -228,7 +233,7 @@ def render_juzulhali() -> None:
 
     st.divider()
     # Show session controls when active
-    if st.button("New session (same page)", use_container_width=True):
+    if st.button("New session (same page)", width="stretch"):
         session = create_listening_session(student_id=student_id, mode="juzulhali", surah_id=None, page_number=int(page_number))
         st.session_state.juzulhali_session_id = session["id"]
         ensure_today_sessions(student_id)

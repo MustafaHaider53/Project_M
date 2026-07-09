@@ -120,9 +120,9 @@ def mistake_buttons(*, session_id: str, counts: Dict[str, int], on_click) -> Non
             # Row 1: Talqeen & Tanbeeh
             r1_c1, r1_c2 = st.columns(2)
             with r1_c1:
-                st.button(f"{tq_ico} Tq ({counts.get('talqeen', 0)})", use_container_width=True, on_click=on_click, kwargs={"kind": "talqeen"}, key="btn_talqeen")
+                st.button(f"{tq_ico} Tq ({counts.get('talqeen', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "talqeen"}, key="btn_talqeen")
             with r1_c2:
-                st.button(f"{tb_ico} Tb ({counts.get('tanbeeh', 0)})", use_container_width=True, on_click=on_click, kwargs={"kind": "tanbeeh"}, key="btn_tanbeeh")
+                st.button(f"{tb_ico} Tb ({counts.get('tanbeeh', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "tanbeeh"}, key="btn_tanbeeh")
             
             # Row 2: I'rab (symmetrical)
             r2_c1, r2_c2, r2_c3 = st.columns([0.75, 4.5, 0.75])
@@ -167,44 +167,44 @@ def mistake_buttons(*, session_id: str, counts: Dict[str, int], on_click) -> Non
             # Row 1: Ikhfa & Izhaar
             ar1_c1, ar1_c2 = st.columns(2)
             with ar1_c1:
-                st.button(f"{prefix}Ikhfa ({counts.get('ikhfa', 0)})", use_container_width=True, on_click=on_click, kwargs={"kind": "ikhfa"}, key="btn_ikhfa")
+                st.button(f"{prefix}Ikhfa ({counts.get('ikhfa', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "ikhfa"}, key="btn_ikhfa")
             with ar1_c2:
-                st.button(f"{prefix}Izhaar ({counts.get('izhaar', 0)})", use_container_width=True, on_click=on_click, kwargs={"kind": "izhaar"}, key="btn_izhaar")
+                st.button(f"{prefix}Izhaar ({counts.get('izhaar', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "izhaar"}, key="btn_izhaar")
                 
             # Row 2: Qalqalah & Ismul Jalalah
             ar2_c1, ar2_c2 = st.columns(2)
             with ar2_c1:
-                st.button(f"{prefix}Qalqalah ({counts.get('qalqalah', 0)})", use_container_width=True, on_click=on_click, kwargs={"kind": "qalqalah"}, key="btn_qalqalah")
+                st.button(f"{prefix}Qalqalah ({counts.get('qalqalah', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "qalqalah"}, key="btn_qalqalah")
             with ar2_c2:
-                st.button(f"{prefix}Ism Jalal ({counts.get('ism_jalalah', 0)})", use_container_width=True, on_click=on_click, kwargs={"kind": "ism_jalalah"}, key="btn_ism_jalalah")
+                st.button(f"{prefix}Ism Jalal ({counts.get('ism_jalalah', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "ism_jalalah"}, key="btn_ism_jalalah")
                 
             # Row 3: Tahreek Sakin & Gunnah
             ar3_c1, ar3_c2 = st.columns(2)
             with ar3_c1:
-                st.button(f"{prefix}Tahreek ({counts.get('tahreek_sakin', 0)})", use_container_width=True, on_click=on_click, kwargs={"kind": "tahreek_sakin"}, key="btn_tahreek_sakin")
+                st.button(f"{prefix}Tahreek ({counts.get('tahreek_sakin', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "tahreek_sakin"}, key="btn_tahreek_sakin")
             with ar3_c2:
-                st.button(f"{prefix}Gunnah ({counts.get('gunnah', 0)})", use_container_width=True, on_click=on_click, kwargs={"kind": "gunnah"}, key="btn_gunnah")
+                st.button(f"{prefix}Gunnah ({counts.get('gunnah', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "gunnah"}, key="btn_gunnah")
                 
             # Row 4: Idgham & Madd Lazim
             ar4_c1, ar4_c2 = st.columns(2)
             with ar4_c1:
-                st.button(f"{prefix}Idgham ({counts.get('idgham', 0)})", use_container_width=True, on_click=on_click, kwargs={"kind": "idgham"}, key="btn_idgham")
+                st.button(f"{prefix}Idgham ({counts.get('idgham', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "idgham"}, key="btn_idgham")
             with ar4_c2:
-                st.button(f"{prefix}M. Lazim ({counts.get('madd_lazim', 0)})", use_container_width=True, on_click=on_click, kwargs={"kind": "madd_lazim"}, key="btn_madd_lazim")
+                st.button(f"{prefix}M. Lazim ({counts.get('madd_lazim', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "madd_lazim"}, key="btn_madd_lazim")
                 
             # Row 5: Madd Muttasil & Mad Tabaiee
             ar5_c1, ar5_c2 = st.columns(2)
             with ar5_c1:
-                st.button(f"{prefix}M. Mutta. ({counts.get('madd_muttasil', 0)})", use_container_width=True, on_click=on_click, kwargs={"kind": "madd_muttasil"}, key="btn_madd_muttasil")
+                st.button(f"{prefix}M. Mutta. ({counts.get('madd_muttasil', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "madd_muttasil"}, key="btn_madd_muttasil")
             with ar5_c2:
-                st.button(f"{prefix}M. Tabai. ({counts.get('mad_tabaiee', 0)})", use_container_width=True, on_click=on_click, kwargs={"kind": "mad_tabaiee"}, key="btn_mad_tabaiee")
+                st.button(f"{prefix}M. Tabai. ({counts.get('mad_tabaiee', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "mad_tabaiee"}, key="btn_mad_tabaiee")
 
             # Row 6: Ikhfa Shafawi & Iqlab
             ar6_c1, ar6_c2 = st.columns(2)
             with ar6_c1:
-                st.button(f"{prefix}Ikh. Shaf. ({counts.get('ikhfa_shafawi', 0)})", use_container_width=True, on_click=on_click, kwargs={"kind": "ikhfa_shafawi"}, key="btn_ikhfa_shafawi")
+                st.button(f"{prefix}Ikh. Shaf. ({counts.get('ikhfa_shafawi', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "ikhfa_shafawi"}, key="btn_ikhfa_shafawi")
             with ar6_c2:
-                st.button(f"{prefix}Iqlab ({counts.get('iqlab', 0)})", use_container_width=True, on_click=on_click, kwargs={"kind": "iqlab"}, key="btn_iqlab")
+                st.button(f"{prefix}Iqlab ({counts.get('iqlab', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "iqlab"}, key="btn_iqlab")
 
     with col_makharij:
         with st.container(border=True):
@@ -264,7 +264,7 @@ def mistake_buttons(*, session_id: str, counts: Dict[str, int], on_click) -> Non
                         kind = letter["kind"]
                         active_class = "makhraj-active" if counts.get(kind, 0) == 1 else "makhraj-inactive"
                         st.markdown(f"<span class='{active_class}' style='display: none;'>active</span>", unsafe_allow_html=True)
-                        st.button(f"{char}", use_container_width=True, on_click=on_click, kwargs={"kind": kind}, key=f"btn_makhraj_{kind}")
+                        st.button(f"{char}", width="stretch", on_click=on_click, kwargs={"kind": kind}, key=f"btn_makhraj_{kind}")
 
 
 def render_header_with_homework(title: str, student_id: Optional[str]) -> None:

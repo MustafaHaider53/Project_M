@@ -588,9 +588,9 @@ def render_planner() -> None:
         if is_locked:
             if not recipient_email:
                 st.warning("⚠️ No email registered for this student.")
-                st.button("✉️ Send Study Plan", disabled=True, key="send_email_disabled", use_container_width=True)
+                st.button("✉️ Send Study Plan", disabled=True, key="send_email_disabled", width="stretch")
             else:
-                if st.button(f"✉️ Send Study Plan to {recipient_email}", type="primary", key="send_email_active", use_container_width=True):
+                if st.button(f"✉️ Send Study Plan to {recipient_email}", type="primary", key="send_email_active", width="stretch"):
                     with st.spinner("Sending email..."):
                         def _send_bg():
                             success, msg = send_takhteet_plan_email(
@@ -609,7 +609,7 @@ def render_planner() -> None:
                         st.success("✉️ Send request dispatched!")
             
             st.markdown("<div style='margin-top: 10px;'></div>", unsafe_allow_html=True)
-            if st.button("🔓 Unlock / Edit Plan", type="secondary", key="unlock_plan", use_container_width=True):
+            if st.button("🔓 Unlock / Edit Plan", type="secondary", key="unlock_plan", width="stretch"):
                 if delete_locked_monthly_plan(student_id=student_id, year=selected_year, month=selected_month_num):
                     st.session_state.planner_is_locked = False
                     st.session_state.planner_data = None
@@ -626,9 +626,9 @@ def render_planner() -> None:
         else:
             if not recipient_email:
                 st.warning("⚠️ No email registered for this student.")
-                st.button("✉️ Send & Lock Study Plan", disabled=True, key="send_email_disabled", use_container_width=True)
+                st.button("✉️ Send & Lock Study Plan", disabled=True, key="send_email_disabled", width="stretch")
             else:
-                if st.button(f"✉️ Send & Lock Study Plan to {recipient_email}", type="primary", key="send_email_active", use_container_width=True):
+                if st.button(f"✉️ Send & Lock Study Plan to {recipient_email}", type="primary", key="send_email_active", width="stretch"):
                     with st.spinner("Saving and sending..."):
                         if save_locked_monthly_plan(student_id=student_id, year=selected_year, month=selected_month_num, plan_df=df):
                             def _send_bg():

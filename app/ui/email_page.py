@@ -91,14 +91,14 @@ def render_email_page() -> None:
         # Section 3: Send Action
         if not email:
             st.warning("⚠️ **Cannot send email**: The student does not have an email address in the database. Please add the student's email address to enable notifications.")
-            st.button(btn_label, disabled=True, type=btn_type, use_container_width=True)
+            st.button(btn_label, disabled=True, type=btn_type, width="stretch")
         else:
             email_secrets = st.secrets.get("email")
             if not email_secrets:
                 st.warning("⚠️ **SMTP Configuration missing**: Please add your `[email]` SMTP settings to Streamlit secrets to enable sending.")
-                st.button(btn_label, disabled=True, type=btn_type, use_container_width=True)
+                st.button(btn_label, disabled=True, type=btn_type, width="stretch")
             else:
-                if st.button(btn_label, type=btn_type, use_container_width=True):
+                if st.button(btn_label, type=btn_type, width="stretch"):
                     def _send_bg():
                         success, msg = send_daily_report_email(summary=summary, is_absent=is_absent)
                         if not success:
@@ -159,14 +159,14 @@ def render_email_page() -> None:
             # Send action
             if not email:
                 st.warning("⚠️ **Cannot send email**: The student does not have an email address in the database.")
-                st.button(btn_label, disabled=True, type=btn_type, use_container_width=True)
+                st.button(btn_label, disabled=True, type=btn_type, width="stretch")
             else:
                 email_secrets = st.secrets.get("email")
                 if not email_secrets:
                     st.warning("⚠️ **SMTP Configuration missing**: Please add your `[email]` SMTP settings to Streamlit secrets.")
-                    st.button(btn_label, disabled=True, type=btn_type, use_container_width=True)
+                    st.button(btn_label, disabled=True, type=btn_type, width="stretch")
                 else:
-                    if st.button(btn_label, type=btn_type, use_container_width=True):
+                    if st.button(btn_label, type=btn_type, width="stretch"):
                         def _send_monthly_bg():
                             success, msg = send_monthly_report_email(
                                 student_name=student_name,

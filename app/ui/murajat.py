@@ -65,9 +65,9 @@ def render_murajat() -> None:
                 key="murajat_surah"
             )
         with col_prev:
-            st.button("◀ Prev", disabled=not has_prev, use_container_width=True, on_click=click_prev)
+            st.button("◀ Prev", disabled=not has_prev, width="stretch", on_click=click_prev)
         with col_next:
-            st.button("Next ▶", disabled=not has_next, use_container_width=True, on_click=click_next)
+            st.button("Next ▶", disabled=not has_next, width="stretch", on_click=click_next)
 
         surah_id = None
         surah = None
@@ -238,6 +238,11 @@ def render_murajat() -> None:
         from app.db import increment_mistake_bg
         increment_mistake_bg(sid, kind, local_counts)
         st.session_state.play_sound = True
+
+    student_name = st.session_state.get("student_name", "Student")
+    with st.expander("📊 View Student Mistake Analytics & Progress", expanded=False):
+        from app.ui.analytics import render_student_analytics
+        render_student_analytics(student_id=student_id, student_name=student_name)
 
     if surah_id is None:
         st.info("Please select a Surah to start Murajat recitation.")
