@@ -415,8 +415,8 @@ def apply_islamic_theme() -> None:
           /* Float selectbox popover dropdowns to top of screen on short/landscape mobile view to avoid keyboard overlaps */
           @media (max-height: 480px) {
             div[data-baseweb="popover"] {
-              position: fixed !important;
-              top: 6px !important;
+              position: absolute !important;
+              top: calc(var(--scroll-top, 0px) + 6px) !important;
               left: 12px !important;
               right: 12px !important;
               width: auto !important;
@@ -464,6 +464,25 @@ def apply_islamic_theme() -> None:
             position: absolute !important;
           }
         </style>
+        <script>
+          (function() {
+            function updateScrollTop() {
+              const y = window.scrollY || window.pageYOffset || 0;
+              document.documentElement.style.setProperty('--scroll-top', y + 'px');
+            }
+            window.addEventListener('scroll', updateScrollTop, { passive: true });
+            window.addEventListener('resize', updateScrollTop, { passive: true });
+            document.addEventListener('focusin', function() {
+              setTimeout(updateScrollTop, 100);
+              setTimeout(updateScrollTop, 300);
+              setTimeout(updateScrollTop, 500);
+            });
+            // Initial call
+            updateScrollTop();
+            // Periodically check in case of layout changes
+            setInterval(updateScrollTop, 1000);
+          })();
+        </script>
         """,
         unsafe_allow_html=True,
     )
