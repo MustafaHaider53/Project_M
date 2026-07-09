@@ -412,6 +412,27 @@ def apply_islamic_theme() -> None:
             }
           }
 
+          /* Float selectbox popover dropdowns to top of screen on short/landscape mobile view to avoid keyboard overlaps */
+          @media (max-height: 480px) {
+            div[data-baseweb="popover"] {
+              position: fixed !important;
+              top: 8px !important;
+              left: 12px !important;
+              right: 12px !important;
+              width: auto !important;
+              bottom: auto !important;
+              transform: none !important;
+              z-index: 999999 !important;
+              box-shadow: 0 10px 30px rgba(30,26,18,0.25) !important;
+            }
+            div[data-baseweb="menu"] {
+              max-height: 125px !important;
+              border: 2px solid var(--gold) !important;
+              border-radius: 10px !important;
+              background-color: rgba(255, 255, 255, 0.98) !important;
+            }
+          }
+
           /* Hide background communication iframe completely */
           iframe[height="1"], 
           iframe[style*="height: 1px"],
