@@ -416,7 +416,7 @@ def apply_islamic_theme() -> None:
           @media (max-height: 480px) {
             div[data-baseweb="popover"] {
               position: fixed !important;
-              top: 8px !important;
+              top: 6px !important;
               left: 12px !important;
               right: 12px !important;
               width: auto !important;
@@ -425,8 +425,8 @@ def apply_islamic_theme() -> None:
               z-index: 999999 !important;
               box-shadow: 0 10px 30px rgba(30,26,18,0.25) !important;
             }
-            /* Reset Popper.js dynamic translate3d/top offsets on the child wrapper */
-            div[data-baseweb="popover"] > div {
+            /* Reset Popper.js dynamic translate3d/top offsets on all intermediate wrappers */
+            div[data-baseweb="popover"] div:not([data-baseweb="menu"]) {
               transform: none !important;
               top: 0 !important;
               left: 0 !important;
@@ -434,14 +434,17 @@ def apply_islamic_theme() -> None:
               position: relative !important;
             }
             div[data-baseweb="menu"] {
-              max-height: 120px !important;
+              max-height: 100px !important;
               overflow-y: auto !important;
               border: 2px solid var(--gold) !important;
               border-radius: 10px !important;
               background-color: rgba(255, 255, 255, 0.98) !important;
+              padding: 4px 0 !important;
             }
             div[data-baseweb="menu"] ul {
-              max-height: 120px !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              max-height: 100px !important;
               overflow-y: auto !important;
             }
           }
