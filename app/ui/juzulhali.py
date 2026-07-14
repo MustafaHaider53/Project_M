@@ -219,7 +219,8 @@ def render_juzulhali() -> None:
         st.session_state.play_sound = True
 
     student_name = st.session_state.get("student_name", "Student")
-    with st.expander("📊 View Student Mistake Analytics & Progress", expanded=False):
+    show_analytics = st.toggle("📊 View Student Mistake Analytics & Progress", value=False, key="juzulhali_show_student_analytics_toggle")
+    if show_analytics:
         from app.ui.analytics import render_student_analytics
         render_student_analytics(student_id=student_id, student_name=student_name)
 

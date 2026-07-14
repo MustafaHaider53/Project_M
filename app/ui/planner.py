@@ -659,7 +659,11 @@ def render_planner() -> None:
                         else:
                             st.error("Failed to save and lock plan in the database.")
 
-    st.iframe(html_content, height=800)
+    show_preview = st.checkbox("Show Study Plan Print Preview", value=True, key="planner_show_preview_toggle")
+    if show_preview:
+        st.iframe(html_content, height=800)
+    else:
+        st.info("💡 Study plan print preview is hidden to make editing instant and lag-free. Check 'Show Study Plan Print Preview' when you are ready to view or print the plan.")
 
 
 def build_planner_html(
