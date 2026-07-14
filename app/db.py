@@ -1234,6 +1234,364 @@ def get_student_sessions_with_counts(*, student_id: str) -> List[Dict[str, Any]]
     )
 
 
+@st.cache_data(show_spinner=False)
+def fetch_collective_attendance_report(*, year: int, month: int) -> Dict[str, Any]:
+    """
+    Fetches attendance and session summary for all students in a given month.
+    """
+    rest = get_rest()
+    if rest is None:
+        raise RuntimeError("Supabase is not configured.")
+
+    students = list_students()
+    if not students:
+        return {"students": [], "days": [], "year": year, "month": month}
+
+    import calendar
+    _, last_day = calendar.monthrange(year, month)
+    from_date = f"{year:04d}-{month:02d}-01"
+    to_date = f"{year:04d}-{month:02d}-{last_day:02d}"
+
+    # Query all records for the month in batch queries
+    sessions = rest.select(
+        "listening_sessions",
+        select="student_id,activity_date,mode,surah_id,page_number,surahs(name_en,name_ar,number),mistake_counts(*)",
+        params={
+            "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
+        }
+    )
+
+    jadeed_rows = rest.select(
+        "jadeed_entries",
+        select="student_id,activity_date,surah_id,page_number,ayah_number,volume,surahs(name_en,name_ar,number)",
+        params={
+            "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
+        }
+    )
+
+    jadeed_daily_rows = rest.select(
+        "jadeed_daily",
+        select="student_id,activity_date,no_jadeed",
+        params={
+            "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
+        }
+    )
+
+    takhteet_rows = rest.select(
+        "takhteet_daily",
+        select="student_id,activity_date,murajat_text_clean,juzulhali_text_clean,jadeed_text_clean",
+        params={
+            "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
+        }
+    )
+
+    # Organize by student and date
+    by_student_date = {}
+    for s in students:
+        s_id = s["id"]
+        by_student_date[s_id] = {}
+        for day in range(1, last_day + 1):
+            d_str = f"{year:04d}-{month:02d}-{day:02d}"
+            by_student_date[s_id][d_str] = {
+                "activity_date": d_str,
+                "murajat": [],
+                "juzulhali": [],
+                "jadeed": [],
+                "no_jadeed": False,
+                "takhteet": {"murajat": "", "juzulhali": "", "jadeed": ""},
+            }
+
+    for s in sessions:
+        s_id = s.get("student_id")
+        d = str(s.get("activity_date"))
+        if s_id not in by_student_date or d not in by_student_date[s_id]:
+            continue
+        counts = s.get("mistake_counts") or {}
+        if isinstance(counts, list):
+            counts = counts[0] if counts else {}
+        talqeen = int(counts.get("talqeen", 0) or 0)
+        tanbeeh = int(counts.get("tanbeeh", 0) or 0)
+        marks = 10.0 - (0.5 * talqeen) - (0.25 * tanbeeh)
+        
+        row = {
+            "mode": s.get("mode"),
+            "marks": marks,
+        }
+        surah = s.get("surahs") or {}
+        if isinstance(surah, list):
+            surah = surah[0] if surah else {}
+        surah_name = surah.get("name_en", "")
+        
+        if s.get("mode") == "murajat":
+            row["surat"] = surah_name
+            by_student_date[s_id][d]["murajat"].append(row)
+        elif s.get("mode") == "juzulhali":
+            row["page_number"] = int(s.get("page_number") or 0)
+            by_student_date[s_id][d]["juzulhali"].append(row)
+
+    for j in jadeed_rows:
+        s_id = j.get("student_id")
+        d = str(j.get("activity_date"))
+        if s_id not in by_student_date or d not in by_student_date[s_id]:
+            continue
+        surah = j.get("surahs") or {}
+        if isinstance(surah, list):
+            surah = surah[0] if surah else {}
+        by_student_date[s_id][d]["jadeed"].append({
+            "surat": surah.get("name_en", ""),
+            "page_number": int(j.get("page_number") or 0),
+            "ayah_number": int(j.get("ayah_number") or 0),
+            "volume": j.get("volume") or "",
+        })
+
+    for jd in jadeed_daily_rows:
+        s_id = jd.get("student_id")
+        d = str(jd.get("activity_date"))
+        if s_id in by_student_date and d in by_student_date[s_id]:
+            by_student_date[s_id][d]["no_jadeed"] = bool(jd.get("no_jadeed"))
+
+    for t in takhteet_rows:
+        s_id = t.get("student_id")
+        d = str(t.get("activity_date"))
+        if s_id in by_student_date and d in by_student_date[s_id]:
+            by_student_date[s_id][d]["takhteet"] = {
+                "murajat": t.get("murajat_text_clean") or "",
+                "juzulhali": t.get("juzulhali_text_clean") or "",
+                "jadeed": t.get("jadeed_text_clean") or "",
+            }
+
+    today_str = date.today().isoformat()
+    students_list = []
+    
+    for s in students:
+        s_id = s["id"]
+        s_name = s["full_name"]
+        
+        attendance_map = {}
+        weekday_present = 0
+        weekday_absent = 0
+        extra_weekend_present = 0
+        
+        for day in range(1, last_day + 1):
+            d_str = f"{year:04d}-{month:02d}-{day:02d}"
+            day_data = by_student_date[s_id][d_str]
+            
+            try:
+                dt = datetime.strptime(d_str, "%Y-%m-%d")
+                wd = dt.weekday()
+            except Exception:
+                wd = 0
+            is_weekend = wd in (5, 6)
+            
+            murajat = day_data["murajat"]
+            juzulhali = day_data["juzulhali"]
+            jadeed = day_data["jadeed"]
+            no_jadeed = day_data["no_jadeed"]
+            is_present = bool(
+                murajat
+                or juzulhali
+                or jadeed
+                or no_jadeed
+                or takhteet.get("murajat", "").strip()
+                or takhteet.get("juzulhali", "").strip()
+                or takhteet.get("jadeed", "").strip()
+            )
+            
+            status = "Future"
+            details = []
+            
+            if is_present:
+                status = "Present"
+                if is_weekend:
+                    extra_weekend_present += 1
+                else:
+                    weekday_present += 1
+                
+                # Build details
+                for m in murajat:
+                    details.append(f"Murajat: {m['surat']} ({m['marks']:.1f}/10)")
+                for jh in juzulhali:
+                    details.append(f"Juzulhali: Page {jh['page_number']} ({jh['marks']:.1f}/10)")
+                for jd in jadeed:
+                    details.append(f"Jadeed: {jd['surat']} (Pg {jd['page_number']}, Ayah {jd['ayah_number']}, {jd['volume']})")
+                if no_jadeed and not jadeed:
+                    details.append("No Jadeed Lesson today")
+                
+                t_mur = takhteet.get("murajat", "").strip()
+                t_juz = takhteet.get("juzulhali", "").strip()
+                t_jad = takhteet.get("jadeed", "").strip()
+                if t_mur or t_juz or t_jad:
+                    details.append(f"Takhteet HW: M={t_mur or '-'}, J={t_juz or '-'}, JD={t_jad or '-'}")
+            else:
+                if d_str <= today_str:
+                    if is_weekend:
+                        status = "Weekend"
+                        details.append("Weekend - No Session")
+                    else:
+                        status = "Absent"
+                        weekday_absent += 1
+                        details.append("Absent - No Activity")
+                else:
+                    status = "Future"
+                    details.append("Future Date")
+            
+            attendance_map[d_str] = {
+                "status": status,
+                "details": " | ".join(details)
+            }
+            
+        school_days = weekday_present + weekday_absent
+        attendance_rate = (weekday_present / school_days * 100) if school_days > 0 else 100.0
+        
+        students_list.append({
+            "id": s_id,
+            "full_name": s_name,
+            "attendance": attendance_map,
+            "stats": {
+                "school_days": school_days,
+                "present_days": weekday_present,
+                "absent_days": weekday_absent,
+                "extra_weekend_days": extra_weekend_present,
+                "attendance_rate": attendance_rate
+            }
+        })
+        
+    days_list = [f"{year:04d}-{month:02d}-{day:02d}" for day in range(1, last_day + 1)]
+    return {
+        "students": students_list,
+        "days": days_list,
+        "year": year,
+        "month": month
+    }
+
+
+@st.cache_data(show_spinner=False)
+def get_earliest_global_activity_date() -> str:
+    """
+    Returns the oldest activity_date from listening_sessions or jadeed_entries.
+    Defaults to 2025-01-01 if none found.
+    """
+    rest = get_rest()
+    if rest is None:
+        return "2025-01-01"
+    
+    try:
+        # Check listening sessions
+        sessions = rest.select(
+            "listening_sessions",
+            select="activity_date",
+            params={"order": "activity_date.asc", "limit": "1"}
+        )
+        if sessions:
+            return str(sessions[0]["activity_date"])
+    except Exception:
+        pass
+        
+    try:
+        # Check jadeed entries
+        jadeed = rest.select(
+            "jadeed_entries",
+            select="activity_date",
+            params={"order": "activity_date.asc", "limit": "1"}
+        )
+        if jadeed:
+            return str(jadeed[0]["activity_date"])
+    except Exception:
+        pass
+        
+    return "2025-01-01"
+
+
+@st.cache_data(show_spinner=False)
+def fetch_ikhtebar_report(*, from_date: str, to_date: str) -> Dict[str, Any]:
+    """
+    Returns collective data for all students in a date range for the Ikhtebar/Assessment report.
+    """
+    import concurrent.futures
+    rest = get_rest()
+    if rest is None:
+        raise RuntimeError("Supabase is not configured.")
+
+    def fetch_students():
+        return rest.select("students", select="id,full_name", params={"order": "full_name.asc"})
+
+    def fetch_jadeed():
+        return rest.select(
+            "jadeed_entries",
+            select="student_id,activity_date,page_number,ayah_number,volume,created_at,surahs(number,name_en,name_ar)",
+            params={
+                "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
+                "order": "activity_date.asc,created_at.asc"
+            }
+        )
+
+    def fetch_sessions():
+        session_rows = rest.select(
+            "listening_sessions",
+            select="student_id,activity_date,mode,page_number,surah_id,created_at,mistake_counts(talqeen,tanbeeh)",
+            params={
+                "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
+                "order": "activity_date.asc"
+            }
+        )
+        for s in session_rows:
+            counts = s.get("mistake_counts") or {}
+            if isinstance(counts, list):
+                counts = counts[0] if counts else {}
+            talqeen = int(counts.get("talqeen", 0) or 0)
+            tanbeeh = int(counts.get("tanbeeh", 0) or 0)
+            marks = 10.0 - (0.5 * talqeen) - (0.25 * tanbeeh)
+            if marks < 0:
+                marks = 0.0
+            s["marks"] = marks
+        return session_rows
+
+    def fetch_jadeed_daily():
+        return rest.select(
+            "jadeed_daily",
+            select="student_id,activity_date,no_jadeed",
+            params={
+                "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
+                "order": "activity_date.asc"
+            }
+        )
+
+    def fetch_takhteet():
+        return rest.select(
+            "takhteet_daily",
+            select="student_id,activity_date,murajat_text_clean,juzulhali_text_clean,jadeed_text_clean",
+            params={
+                "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
+                "order": "activity_date.asc"
+            }
+        )
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+        future_students = executor.submit(fetch_students)
+        future_jadeed = executor.submit(fetch_jadeed)
+        future_sessions = executor.submit(fetch_sessions)
+        future_jadeed_daily = executor.submit(fetch_jadeed_daily)
+        future_takhteet = executor.submit(fetch_takhteet)
+
+        students = future_students.result()
+        jadeed_rows = future_jadeed.result()
+        session_rows = future_sessions.result()
+        jadeed_daily_rows = future_jadeed_daily.result()
+        takhteet_rows = future_takhteet.result()
+
+    return {
+        "students": students,
+        "jadeed": jadeed_rows,
+        "sessions": session_rows,
+        "jadeed_daily": jadeed_daily_rows,
+        "takhteet": takhteet_rows,
+        "from_date": from_date,
+        "to_date": to_date
+    }
+
+
+
+
 
 
 

@@ -1221,3 +1221,710 @@ def export_html_to_pdf_bytes(html: str) -> bytes:
         )
         browser.close()
         return pdf
+
+
+def build_collective_attendance_report_html(data: Dict[str, Any]) -> str:
+    """
+    Generates a beautifully-designed collective (class-wide) monthly attendance HTML report.
+    """
+    import calendar
+    from datetime import datetime
+    
+    year = data["year"]
+    month = data["month"]
+    students = data["students"]
+    days = data["days"]
+    
+    month_name = calendar.month_name[month]
+    month_year_str = f"{month_name} {year}"
+    
+    # Calculate class-wide stats
+    total_students = len(students)
+    school_days = students[0]["stats"]["school_days"] if students else 0
+    
+    avg_sum = 0.0
+    perfect_count = 0
+    warning_count = 0
+    
+    for s in students:
+        rate = s["stats"]["attendance_rate"]
+        avg_sum += rate
+        if rate >= 99.9:
+            perfect_count += 1
+        elif rate < 85.0:
+            warning_count += 1
+            
+    class_avg = (avg_sum / total_students) if total_students > 0 else 100.0
+    
+    # KPI Stats Cards HTML
+    stats_html = f"""
+    <div class="stats-container">
+        <div class="stat-card" style="border-left-color: #2b6cb0;">
+            <span class="stat-title">Class Average Attendance</span>
+            <span class="stat-value" style="color: #2b6cb0;">{class_avg:.1f}%</span>
+        </div>
+        <div class="stat-card" style="border-left-color: #4a5568;">
+            <span class="stat-title">Total Students</span>
+            <span class="stat-value" style="color: #4a5568;">{total_students}</span>
+        </div>
+        <div class="stat-card" style="border-left-color: #2f855a;">
+            <span class="stat-title">Perfect Attendance (100%)</span>
+            <span class="stat-value" style="color: #2f855a;">{perfect_count} {"Student" if perfect_count == 1 else "Students"}</span>
+        </div>
+        <div class="stat-card" style="border-left-color: #c53030;">
+            <span class="stat-title">Needs Attention (&lt;85%)</span>
+            <span class="stat-value" style="color: #c53030;">{warning_count} {"Student" if warning_count == 1 else "Students"}</span>
+        </div>
+    </div>
+    """
+    
+    # Table headers: Days 1 to last_day
+    day_headers = []
+    for d_str in days:
+        day_num = int(d_str[-2:])
+        try:
+            dt = datetime.strptime(d_str, "%Y-%m-%d")
+            wd_name = dt.strftime("%a")[0] # M, T, W...
+        except Exception:
+            wd_name = ""
+        day_headers.append(
+            f'<th class="day-header-col" title="{d_str}">{day_num}<br/><span style="font-size: 6.5pt; font-weight: normal; opacity: 0.75;">{wd_name}</span></th>'
+        )
+        
+    thead_html = f"""
+    <tr>
+      <th style="width: 35px;">S.No</th>
+      <th style="width: 140px; text-align: left; padding-left: 8px;">Student Name</th>
+      {"".join(day_headers)}
+      <th style="width: 45px;" title="Total Present Days">Pres</th>
+      <th style="width: 45px;" title="Total Absent Days">Abs</th>
+      <th style="width: 55px;">Rate %</th>
+    </tr>
+    """
+    
+    # Table rows
+    table_rows = []
+    for idx, s in enumerate(students):
+        row_cells = []
+        row_cells.append(f'<td>{idx + 1}</td>')
+        row_cells.append(f'<td class="text-left" style="font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{escape(s["full_name"])}</td>')
+        
+        attendance = s["attendance"]
+        for d_str in days:
+            day_info = attendance.get(d_str, {"status": "Future", "details": ""})
+            status = day_info["status"]
+            details = day_info["details"] or ""
+            
+            cell_class = ""
+            cell_content = ""
+            
+            if status == "Present":
+                cell_class = "present-cell"
+                cell_content = "✔"
+            elif status == "Absent":
+                cell_class = "absent-cell"
+                cell_content = "❌"
+            elif status == "Weekend":
+                cell_class = "weekend-cell"
+                cell_content = "W"
+            else: # Future
+                cell_class = "future-cell"
+                cell_content = ""
+                
+            row_cells.append(
+                f'<td class="status-cell {cell_class}" title="{escape(details)}">{cell_content}</td>'
+            )
+            
+        stats = s["stats"]
+        tot_present = stats["present_days"] + stats["extra_weekend_days"]
+        tot_absent = stats["absent_days"]
+        rate = stats["attendance_rate"]
+        
+        if rate >= 95.0:
+            rate_badge_class = "rate-excellent"
+        elif rate >= 85.0:
+            rate_badge_class = "rate-passing"
+        else:
+            rate_badge_class = "rate-warning"
+            
+        row_cells.append(f'<td style="font-weight: 600; color: #2e7d32;">{tot_present}</td>')
+        row_cells.append(f'<td style="font-weight: 600; color: #c62828;">{tot_absent}</td>')
+        row_cells.append(f'<td><span class="rate-badge {rate_badge_class}">{rate:.1f}%</span></td>')
+        
+        table_rows.append(f'<tr>{"".join(row_cells)}</tr>')
+        
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Collective Attendance Report - {escape(month_year_str)}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    
+    @page {{
+      size: A4 landscape;
+      margin: 8mm 10mm 8mm 10mm;
+    }}
+    @media print {{
+      .print-btn {{ display: none !important; }}
+      * {{
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }}
+    }}
+    * {{
+      box-sizing: border-box;
+      font-family: 'Inter', "Segoe UI", Arial, sans-serif;
+    }}
+    body {{
+      color: #2d3748;
+      font-size: 8pt;
+      line-height: 1.3;
+      margin: 0;
+      padding: 0;
+      background-color: #ffffff;
+    }}
+    .print-btn {{
+      position: fixed;
+      bottom: 22px;
+      right: 22px;
+      z-index: 9999;
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 20px;
+      font-size: 9.5pt;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(30,60,114,0.3);
+      transition: all 0.2s ease;
+    }}
+    .print-btn:hover {{
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(30,60,114,0.4);
+    }}
+    
+    /* Header styling */
+    .header-banner {{
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      border-bottom: 4px solid #D4AF37;
+      padding: 10px 16px;
+      margin-bottom: 12px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #ffffff;
+    }}
+    .header-title {{
+      font-size: 12.5pt;
+      font-weight: 800;
+      margin: 0;
+    }}
+    .header-subtitle {{
+      font-size: 7.5pt;
+      color: #D4AF37;
+      text-transform: uppercase;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }}
+    
+    /* Stats cards */
+    .stats-container {{
+      display: flex;
+      gap: 10px;
+      margin-bottom: 12px;
+      width: 100%;
+    }}
+    .stat-card {{
+      flex: 1;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-left: 4px solid #1e3c72;
+      border-radius: 6px;
+      padding: 8px 12px;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+    }}
+    .stat-title {{
+      font-size: 7pt;
+      font-weight: 600;
+      color: #718096;
+      margin-bottom: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }}
+    .stat-value {{
+      font-size: 11pt;
+      font-weight: 800;
+    }}
+    
+    /* Grid Table styling */
+    table {{
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      margin-top: 5px;
+      border: 1.5px solid #1e3c72;
+    }}
+    th {{
+      color: #ffffff;
+      font-weight: bold;
+      border: 1px solid #1e3c72;
+      font-size: 8pt;
+      padding: 6px 4px;
+      text-align: center;
+      vertical-align: middle;
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    }}
+    td {{
+      border: 1px solid #e2e8f0;
+      padding: 5px 4px;
+      vertical-align: middle;
+      font-size: 7.5pt;
+      text-align: center;
+    }}
+    .text-left {{
+      text-align: left;
+      padding-left: 8px;
+    }}
+    
+    /* Cell statuses */
+    .status-cell {{
+      font-weight: bold;
+      font-size: 7pt;
+      transition: all 0.15s ease;
+      cursor: help;
+    }}
+    .present-cell {{
+      background-color: #e6fffa !important;
+      color: #00796b !important;
+    }}
+    .absent-cell {{
+      background-color: #ffeeee !important;
+      color: #c62828 !important;
+    }}
+    .weekend-cell {{
+      background-color: #f7fafc !important;
+      color: #a0aec0 !important;
+      font-weight: normal;
+    }}
+    .future-cell {{
+      background-color: #ffffff !important;
+      color: #e2e8f0 !important;
+    }}
+    
+    /* Header day columns */
+    .day-header-col {{
+      font-size: 7.5pt;
+      line-height: 1.1;
+    }}
+    
+    /* Attendance Rate Badges */
+    .rate-badge {{
+      display: inline-block;
+      padding: 2px 6px;
+      font-size: 7.5pt;
+      font-weight: bold;
+      border-radius: 4px;
+      text-align: center;
+    }}
+    .rate-excellent {{
+      background-color: #c6f6d5;
+      color: #22543d;
+    }}
+    .rate-passing {{
+      background-color: #fef3c7;
+      color: #92400e;
+    }}
+    .rate-warning {{
+      background-color: #fed7d7;
+      color: #9b2c2c;
+    }}
+  </style>
+</head>
+<body>
+  <!-- Header Banner -->
+  <div class="header-banner">
+    <div>
+      <div class="header-subtitle">Al Madrasa-tus-Saifiyah-tul-Burhaniyah</div>
+      <div class="header-title">Collective Attendance Report (حضور الطلاب)</div>
+    </div>
+    <div style="text-align: right;">
+      <div class="header-subtitle">Report Month</div>
+      <div style="font-size: 11pt; font-weight: bold; margin-top: 1px;">{escape(month_year_str)}</div>
+    </div>
+  </div>
+
+  <!-- Summary Statistics Grid -->
+  {stats_html}
+
+  <!-- Report Data Grid Table -->
+  <table>
+    <thead>
+      {thead_html}
+    </thead>
+    <tbody>
+      {"".join(table_rows)}
+    </tbody>
+  </table>
+
+  <!-- Floating Print Button -->
+  <button class="print-btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
+
+</body>
+</html>
+"""
+
+
+_quran_metadata = None
+
+
+def get_quran_page(surah_num: int, ayah_num: int) -> int:
+    global _quran_metadata
+    if _quran_metadata is None:
+        try:
+            import json
+            import os
+            path = os.path.join(os.path.dirname(__file__), "quran_metadata.json")
+            with open(path, "r", encoding="utf-8") as f:
+                _quran_metadata = json.load(f)
+        except Exception:
+            _quran_metadata = {}
+            
+    s_str = str(surah_num)
+    if _quran_metadata and "surahs" in _quran_metadata and s_str in _quran_metadata["surahs"]:
+        pages_dict = _quran_metadata["surahs"][s_str].get("pages", {})
+        for page_num_str, ayahs in pages_dict.items():
+            if ayah_num in ayahs or str(ayah_num) in ayahs:
+                return int(page_num_str)
+    return 0
+
+
+def build_ikhtebar_report_html(
+    data: Dict[str, Any], 
+    working_days_list: List[date], 
+    holidays_list: List[date]
+) -> str:
+    """
+    Builds a premium, print-friendly assessment (Ikhtebar) report for all students.
+    """
+    from collections import defaultdict
+    from datetime import datetime
+    
+    from_date = data.get("from_date", "")
+    to_date = data.get("to_date", "")
+    
+    # Format date strings for display
+    try:
+        from_dt = datetime.strptime(from_date, "%Y-%m-%d")
+        to_dt = datetime.strptime(to_date, "%Y-%m-%d")
+        range_str = f"{from_dt.strftime('%d %B %Y')} - {to_dt.strftime('%d %B %Y')}"
+    except Exception:
+        range_str = f"{from_date} - {to_date}"
+        
+    students = data.get("students", [])
+    jadeed_rows = data.get("jadeed", [])
+    session_rows = data.get("sessions", [])
+    jadeed_daily_rows = data.get("jadeed_daily", [])
+    takhteet_rows = data.get("takhteet", [])
+    
+    # 1. Map student jadeed entries
+    student_jadeed = defaultdict(list)
+    for j in jadeed_rows:
+        student_jadeed[j["student_id"]].append(j)
+        
+    # Sort each student's jadeed entries chronologically
+    for s_id in student_jadeed:
+        student_jadeed[s_id].sort(key=lambda x: (x.get("activity_date", ""), x.get("created_at", "")))
+        
+    # 2. Gather student presence dates
+    student_activity_dates = defaultdict(set)
+    
+    for s in session_rows:
+        student_activity_dates[s["student_id"]].add(str(s["activity_date"]))
+        
+    for jd in jadeed_daily_rows:
+        student_activity_dates[jd["student_id"]].add(str(jd["activity_date"]))
+        
+    for t in takhteet_rows:
+        if t.get("murajat_text_clean") or t.get("juzulhali_text_clean") or t.get("jadeed_text_clean"):
+            student_activity_dates[t["student_id"]].add(str(t["activity_date"]))
+            
+    for j in jadeed_rows:
+        student_activity_dates[j["student_id"]].add(str(j["activity_date"]))
+        
+    # 3. Gather student marks
+    student_marks = defaultdict(list)
+    for s in session_rows:
+        if s.get("marks") is not None:
+            student_marks[s["student_id"]].append(float(s["marks"]))
+            
+    total_working_days = len(working_days_list)
+    
+    # Build rows
+    table_rows = []
+    
+    for idx, s in enumerate(students):
+        s_id = s["id"]
+        s_name = s["full_name"]
+        
+        # Jadeed Start / End
+        s_jadeed = student_jadeed.get(s_id, [])
+        if s_jadeed:
+            first_j = s_jadeed[0]
+            last_j = s_jadeed[-1]
+            
+            f_surah = first_j.get("surahs") or {}
+            f_surah_num = int(f_surah.get("number", 0))
+            f_surah_name = f_surah.get("name_en", "Unknown")
+            f_ayah = int(first_j.get("ayah_number") or 1)
+            
+            l_surah = last_j.get("surahs") or {}
+            l_surah_num = int(l_surah.get("number", 0))
+            l_surah_name = l_surah.get("name_en", "Unknown")
+            l_ayah = int(last_j.get("ayah_number") or 1)
+            
+            # Lookup Quran page numbers dynamically using metadata to override any database entry errors
+            f_page = get_quran_page(f_surah_num, f_ayah) or first_j.get("page_number")
+            l_page = get_quran_page(l_surah_num, l_ayah) or last_j.get("page_number")
+            
+            jadeed_start_str = f"{f_surah_num} - {f_surah_name} (Ayah {f_ayah})"
+            jadeed_end_str = f"{l_surah_num} - {l_surah_name} (Ayah {l_ayah})"
+            
+            if f_page is not None and l_page is not None:
+                total_pages = abs(int(f_page) - int(l_page)) + 1
+            else:
+                total_pages = 0
+        else:
+            jadeed_start_str = "-"
+            jadeed_end_str = "-"
+            total_pages = 0
+            
+        # Presence and Absence
+        present_count = 0
+        for wd in working_days_list:
+            if wd.isoformat() in student_activity_dates[s_id]:
+                present_count += 1
+        absent_count = total_working_days - present_count
+        
+        present_str = f"{present_count} / {total_working_days}"
+        absent_str = f"{absent_count} / {total_working_days}"
+        
+        # Grade Calculation based on total_pages completed
+        if total_pages >= 3:
+            grade_class = "grade-jayyid"
+            grade_label = "Jayyid"
+        elif total_pages > 0:
+            grade_class = "grade-mutawassit"
+            grade_label = "Mutawassit"
+        else:
+            grade_class = ""
+            grade_label = ""
+            
+        if grade_label:
+            grade_badge = f'<span class="grade-badge {grade_class}">{grade_label}</span>'
+        else:
+            grade_badge = '<span class="muted">-</span>'
+            
+        # Alternating row background
+        row_bg_class = "even-row" if idx % 2 == 1 else "odd-row"
+        
+        table_rows.append(f"""
+        <tr class="{row_bg_class}">
+            <td style="font-weight: 600; color: #1b4d3e;">{escape(s_name)}</td>
+            <td style="font-size: 8.5pt;">{escape(jadeed_start_str)}</td>
+            <td style="font-size: 8.5pt;">{escape(jadeed_end_str)}</td>
+            <td style="font-weight: 700; text-align: center;">{total_pages}</td>
+            <td style="text-align: center; color: #1b4d3e; font-weight: 500;">{present_str}</td>
+            <td style="text-align: center; color: #9b2c2c; font-weight: 500;">{absent_str}</td>
+            <td style="text-align: center;">{grade_badge}</td>
+        </tr>
+        """)
+        
+    # Return full HTML
+    return f"""<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>OPR - One Page Report</title>
+  <style>
+    :root {{
+      --green-dark: #1b4d3e;
+      --gold: #c5a880;
+      --gray-light: #fcfbfa;
+      --gray-border: #e8e4db;
+      --text: #333333;
+    }}
+    body {{
+      font-family: 'Outfit', 'Inter', 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 30px;
+      color: var(--text);
+      background-color: #ffffff;
+    }}
+    .header-banner {{
+      background: linear-gradient(135deg, var(--green-dark) 0%, #113027 100%);
+      padding: 25px 30px;
+      border-radius: 12px;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      margin-bottom: 25px;
+      border: 1px solid var(--gold);
+    }}
+    .header-title {{
+      margin: 0;
+      font-size: 20pt;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }}
+    .header-subtitle {{
+      margin: 0;
+      font-size: 9.5pt;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--gold);
+      font-weight: 600;
+    }}
+    
+    table {{
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      font-size: 9.5pt;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+    }}
+    th {{
+      background-color: var(--green-dark);
+      color: white;
+      padding: 12px 10px;
+      font-weight: 600;
+      font-size: 8.5pt;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border: 1px solid var(--green-dark);
+    }}
+    td {{
+      padding: 10px;
+      border: 1px solid var(--gray-border);
+    }}
+    .odd-row {{
+      background-color: #ffffff;
+    }}
+    .even-row {{
+      background-color: var(--gray-light);
+    }}
+    
+    .grade-badge {{
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 8.5pt;
+      font-weight: 600;
+      text-align: center;
+    }}
+    .grade-jayyid {{
+      background-color: rgba(27, 77, 62, 0.1);
+      color: #1b4d3e;
+      border: 1px solid rgba(27, 77, 62, 0.2);
+    }}
+    .grade-mutawassit {{
+      background-color: rgba(197, 168, 128, 0.15);
+      color: #b38f59;
+      border: 1px solid rgba(197, 168, 128, 0.3);
+    }}
+    
+    .muted {{
+      color: #95a5a6;
+    }}
+    
+    .print-btn {{
+      position: fixed;
+      bottom: 25px;
+      right: 25px;
+      background-color: var(--green-dark);
+      color: white;
+      border: 1px solid var(--gold);
+      padding: 12px 24px;
+      border-radius: 30px;
+      font-size: 10pt;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+      z-index: 1000;
+      transition: all 0.2s ease;
+    }}
+    .print-btn:hover {{
+      background-color: #113027;
+      transform: translateY(-2px);
+    }}
+    
+    @media print {{
+      body {{
+        padding: 0;
+      }}
+      .print-btn {{
+        display: none !important;
+      }}
+      .header-banner {{
+        box-shadow: none;
+        border: 1px solid #000;
+      }}
+      table {{
+        page-break-inside: auto;
+      }}
+      tr {{
+        page-break-inside: avoid;
+        page-break-after: auto;
+      }}
+      thead {{
+        display: table-header-group;
+      }}
+    }}
+  </style>
+</head>
+<body>
+
+  <!-- Header Banner -->
+  <div class="header-banner">
+    <div>
+      <div class="header-subtitle">Al Madrasa-tus-Saifiyah-tul-Burhaniyah</div>
+      <div class="header-title">OPR - One Page Report (تقرير الصفحة الواحدة)</div>
+    </div>
+    <div style="text-align: right;">
+      <div class="header-subtitle">Date Range</div>
+      <div style="font-size: 11pt; font-weight: bold; margin-top: 1px;">{escape(range_str)}</div>
+    </div>
+  </div>
+
+  <!-- Report Data Grid Table -->
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left; width: 22%;">Student Name</th>
+        <th style="text-align: left; width: 22%;">Jadeed Start (First Entry)</th>
+        <th style="text-align: left; width: 22%;">Jadeed End (Latest Entry)</th>
+        <th style="width: 10%;">Total Pages</th>
+        <th style="width: 12%;">Days Present</th>
+        <th style="width: 12%;">Days Absent</th>
+        <th style="width: 10%;">Grade</th>
+      </tr>
+    </thead>
+    <tbody>
+      {"".join(table_rows)}
+    </tbody>
+  </table>
+
+  <!-- Floating Print Button -->
+  <button class="print-btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
+
+</body>
+</html>
+"""
+
+
