@@ -608,7 +608,7 @@ def list_jadeed_entries(*, student_id: str, limit: int = 200) -> List[Dict[str, 
         select=select,
         params={
             "student_id": f"eq.{student_id}",
-            "order": "created_at.desc",
+            "order": "activity_date.desc,created_at.desc",
             "limit": str(int(limit)),
         },
     )
