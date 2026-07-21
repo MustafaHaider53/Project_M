@@ -134,6 +134,7 @@ def render_jadeed() -> None:
                             })
                     with st.spinner("Deleting entry..."):
                         insert_jadeed_rows(student_id=student_id, rows=payload)
+                    st.session_state.pop("jadeed_state_init", None)
                     st.session_state.jadeed_flash = "Entry deleted successfully."
                     st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
@@ -167,23 +168,45 @@ def render_jadeed() -> None:
 
     # Reset/Initialize session state keys to avoid cascading dropdown lags
     init_session_key = f"jadeed_state_init::{student_id}"
-    if (
-        st.session_state.get("jadeed_state_init") != init_session_key
-        or "jadeed_surah" not in st.session_state
-        or "jadeed_page" not in st.session_state
-        or "jadeed_ayah" not in st.session_state
-    ):
+    if st.session_state.get("jadeed_state_init") != init_session_key:
         st.session_state.jadeed_state_init = init_session_key
-        st.session_state.jadeed_surah = surah_list[0]
         
-        s_num_str = str(surah_list[0]["number"])
+        # Try to load last jadeed entry to pre-fill
+        from app.db import list_jadeed_entries
+        last_entries = list_jadeed_entries(student_id=student_id, limit=1)
+        last_entry = last_entries[0] if last_entries else None
+        
+        default_surah = surah_list[0]
+        if last_entry:
+            last_surah_id = last_entry.get("surah_id")
+            found_surah = next((s for s in surah_list if s["number"] == last_surah_id), None)
+            if found_surah:
+                default_surah = found_surah
+
+        st.session_state.jadeed_surah = default_surah
+        
+        s_num_str = str(default_surah["number"])
         pages_dict = quran_metadata["surahs"][s_num_str]["pages"]
         page_options = sorted(list(pages_dict.keys()), key=int)
-        st.session_state.jadeed_page = page_options[0]
         
-        ayah_options = sorted(pages_dict[page_options[0]], key=int)
-        st.session_state.jadeed_ayah = ayah_options[0]
-        st.session_state.jadeed_volume = "Kamil"
+        default_page = page_options[0]
+        if last_entry:
+            last_page = str(last_entry.get("page_number"))
+            if last_page in page_options:
+                default_page = last_page
+                
+        st.session_state.jadeed_page = default_page
+        
+        ayah_options = sorted(pages_dict[default_page], key=int)
+        
+        default_ayah = ayah_options[0]
+        if last_entry:
+            last_ayah = str(last_entry.get("ayah_number"))
+            if last_ayah in ayah_options:
+                default_ayah = last_ayah
+                
+        st.session_state.jadeed_ayah = default_ayah
+        st.session_state.jadeed_volume = last_entry.get("volume", "Kamil") if last_entry else "Kamil"
 
     # Outer container for form
     with st.container(border=True):
@@ -269,6 +292,7 @@ def render_jadeed() -> None:
                     
                     with st.spinner("Saving new entry..."):
                         insert_jadeed_rows(student_id=student_id, rows=payload)
+                    st.session_state.pop("jadeed_state_init", None)
                     st.session_state.jadeed_flash = "New Jadeed entry added successfully!"
                     st.rerun()
                     
@@ -284,5 +308,6 @@ def render_jadeed() -> None:
             ):
                 with st.spinner("Marking as No Jadeed..."):
                     insert_jadeed_rows(student_id=student_id, rows=[])
+                st.session_state.pop("jadeed_state_init", None)
                 st.session_state.jadeed_flash = "Marked: No Jadeed for today."
                 st.rerun()
