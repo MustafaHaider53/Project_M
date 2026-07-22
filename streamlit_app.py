@@ -23,6 +23,14 @@ def main() -> None:
         if st.query_params.get("logged_in") == "true":
             st.session_state.logged_in = True
 
+    # Restore student and page from query parameters if logged in and not already set in session state
+    if st.session_state.get("logged_in"):
+        if not st.session_state.get("student_id") and st.query_params.get("student_id"):
+            st.session_state.student_id = st.query_params.get("student_id")
+            st.session_state.student_name = st.query_params.get("student_name")
+            if st.query_params.get("page"):
+                st.session_state.page = st.query_params.get("page")
+
     is_logged_in = "true" if st.session_state.get("logged_in") else "false"
     is_manual_logout = "true" if st.session_state.pop("manual_logout", False) else "false"
 
@@ -223,41 +231,51 @@ def main() -> None:
             st.session_state.student_id = None
             st.session_state.student_name = None
             st.session_state.page = "home"
+            st.query_params.pop("student_id", None)
+            st.query_params.pop("student_name", None)
+            st.query_params.pop("page", None)
             st.rerun()
             
     with cols[1]:
         if st.button("Murajat", type="primary" if current_page == "murajat" else "secondary", use_container_width=True):
             st.session_state.page = "murajat"
+            st.query_params["page"] = "murajat"
             st.rerun()
             
     with cols[2]:
         if st.button("Juzulhali", type="primary" if current_page == "juzulhali" else "secondary", use_container_width=True):
             st.session_state.page = "juzulhali"
+            st.query_params["page"] = "juzulhali"
             st.rerun()
             
     with cols[3]:
         if st.button("Jadeed", type="primary" if current_page == "jadeed" else "secondary", use_container_width=True):
             st.session_state.page = "jadeed"
+            st.query_params["page"] = "jadeed"
             st.rerun()
             
     with cols[4]:
         if st.button("Takhteet", type="primary" if current_page == "takhteet" else "secondary", use_container_width=True):
             st.session_state.page = "takhteet"
+            st.query_params["page"] = "takhteet"
             st.rerun()
 
     with cols[5]:
         if st.button("Planner", type="primary" if current_page == "planner" else "secondary", use_container_width=True):
             st.session_state.page = "planner"
+            st.query_params["page"] = "planner"
             st.rerun()
             
     with cols[6]:
         if st.button("Email", type="primary" if current_page == "email" else "secondary", use_container_width=True):
             st.session_state.page = "email"
+            st.query_params["page"] = "email"
             st.rerun()
             
     with cols[7]:
         if st.button("Report", type="primary" if current_page == "report" else "secondary", use_container_width=True):
             st.session_state.page = "report"
+            st.query_params["page"] = "report"
             st.rerun()
             
 
