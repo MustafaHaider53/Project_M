@@ -210,10 +210,34 @@ def create_listening_session(
     mode: str,
     surah_id: Optional[int],
     page_number: Optional[int],
+    force_new: bool = False,
 ) -> Dict[str, Any]:
     rest = get_rest()
     if rest is None:
         raise RuntimeError("Supabase is not configured. Set SUPABASE_URL and SUPABASE_KEY in Streamlit secrets.")
+
+    if not force_new:
+        params = {
+            "student_id": f"eq.{student_id}",
+            "mode": f"eq.{mode}",
+            "activity_date": f"eq.{today_iso()}",
+        }
+        if surah_id is not None:
+            params["surah_id"] = f"eq.{surah_id}"
+        else:
+            params["surah_id"] = "is.null"
+
+        if page_number is not None:
+            params["page_number"] = f"eq.{page_number}"
+        else:
+            params["page_number"] = "is.null"
+
+        params["order"] = "created_at.desc"
+        params["limit"] = "1"
+        
+        existing = rest.select("listening_sessions", select="id,mode,surah_id,page_number,created_at", params=params)
+        if existing:
+            return existing[0]
 
     payload: Dict[str, Any] = {
         "student_id": student_id,
@@ -766,9 +790,11 @@ def fetch_monthly_report(*, student_id: str, year: int, month: int) -> List[Dict
         d = str(s.get("activity_date"))
         if d not in by_date:
             continue
-        counts = s.get("mistake_counts") or {}
+        counts = s.get("mistake_counts")
         if isinstance(counts, list):
-            counts = counts[0] if counts else {}
+            counts = counts[0] if counts else None
+        if not counts:
+            continue
         talqeen = int(counts.get("talqeen", 0) or 0)
         tanbeeh = int(counts.get("tanbeeh", 0) or 0)
         repeat_mistake = int(counts.get("repeat_mistake", 0) or 0)
@@ -924,8 +950,16 @@ def get_student_daily_summary(*, student_id: str, date_str: str) -> Dict[str, An
     except Exception:
         pass
 
-    murajat_sessions = [s for s in sessions if s.get("mode") == "murajat"]
-    juzulhali_sessions = [s for s in sessions if s.get("mode") == "juzulhali"]
+    valid_sessions = []
+    for s in sessions:
+        counts = s.get("mistake_counts")
+        if isinstance(counts, list):
+            counts = counts[0] if counts else None
+        if counts:
+            valid_sessions.append(s)
+
+    murajat_sessions = [s for s in valid_sessions if s.get("mode") == "murajat"]
+    juzulhali_sessions = [s for s in valid_sessions if s.get("mode") == "juzulhali"]
 
     return {
         "student_name": student.get("full_name"),
@@ -1239,7 +1273,7 @@ def get_student_sessions_with_counts(*, student_id: str) -> List[Dict[str, Any]]
     rest = get_rest()
     if rest is None:
         return []
-    return rest.select(
+    sessions = rest.select(
         "listening_sessions",
         select="id,activity_date,mode,surah_id,page_number,created_at,surahs(number,name_en,name_ar),mistake_counts(*)",
         params={
@@ -1247,6 +1281,14 @@ def get_student_sessions_with_counts(*, student_id: str) -> List[Dict[str, Any]]
             "order": "activity_date.desc,created_at.desc",
         },
     )
+    valid_sessions = []
+    for s in sessions:
+        counts = s.get("mistake_counts")
+        if isinstance(counts, list):
+            counts = counts[0] if counts else None
+        if counts:
+            valid_sessions.append(s)
+    return valid_sessions
 
 
 @st.cache_data(show_spinner=False)
@@ -1321,9 +1363,11 @@ def fetch_collective_attendance_report(*, year: int, month: int) -> Dict[str, An
         d = str(s.get("activity_date"))
         if s_id not in by_student_date or d not in by_student_date[s_id]:
             continue
-        counts = s.get("mistake_counts") or {}
+        counts = s.get("mistake_counts")
         if isinstance(counts, list):
-            counts = counts[0] if counts else {}
+            counts = counts[0] if counts else None
+        if not counts:
+            continue
         talqeen = int(counts.get("talqeen", 0) or 0)
         tanbeeh = int(counts.get("tanbeeh", 0) or 0)
         is_zero = bool(counts.get("is_zero_marks", False))
@@ -1555,10 +1599,13 @@ def fetch_ikhtebar_report(*, from_date: str, to_date: str) -> Dict[str, Any]:
                 "order": "activity_date.asc"
             }
         )
+        valid_rows = []
         for s in session_rows:
-            counts = s.get("mistake_counts") or {}
+            counts = s.get("mistake_counts")
             if isinstance(counts, list):
-                counts = counts[0] if counts else {}
+                counts = counts[0] if counts else None
+            if not counts:
+                continue
             talqeen = int(counts.get("talqeen", 0) or 0)
             tanbeeh = int(counts.get("tanbeeh", 0) or 0)
             is_zero = bool(counts.get("is_zero_marks", False))

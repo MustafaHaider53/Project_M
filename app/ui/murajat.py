@@ -257,7 +257,7 @@ def render_murajat() -> None:
     c1, _, c2 = st.columns([2, 5, 2])
     with c1:
         if st.button("New session (Same Surah)", width="stretch"):
-            session = create_listening_session(student_id=student_id, mode="murajat", surah_id=surah_id, page_number=None)
+            session = create_listening_session(student_id=student_id, mode="murajat", surah_id=surah_id, page_number=None, force_new=True)
             st.session_state.murajat_session_id = session["id"]
             ensure_today_sessions(student_id)
             key = ("murajat", int(surah_id), None)

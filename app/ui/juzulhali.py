@@ -234,7 +234,7 @@ def render_juzulhali() -> None:
     st.divider()
     # Show session controls when active
     if st.button("New session (same page)", width="stretch"):
-        session = create_listening_session(student_id=student_id, mode="juzulhali", surah_id=None, page_number=int(page_number))
+        session = create_listening_session(student_id=student_id, mode="juzulhali", surah_id=None, page_number=int(page_number), force_new=True)
         st.session_state.juzulhali_session_id = session["id"]
         ensure_today_sessions(student_id)
         key = ("juzulhali", None, int(page_number))
