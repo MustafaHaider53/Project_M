@@ -92,10 +92,7 @@ def render_murajat() -> None:
                 if existing_id:
                     st.session_state.murajat_session_id = existing_id
                 else:
-                    # Automatically create session
-                    session = create_listening_session(student_id=student_id, mode="murajat", surah_id=surah_id, page_number=None)
-                    st.session_state.murajat_session_id = session["id"]
-                    st.session_state.today_sessions[key] = session["id"]
+                    st.session_state.murajat_session_id = None
                 st.session_state.pop("murajat_counts", None)
                 st.session_state.pop("murajat_counts_session_id", None)
 

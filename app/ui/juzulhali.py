@@ -74,10 +74,7 @@ def render_juzulhali() -> None:
                 if existing_id:
                     st.session_state.juzulhali_session_id = existing_id
                 else:
-                    # Automatically create session
-                    session = create_listening_session(student_id=student_id, mode="juzulhali", surah_id=None, page_number=int(page_number))
-                    st.session_state.juzulhali_session_id = session["id"]
-                    st.session_state.today_sessions[key] = session["id"]
+                    st.session_state.juzulhali_session_id = None
                 st.session_state.pop("juzulhali_counts", None)
                 st.session_state.pop("juzulhali_counts_session_id", None)
 
