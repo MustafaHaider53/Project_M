@@ -40,15 +40,20 @@ def require_student() -> str | None:
             if st.session_state.get("student_id") != selected[0]:
                 st.session_state.student_id = selected[0]
                 st.session_state.student_name = selected[1]
+                st.query_params["student_id"] = selected[0]
+                st.query_params["student_name"] = selected[1]
                 st.rerun()
         else:
             if st.session_state.get("student_id") is not None:
                 st.session_state.student_id = None
                 st.session_state.student_name = None
+                st.query_params.pop("student_id", None)
+                st.query_params.pop("student_name", None)
+                st.query_params.pop("page", None)
                 st.rerun()
     else:
         st.info("No students yet. Add the first student below.")
-
+ 
     with st.expander("Add new student", expanded=not bool(options)):
         name = st.text_input("Full name", key="new_student_name")
         if st.button("Add student", type="primary"):
@@ -56,6 +61,8 @@ def require_student() -> str | None:
                 s = create_student(full_name=name.strip())
                 st.session_state.student_id = s["id"]
                 st.session_state.student_name = s["full_name"]
+                st.query_params["student_id"] = s["id"]
+                st.query_params["student_name"] = s["full_name"]
                 st.session_state.student_success_msg = f"🎉 Successfully added student: {s['full_name']}!"
                 st.rerun()
             else:
