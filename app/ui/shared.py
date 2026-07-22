@@ -159,6 +159,28 @@ def mistake_buttons(*, session_id: str, counts: Dict[str, int], on_click) -> Non
                 st.markdown(f"<div style='font-size: 0.8rem; font-weight: bold; line-height: 26px; text-align: center; width: 100%; white-space: nowrap;'>Awakhir ({counts.get('awakhir_ul_ayat_talqeen', 0)}-{counts.get('awakhir_ul_ayat_tanbeeh', 0)})</div>", unsafe_allow_html=True)
             with r5_c3:
                 st.button(tb_ico, on_click=on_click, kwargs={"kind": "awakhir_ul_ayat_tanbeeh"}, key="btn_awakhir_tb")
+
+            # Row 6: Zero Marks Override
+            st.divider()
+            is_zero_active = bool(counts.get("is_zero_marks", False))
+            if sub_mode:
+                st.button(
+                    "↩️ Remove Zero Marks" if is_zero_active else "Remove Zero Marks (No-op)",
+                    disabled=not is_zero_active,
+                    width="stretch",
+                    on_click=on_click,
+                    kwargs={"kind": "is_zero_marks"},
+                    key="btn_remove_zero_marks"
+                )
+            else:
+                st.button(
+                    "⚠️ Mark Zero Marks" if not is_zero_active else "✅ Zero Marks Applied",
+                    type="primary" if is_zero_active else "secondary",
+                    width="stretch",
+                    on_click=on_click,
+                    kwargs={"kind": "is_zero_marks"},
+                    key="btn_mark_zero_marks"
+                )
                 
     with col_ahkam:
         with st.container(border=True):

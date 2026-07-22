@@ -122,7 +122,9 @@ def render_juzulhali() -> None:
         sub_mode = st.session_state.get("sub_mode_toggle", False)
         diff = -1 if sub_mode else 1
         
-        if kind == "talqeen":
+        if kind == "is_zero_marks":
+            local_counts["is_zero_marks"] = False if sub_mode else True
+        elif kind == "talqeen":
             local_counts["talqeen"] = max(0, local_counts.get("talqeen", 0) + diff)
         elif kind == "tanbeeh":
             local_counts["tanbeeh"] = max(0, local_counts.get("tanbeeh", 0) + diff)

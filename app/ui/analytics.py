@@ -99,9 +99,13 @@ def render_student_analytics(student_id: str, student_name: str) -> None:
         total_tanbeeh += tb
         
         # Marks calculation
-        marks = 10.0 - (0.5 * tq) - (0.25 * tb)
-        if marks < 0:
+        is_zero = bool(counts.get("is_zero_marks", False))
+        if is_zero:
             marks = 0.0
+        else:
+            marks = 10.0 - (0.5 * tq) - (0.25 * tb)
+            if marks < 0:
+                marks = 0.0
         total_marks += marks
         
         # Secondary mistakes

@@ -43,6 +43,7 @@ create table if not exists public.mistake_counts (
   repeat_mistake int not null default 0,
   mutashabehat int not null default 0,
   irab int not null default 0,
+  is_zero_marks boolean not null default false,
   updated_at timestamptz not null default now()
 );
 

@@ -115,7 +115,13 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
                 mistakes_detail += '</div>'
             
             # calculate grade/marks (consistent with 10 - 0.5 * talqeen - 0.25 * tanbeeh)
-            marks = 10.0 - (0.5 * talqeen) - (0.25 * tanbeeh)
+            is_zero = bool(counts.get("is_zero_marks", False))
+            if is_zero:
+                marks = 0.0
+            else:
+                marks = 10.0 - (0.5 * talqeen) - (0.25 * tanbeeh)
+                if marks < 0:
+                    marks = 0.0
             murajat_rows += f"""
             <tr>
                 <td style="border: 1px solid #e0dcd5; padding: 8px 4px; font-weight: bold; color: #1b4d3e;">
@@ -189,7 +195,13 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
                     mistakes_detail += makharij_str
                 mistakes_detail += '</div>'
             
-            marks = 10.0 - (0.5 * talqeen) - (0.25 * tanbeeh)
+            is_zero = bool(counts.get("is_zero_marks", False))
+            if is_zero:
+                marks = 0.0
+            else:
+                marks = 10.0 - (0.5 * talqeen) - (0.25 * tanbeeh)
+                if marks < 0:
+                    marks = 0.0
             juzulhali_rows += f"""
             <tr>
                 <td style="border: 1px solid #e0dcd5; padding: 8px 4px; font-weight: bold; color: #1b4d3e; text-align: center;">

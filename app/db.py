@@ -312,6 +312,7 @@ def get_session_counts(session_id: str) -> Dict[str, int]:
             "repeat_mistake": 0,
             "mutashabehat": 0,
             "irab": 0,
+            "is_zero_marks": False,
             "updated_at": now_utc_iso(),
         }
         rest.insert("mistake_counts", [init], returning="minimal")
@@ -342,6 +343,7 @@ def get_session_counts(session_id: str) -> Dict[str, int]:
             "mad_tabaiee": 0,
             "ikhfa_shafawi": 0,
             "iqlab": 0,
+            "is_zero_marks": False,
         }
         for col in MAKHARIJ_COLS:
             res[col] = 0
@@ -374,6 +376,7 @@ def get_session_counts(session_id: str) -> Dict[str, int]:
         "mad_tabaiee": int(row.get("mad_tabaiee", 0) or 0),
         "ikhfa_shafawi": int(row.get("ikhfa_shafawi", 0) or 0),
         "iqlab": int(row.get("iqlab", 0) or 0),
+        "is_zero_marks": bool(row.get("is_zero_marks", False)),
     }
     for col in MAKHARIJ_COLS:
         res[col] = int(row.get(col, 0) or 0)
@@ -391,7 +394,9 @@ def increment_mistake(session_id: str, kind: str) -> Dict[str, int]:
     """
     counts = get_session_counts(session_id)
 
-    if kind == "talqeen":
+    if kind == "is_zero_marks":
+        counts["is_zero_marks"] = not counts.get("is_zero_marks", False)
+    elif kind == "talqeen":
         counts["talqeen"] += 1
     elif kind == "tanbeeh":
         counts["tanbeeh"] += 1
@@ -474,6 +479,7 @@ def increment_mistake(session_id: str, kind: str) -> Dict[str, int]:
         "mad_tabaiee",
         "ikhfa_shafawi",
         "iqlab",
+        "is_zero_marks",
     ] + MAKHARIJ_COLS
     for col in new_cols:
         if _db_supported_columns and col in _db_supported_columns:
@@ -485,11 +491,12 @@ def increment_mistake(session_id: str, kind: str) -> Dict[str, int]:
         patch=patch,
     )
 
-    rest.insert(
-        "mistake_events",
-        [{"session_id": session_id, "kind": kind}],
-        returning="minimal",
-    )
+    if kind != "is_zero_marks":
+        rest.insert(
+            "mistake_events",
+            [{"session_id": session_id, "kind": kind}],
+            returning="minimal",
+        )
 
     clear_all_read_caches()
     return counts
@@ -538,6 +545,7 @@ def _bg_update_mistake(rest: SupabaseRest, session_id: str, kind: str, counts: D
             "mad_tabaiee",
             "ikhfa_shafawi",
             "iqlab",
+            "is_zero_marks",
         ] + MAKHARIJ_COLS
         for col in new_cols:
             if _db_supported_columns and col in _db_supported_columns:
@@ -548,11 +556,12 @@ def _bg_update_mistake(rest: SupabaseRest, session_id: str, kind: str, counts: D
             match={"session_id": session_id},
             patch=patch,
         )
-        rest.insert(
-            "mistake_events",
-            [{"session_id": session_id, "kind": kind}],
-            returning="minimal",
-        )
+        if kind != "is_zero_marks":
+            rest.insert(
+                "mistake_events",
+                [{"session_id": session_id, "kind": kind}],
+                returning="minimal",
+            )
         clear_all_read_caches()
     except Exception as e:
         import logging
@@ -765,7 +774,13 @@ def fetch_monthly_report(*, student_id: str, year: int, month: int) -> List[Dict
         repeat_mistake = int(counts.get("repeat_mistake", 0) or 0)
         mutashabehat = int(counts.get("mutashabehat", 0) or 0)
         irab = int(counts.get("irab", 0) or 0)
-        marks = 10.0 - (0.5 * talqeen) - (0.25 * tanbeeh)
+        is_zero = bool(counts.get("is_zero_marks", False))
+        if is_zero:
+            marks = 0.0
+        else:
+            marks = 10.0 - (0.5 * talqeen) - (0.25 * tanbeeh)
+            if marks < 0:
+                marks = 0.0
         row = {
             "talqeen": talqeen,
             "tanbeeh": tanbeeh,
@@ -1311,7 +1326,13 @@ def fetch_collective_attendance_report(*, year: int, month: int) -> Dict[str, An
             counts = counts[0] if counts else {}
         talqeen = int(counts.get("talqeen", 0) or 0)
         tanbeeh = int(counts.get("tanbeeh", 0) or 0)
-        marks = 10.0 - (0.5 * talqeen) - (0.25 * tanbeeh)
+        is_zero = bool(counts.get("is_zero_marks", False))
+        if is_zero:
+            marks = 0.0
+        else:
+            marks = 10.0 - (0.5 * talqeen) - (0.25 * tanbeeh)
+            if marks < 0:
+                marks = 0.0
         
         row = {
             "mode": s.get("mode"),
@@ -1528,7 +1549,7 @@ def fetch_ikhtebar_report(*, from_date: str, to_date: str) -> Dict[str, Any]:
     def fetch_sessions():
         session_rows = rest.select(
             "listening_sessions",
-            select="student_id,activity_date,mode,page_number,surah_id,created_at,mistake_counts(talqeen,tanbeeh)",
+            select="student_id,activity_date,mode,page_number,surah_id,created_at,mistake_counts(talqeen,tanbeeh,is_zero_marks)",
             params={
                 "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
                 "order": "activity_date.asc"
@@ -1540,9 +1561,13 @@ def fetch_ikhtebar_report(*, from_date: str, to_date: str) -> Dict[str, Any]:
                 counts = counts[0] if counts else {}
             talqeen = int(counts.get("talqeen", 0) or 0)
             tanbeeh = int(counts.get("tanbeeh", 0) or 0)
-            marks = 10.0 - (0.5 * talqeen) - (0.25 * tanbeeh)
-            if marks < 0:
+            is_zero = bool(counts.get("is_zero_marks", False))
+            if is_zero:
                 marks = 0.0
+            else:
+                marks = 10.0 - (0.5 * talqeen) - (0.25 * tanbeeh)
+                if marks < 0:
+                    marks = 0.0
             s["marks"] = marks
         return session_rows
 
