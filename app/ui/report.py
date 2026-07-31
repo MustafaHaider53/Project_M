@@ -165,7 +165,8 @@ def render_report() -> None:
         "🌟 Current Jadeed",
         "📊 Mistake Analytics",
         "📅 Class Attendance",
-        "🎓 OPR - One Page Report"
+        "🎓 OPR - One Page Report",
+        "👪 Parent Views"
     ]
     if "selected_report_category" not in st.session_state:
         st.session_state.selected_report_category = "👥 Murajat Report"
@@ -330,3 +331,123 @@ def render_report() -> None:
                     st.iframe(html_assessment, height=800)
                 else:
                     st.info("💡 Report preview is hidden to make calendar selections instant and lag-free. Check 'Show One Page Report Preview' when you are ready to view/print the report.")
+
+    elif selected_category == "👪 Parent Views":
+        render_parent_views_dashboard()
+
+
+def render_parent_views_dashboard() -> None:
+    from app.db import list_students, get_rest
+    import calendar
+    
+    st.markdown("### 📅 Parent Views Monthly Report")
+    st.caption("A monthly overview showing which parents viewed their child's daily progress report.")
+
+    # Dropdown selectors for month and year
+    now = datetime.today()
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        months_list = [
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ]
+        selected_month_name = st.selectbox("Select Month", options=months_list, index=now.month - 1)
+        selected_month = months_list.index(selected_month_name) + 1
+    with col2:
+        years_list = list(range(2025, now.year + 2))
+        selected_year = st.selectbox("Select Year", options=years_list, index=years_list.index(now.year))
+
+    # Calculate last day of the month
+    last_day = calendar.monthrange(selected_year, selected_month)[1]
+    start_date = f"{selected_year}-{selected_month:02d}-01"
+    end_date = f"{selected_year}-{selected_month:02d}-{last_day:02d}"
+
+    # Fetch students
+    students = list_students()
+    if not students:
+        st.info("No students found.")
+        return
+
+    # Fetch all report views for this month in exactly 1 query
+    rest = get_rest()
+    viewed_set = set() # Store tuples of (student_id_lower, date_str)
+
+    if rest is not None:
+        with st.spinner("Loading parent views..."):
+            try:
+                views = rest.select(
+                    "parent_report_views",
+                    select="student_id,activity_date",
+                    params={
+                        "and": f"(activity_date.gte.{start_date},activity_date.lte.{end_date})"
+                    }
+                )
+                for v in views:
+                    sid = v.get("student_id")
+                    adate = v.get("activity_date")
+                    if sid and adate:
+                        viewed_set.add((sid.lower(), adate))
+            except Exception as e:
+                st.error(f"Error loading views: {e}")
+
+    # Build the legend
+    st.markdown(
+        """
+        <div style='display: flex; gap: 20px; font-size: 0.9rem; margin-top: 10px; margin-bottom: 10px;'>
+            <div><span style='color: #10b981; font-weight: bold;'>🟢</span> Parent Logged In & Viewed</div>
+            <div><span style='color: #ef4444; font-weight: bold;'>🔴</span> Parent Not Viewed</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # Construct HTML Table
+    days = list(range(1, last_day + 1))
+    
+    # Header row
+    header_html = f'<th style="padding: 10px; font-weight: bold; position: sticky; left: 0; top: 0; background-color: #F7EFD8; z-index: 12; border-right: 2px solid var(--border); min-width: 180px;">👤 Student Name</th>'
+    for d in days:
+        header_html += f'<th style="padding: 6px; text-align: center; font-weight: bold; min-width: 28px; border-right: 1px solid var(--border); position: sticky; top: 0; background-color: #F7EFD8; z-index: 11;">{d}</th>'
+        
+    # Table rows
+    rows_html = ""
+    for s in students:
+        student_id = s.get("id")
+        name = s.get("full_name", "Unknown")
+        if not student_id:
+            continue
+        student_id_lower = student_id.lower()
+        
+        row_cells = f'<td style="padding: 10px; font-weight: bold; position: sticky; left: 0; background-color: #F7EFD8; z-index: 9; border-right: 2px solid var(--border);">{name}</td>'
+        for d in days:
+            date_str = f"{selected_year}-{selected_month:02d}-{d:02d}"
+            is_viewed = (student_id_lower, date_str) in viewed_set
+            
+            if is_viewed:
+                cell_style = "background-color: rgba(16, 185, 129, 0.08); border-right: 1px solid var(--border); text-align: center; padding: 6px;"
+                indicator = "🟢"
+            else:
+                cell_style = "background-color: rgba(239, 68, 68, 0.04); border-right: 1px solid var(--border); text-align: center; padding: 6px;"
+                indicator = "🔴"
+                
+            row_cells += f'<td style="{cell_style}">{indicator}</td>'
+            
+        rows_html += f'<tr style="border-bottom: 1px solid var(--border);">{row_cells}</tr>'
+
+    table_html = f"""
+    <div style="overflow: auto; max-height: 70vh; width: 100%; border: 1px solid var(--border); border-radius: 8px; background-color: var(--card);">
+      <table style="width: 100%; border-collapse: collapse; text-align: left; font-family: system-ui, -apple-system, sans-serif; font-size: 0.82rem; line-height: 1.2;">
+        <thead>
+          <tr style="background-color: var(--card); border-bottom: 2px solid var(--border);">
+            {header_html}
+          </tr>
+        </thead>
+        <tbody>
+          {rows_html}
+        </tbody>
+      </table>
+    </div>
+    """
+    
+    st.markdown(table_html.replace("\n", " "), unsafe_allow_html=True)

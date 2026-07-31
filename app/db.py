@@ -179,7 +179,7 @@ def list_students() -> List[Dict[str, Any]]:
     rest = get_rest()
     if rest is None:
         return []
-    return rest.select("students", select="id,full_name,created_at", params={"order": "full_name.asc"})
+    return rest.select("students", select="id,full_name,created_at,email", params={"order": "full_name.asc"})
 
 
 def create_student(*, full_name: str) -> Dict[str, Any]:
@@ -733,46 +733,58 @@ def fetch_monthly_report(*, student_id: str, year: int, month: int) -> List[Dict
     from_date = f"{year:04d}-{month:02d}-01"
     to_date = f"{year:04d}-{month:02d}-{last_day:02d}"
 
-    # Sessions + counts + surah
-    sessions = rest.select(
-        "listening_sessions",
-        select="id,activity_date,mode,surah_id,page_number,created_at,surahs(number,name_en,name_ar),mistake_counts(*)",
-        params={
-            "student_id": f"eq.{student_id}",
-            "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
-            "order": "activity_date.asc,created_at.asc",
-        },
-    )
+    # Fetch data concurrently using a thread pool
+    import concurrent.futures
 
-    jadeed_rows = rest.select(
-        "jadeed_entries",
-        select="id,activity_date,surah_id,page_number,ayah_number,volume,created_at,surahs(number,name_en,name_ar)",
-        params={
-            "student_id": f"eq.{student_id}",
-            "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
-            "order": "activity_date.asc,created_at.asc",
-        },
-    )
-
-    jadeed_daily_rows = rest.select(
-        "jadeed_daily",
-        select="student_id,activity_date,no_jadeed,updated_at",
-        params={
-            "student_id": f"eq.{student_id}",
-            "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
-            "order": "activity_date.asc",
-        },
-    )
-
-    takhteet_rows = rest.select(
-        "takhteet_daily",
-        select="student_id,activity_date,murajat_text_clean,juzulhali_text_clean,jadeed_text_clean,updated_at",
-        params={
-            "student_id": f"eq.{student_id}",
-            "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
-            "order": "activity_date.asc",
-        },
-    )
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        future_sessions = executor.submit(
+            rest.select,
+            "listening_sessions",
+            select="id,activity_date,mode,surah_id,page_number,created_at,surahs(number,name_en,name_ar),mistake_counts(*)",
+            params={
+                "student_id": f"eq.{student_id}",
+                "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
+                "order": "activity_date.asc,created_at.asc",
+            }
+        )
+        
+        future_jadeed = executor.submit(
+            rest.select,
+            "jadeed_entries",
+            select="id,activity_date,surah_id,page_number,ayah_number,volume,created_at,surahs(number,name_en,name_ar)",
+            params={
+                "student_id": f"eq.{student_id}",
+                "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
+                "order": "activity_date.asc,created_at.asc",
+            }
+        )
+        
+        future_daily = executor.submit(
+            rest.select,
+            "jadeed_daily",
+            select="student_id,activity_date,no_jadeed,updated_at",
+            params={
+                "student_id": f"eq.{student_id}",
+                "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
+                "order": "activity_date.asc",
+            }
+        )
+        
+        future_takhteet = executor.submit(
+            rest.select,
+            "takhteet_daily",
+            select="student_id,activity_date,murajat_text_clean,juzulhali_text_clean,jadeed_text_clean,updated_at",
+            params={
+                "student_id": f"eq.{student_id}",
+                "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
+                "order": "activity_date.asc",
+            }
+        )
+        
+        sessions = future_sessions.result()
+        jadeed_rows = future_jadeed.result()
+        jadeed_daily_rows = future_daily.result()
+        takhteet_rows = future_takhteet.result()
 
     by_date: Dict[str, Dict[str, Any]] = {}
     for day in range(1, last_day + 1):
@@ -1660,6 +1672,32 @@ def fetch_ikhtebar_report(*, from_date: str, to_date: str) -> Dict[str, Any]:
         "from_date": from_date,
         "to_date": to_date
     }
+
+
+def log_parent_view(*, student_id: str, date_str: str) -> None:
+    rest = get_rest()
+    if rest is None:
+        return
+    payload = {
+        "student_id": student_id,
+        "activity_date": date_str,
+        "viewed_at": now_utc_iso()
+    }
+    try:
+        rest.upsert("parent_report_views", [payload], on_conflict="student_id,activity_date", returning="minimal")
+    except Exception as e:
+        print(f"[log_parent_view error] {e}")
+
+
+def fetch_parent_views(*, date_str: str) -> List[Dict[str, Any]]:
+    rest = get_rest()
+    if rest is None:
+        return []
+    try:
+        return rest.select("parent_report_views", select="student_id,activity_date,viewed_at", params={"activity_date": f"eq.{date_str}"})
+    except Exception as e:
+        print(f"[fetch_parent_views error] {e}")
+        return []
 
 
 
