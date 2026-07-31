@@ -57,6 +57,7 @@ def get_surah_page_length(surah_num: int) -> float:
     return float(raw_length)
 
 
+@st.cache_data(show_spinner=False)
 def get_locked_monthly_plan(*, student_id: str, year: int, month: int) -> Optional[pd.DataFrame]:
     from app.db import get_rest
     rest = get_rest()

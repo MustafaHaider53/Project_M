@@ -195,6 +195,30 @@ def main() -> None:
         return
 
     # Render header when logged in
+    user_role = st.session_state.get("user_role", "admin")
+    if user_role == "parent":
+        header_cols = st.columns([7, 1.5, 1.5])
+        with header_cols[0]:
+            st.markdown("<h2 style='font-size: 1.15rem; margin: 0; padding: 2px 0; color: var(--emerald); font-weight: bold; font-family: sans-serif;'>Al Madrasa-tus-Saifiyah-tul-Burhaniyah</h2>", unsafe_allow_html=True)
+        with header_cols[1]:
+            st.markdown('<button id="fullscreen-toggle-btn" style="width: 100%; background: linear-gradient(180deg, var(--emerald), #0a4d3a); color: white; border: none; border-radius: 8px; padding: 2px 4px; font-weight: bold; cursor: pointer; font-size: 10px; height: 26px; min-height: 26px; line-height: 1.2; display: flex; align-items: center; justify-content: center; gap: 4px; font-family: sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.12);">📱 Fullscreen</button>', unsafe_allow_html=True)
+        with header_cols[2]:
+            if st.button("🔒 Logout", use_container_width=True, key="header_logout_btn"):
+                st.session_state.logged_in = False
+                st.session_state.student_id = None
+                st.session_state.student_name = None
+                st.session_state.page = "home"
+                st.session_state.user_role = "admin"
+                st.query_params.clear()
+                st.session_state.manual_logout = True
+                st.rerun()
+
+        # Render parent report content directly and return
+        from app.ui.parent_report import render_parent_report
+        render_parent_report()
+        return
+
+    # Render admin header when logged in
     header_cols = st.columns([7, 1.5, 1.5])
     with header_cols[0]:
         st.markdown("<h2 style='font-size: 1.15rem; margin: 0; padding: 2px 0; color: var(--emerald); font-weight: bold; font-family: sans-serif;'>Al Madrasa-tus-Saifiyah-tul-Burhaniyah</h2>", unsafe_allow_html=True)
