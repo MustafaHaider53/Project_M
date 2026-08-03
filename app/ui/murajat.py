@@ -100,7 +100,8 @@ def render_murajat() -> None:
     has_next = (curr_idx < len(options) - 1 or page_idx < len(page_options) - 1)
 
     # Render the sticky container wrapping header, selectors, badge, and mistake cards
-    with st.container():
+    sticky_container = st.container()
+    with sticky_container:
         st.markdown('<div class="sticky-anchor"></div>', unsafe_allow_html=True)
         
         render_header_with_homework("Murajat", student_id)
@@ -185,8 +186,10 @@ def render_murajat() -> None:
                     "ikhfa": 0, "izhaar": 0, "qalqalah": 0, "ism_jalalah": 0, "tahreek_sakin": 0, "gunnah": 0,
                     "idgham": 0, "madd_lazim": 0, "madd_muttasil": 0, "mad_tabaiee": 0, "ikhfa_shafawi": 0, "iqlab": 0
                 }
-                from app.db import MAKHARIJ_COLS
+                from app.db import MAKHARIJ_COLS, MUSAID_COLS
                 for col in MAKHARIJ_COLS:
+                    counts[col] = 0
+                for col in MUSAID_COLS:
                     counts[col] = 0
 
     def _on_click(kind: str) -> None:
@@ -218,8 +221,10 @@ def render_murajat() -> None:
                     "ikhfa": 0, "izhaar": 0, "qalqalah": 0, "ism_jalalah": 0, "tahreek_sakin": 0, "gunnah": 0,
                     "idgham": 0, "madd_lazim": 0, "madd_muttasil": 0, "mad_tabaiee": 0, "ikhfa_shafawi": 0, "iqlab": 0
                 }
-                from app.db import MAKHARIJ_COLS
+                from app.db import MAKHARIJ_COLS, MUSAID_COLS
                 for col in MAKHARIJ_COLS:
+                    zero_counts[col] = 0
+                for col in MUSAID_COLS:
                     zero_counts[col] = 0
                 st.session_state.murajat_counts = zero_counts
                 st.session_state.murajat_counts_session_id = sid
@@ -320,7 +325,7 @@ def render_murajat() -> None:
                 local_counts["tanbeeh"] += 1
         elif kind in ("ikhfa", "izhaar", "qalqalah", "ism_jalalah", "tahreek_sakin", "gunnah", "idgham", "madd_lazim", "madd_muttasil", "mad_tabaiee", "ikhfa_shafawi", "iqlab"):
             local_counts[kind] = max(0, local_counts.get(kind, 0) + diff)
-        elif kind.startswith("makhraj_"):
+        elif kind.startswith("makhraj_") or kind.startswith("musaid_"):
             local_counts[kind] = 1 if local_counts.get(kind, 0) == 0 else 0
             
         from app.db import increment_mistake_bg
@@ -328,14 +333,59 @@ def render_murajat() -> None:
         st.session_state.play_sound = True
 
     student_name = st.session_state.get("student_name", "Student")
-    show_analytics = st.toggle("📊 View Student Mistake Analytics & Progress", value=False, key="murajat_show_student_analytics_toggle")
-    if show_analytics:
+
+    if surah_id is None or page_number is None:
+        show_analytics = st.toggle("📊 View Student Mistake Analytics & Progress", value=False, key="murajat_show_student_analytics_toggle")
+        if show_analytics:
+            from app.ui.analytics import render_student_analytics
+            render_student_analytics(student_id=student_id, student_name=student_name)
+        st.info("Please select a Surah and Page to start Murajat recitation.")
+        return
+
+    # Render Musaid buttons & Toggles under Surah/Page selectors inside sticky_container
+    with sticky_container:
+        col_toggles, col_musaid = st.columns([1.5, 3.5])
+        with col_toggles:
+            show_analytics = st.toggle("📊 View Student Mistake Analytics", value=False, key="murajat_show_student_analytics_toggle")
+            st.toggle("➖ **Subtraction Mode**", value=False, key="sub_mode_toggle")
+        with col_musaid:
+            st.markdown("<div style='font-size: 0.85rem; font-weight: bold; margin-bottom: 5px; color: var(--emerald); text-align: left;'>Musaid Analysis (One-time Tap)</div>", unsafe_allow_html=True)
+            st.markdown("""
+            <style>
+            div[data-testid="stElementContainer"]:has(.musaid-active) + div[data-testid="stElementContainer"] button {
+                background: linear-gradient(180deg, #15803d, #166534) !important;
+                color: #ffffff !important;
+                border-color: #14532d !important;
+            }
+            div[data-testid="stElementContainer"]:has(.musaid-active) + div[data-testid="stElementContainer"] button:hover {
+                background: linear-gradient(180deg, #166534, #14532d) !important;
+            }
+            </style>
+            """, unsafe_allow_html=True)
+            MUSAID_BUTTONS = {
+                "musaid_end_part": "🔚 End Part",
+                "musaid_beg_part": "🔝 Beginning Part",
+                "musaid_ayat_after_ayat": "🔗 Ayat Linkage",
+                "musaid_page_after_page": "📖 Page Transition",
+                "musaid_no_image": "🖼️ No Page Image",
+                "musaid_lehen": "🎵 Lehen only"
+            }
+            musaid_cols = st.columns(3)
+            for idx, (col_key, label) in enumerate(MUSAID_BUTTONS.items()):
+                col_idx = idx % 3
+                with musaid_cols[col_idx]:
+                    is_active = counts.get(col_key, 0) == 1
+                    active_class = "musaid-active" if is_active else "musaid-inactive"
+                    st.markdown(f"<span class='{active_class}' style='display: none;'>active</span>", unsafe_allow_html=True)
+                    btn_type = "primary" if is_active else "secondary"
+                    display_label = f"✓ {label}" if is_active else label
+                    if st.button(display_label, type=btn_type, key=f"btn_{col_key}", use_container_width=True):
+                        _on_click(col_key)
+                        st.rerun()
+
+    if st.session_state.get("murajat_show_student_analytics_toggle", False):
         from app.ui.analytics import render_student_analytics
         render_student_analytics(student_id=student_id, student_name=student_name)
-
-    if surah_id is None:
-        st.info("Please select a Surah to start Murajat recitation.")
-        return
 
     mistake_buttons(session_id=session_id or "", counts=counts, on_click=_on_click)
 

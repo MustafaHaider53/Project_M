@@ -104,8 +104,8 @@ def mistake_buttons(*, session_id: str, counts: Dict[str, int], on_click) -> Non
             unsafe_allow_html=True
         )
 
-    # Subtraction Mode Toggle (very clean, zero layout size change for columns)
-    sub_mode = st.toggle("➖ **Subtraction Mode** (Click any button to reduce mistake count)", value=False, key="sub_mode_toggle")
+    # Read Subtraction Mode from session state
+    sub_mode = st.session_state.get("sub_mode_toggle", False)
     
     tq_ico = "➖" if sub_mode else "🔴"
     tb_ico = "➖" if sub_mode else "🟡"
