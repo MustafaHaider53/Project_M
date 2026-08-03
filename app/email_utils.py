@@ -92,6 +92,11 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
             surah = m.get("surahs") or {}
             surah_name = surah.get("name_en") or "Surah"
             surah_ar = surah.get("name_ar") or ""
+            page = m.get("page_number", 0)
+            if page > 0:
+                surah_display = f"{surah_name} (Page {page})"
+            else:
+                surah_display = surah_name
             counts = m.get("mistake_counts") or {}
             if isinstance(counts, list):
                 counts = counts[0] if counts else {}
@@ -125,7 +130,7 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
             murajat_rows += f"""
             <tr>
                 <td style="border: 1px solid #e0dcd5; padding: 8px 4px; font-weight: bold; color: #1b4d3e;">
-                    {surah_name} <span style="font-size: 11px; color: #888; display: block;">({surah_ar})</span>
+                    {surah_display} <span style="font-size: 11px; color: #888; display: block;">({surah_ar})</span>
                     {mistakes_detail}
                 </td>
                 <td style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center;">{talqeen}</td>
@@ -172,7 +177,13 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
     if summary.get("juzulhali"):
         juzulhali_rows = ""
         for j in summary["juzulhali"]:
+            surah = j.get("surahs") or {}
+            surah_name = surah.get("name_en") or ""
             page = j.get("page_number") or "-"
+            if surah_name:
+                recitation_display = f"{surah_name} (Page {page})"
+            else:
+                recitation_display = f"Page {page}"
             counts = j.get("mistake_counts") or {}
             if isinstance(counts, list):
                 counts = counts[0] if counts else {}
@@ -205,7 +216,7 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
             juzulhali_rows += f"""
             <tr>
                 <td style="border: 1px solid #e0dcd5; padding: 8px 4px; font-weight: bold; color: #1b4d3e; text-align: center;">
-                    Page {page}
+                    {recitation_display}
                     {mistakes_detail}
                 </td>
                 <td style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center;">{talqeen}</td>

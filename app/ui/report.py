@@ -156,6 +156,18 @@ def render_report() -> None:
                 st.session_state.attendance_report_cache = data
         return st.session_state.attendance_report_cache
 
+    def get_cached_ummul_banin_report():
+        if st.session_state.get("ummul_banin_report_cache") is None:
+            with st.spinner("Fetching Ummul Banin report data..."):
+                try:
+                    from app.db import fetch_ummul_banin_report_data
+                    data = fetch_ummul_banin_report_data()
+                except Exception as e:
+                    st.error(f"Error fetching Ummul Banin report: {e}")
+                    data = None
+                st.session_state.ummul_banin_report_cache = data
+        return st.session_state.ummul_banin_report_cache
+
     st.markdown("### Report Category Select")
     categories = [
         "👥 Murajat Report",
@@ -165,6 +177,7 @@ def render_report() -> None:
         "🌟 Current Jadeed",
         "📊 Mistake Analytics",
         "📅 Class Attendance",
+        "📖 Ummul Banin Ben Report",
         "🎓 OPR - One Page Report",
         "👪 Parent Views"
     ]
@@ -235,6 +248,22 @@ def render_report() -> None:
             else:
                 html_collective = build_collective_attendance_report_html(data)
                 st.iframe(html_collective, height=750)
+
+    elif selected_category == "📖 Ummul Banin Ben Report":
+        st.markdown("### 📖 Ummul Banin Ben Report (تقرير أم البنين)")
+        st.caption("Class-wide report showing each student's latest Jadeed recitation (today's latest, or their last historical entry if not entered/marked as 'no jadeed' today) along with today's Jadeed homework.")
+        
+        if st.button("🔄 Refresh Data", key="refresh_ummul_banin"):
+            st.session_state.pop("ummul_banin_report_cache", None)
+            st.rerun()
+            
+        data = get_cached_ummul_banin_report()
+        if not data:
+            st.info("No Ummul Banin report data found.")
+        else:
+            from app.report_pdf import build_ummul_banin_report_html
+            html_ummul_banin = build_ummul_banin_report_html(data)
+            st.iframe(html_ummul_banin, height=750)
 
     elif selected_category == "🎓 OPR - One Page Report":
         st.markdown("### 🎓 OPR - One Page Report")
