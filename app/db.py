@@ -312,6 +312,11 @@ MAKHARIJ_COLS = [
     "makhraj_noon", "makhraj_haa_weak", "makhraj_waw", "makhraj_yaa"
 ]
 
+MUSAID_COLS = [
+    "musaid_end_part", "musaid_beg_part", "musaid_ayat_after_ayat",
+    "musaid_page_after_page", "musaid_no_image", "musaid_lehen"
+]
+
 @st.cache_data(show_spinner=False)
 def get_session_counts(session_id: str) -> Dict[str, int]:
     global _db_supported_columns
@@ -371,6 +376,8 @@ def get_session_counts(session_id: str) -> Dict[str, int]:
         }
         for col in MAKHARIJ_COLS:
             res[col] = 0
+        for col in MUSAID_COLS:
+            res[col] = 0
         return res
 
     res = {
@@ -403,6 +410,8 @@ def get_session_counts(session_id: str) -> Dict[str, int]:
         "is_zero_marks": bool(row.get("is_zero_marks", False)),
     }
     for col in MAKHARIJ_COLS:
+        res[col] = int(row.get(col, 0) or 0)
+    for col in MUSAID_COLS:
         res[col] = int(row.get(col, 0) or 0)
     return res
 
@@ -571,7 +580,7 @@ def _bg_update_mistake(rest: SupabaseRest, session_id: str, kind: str, counts: D
             "ikhfa_shafawi",
             "iqlab",
             "is_zero_marks",
-        ] + MAKHARIJ_COLS
+        ] + MAKHARIJ_COLS + MUSAID_COLS
         
         if not _db_supported_columns:
             all_possible_cols = {
@@ -580,7 +589,7 @@ def _bg_update_mistake(rest: SupabaseRest, session_id: str, kind: str, counts: D
                 "mutashabehat_talqeen", "mutashabehat_tanbeeh", "awakhir_ul_ayat_talqeen", "awakhir_ul_ayat_tanbeeh",
                 "ikhfa", "izhaar", "qalqalah", "ism_jalalah", "tahreek_sakin", "gunnah", "idgham", "madd_lazim",
                 "madd_muttasil", "mad_tabaiee", "ikhfa_shafawi", "iqlab", "is_zero_marks"
-            } | set(MAKHARIJ_COLS)
+            } | set(MAKHARIJ_COLS) | set(MUSAID_COLS)
             _db_supported_columns = all_possible_cols
 
         for col in new_cols:
@@ -595,7 +604,7 @@ def _bg_update_mistake(rest: SupabaseRest, session_id: str, kind: str, counts: D
             on_conflict="session_id",
             returning="minimal"
         )
-        if kind != "is_zero_marks":
+        if kind in {"talqeen", "tanbeeh", "repeat_mistake", "mutashabehat", "irab"}:
             rest.insert(
                 "mistake_events",
                 [{"session_id": session_id, "kind": kind}],

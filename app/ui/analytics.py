@@ -80,8 +80,18 @@ def render_student_analytics(student_id: str, student_name: str) -> None:
         "makhraj_yaa": "Yaa (ي)"
     }
     
+    musaid_display_names = {
+        "musaid_end_part": "🔚 End Part",
+        "musaid_beg_part": "🔝 Beginning Part",
+        "musaid_ayat_after_ayat": "🔗 Ayat Linkage",
+        "musaid_page_after_page": "📖 Page Transition",
+        "musaid_no_image": "🖼️ No Page Image",
+        "musaid_lehen": "🎵 Lehen only"
+    }
+    
     ahkam_counts = {name: 0 for name in ahkam_display_names.values()}
     makharij_counts = {name: 0 for name in makhraj_display_names.values()}
+    musaid_counts = {name: 0 for name in musaid_display_names.values()}
     daily_data = {} # key: activity_date, value: {talqeen, tanbeeh}
     
     for s in sessions:
@@ -126,6 +136,10 @@ def render_student_analytics(student_id: str, student_name: str) -> None:
         # Makharij mistakes
         for key, disp in makhraj_display_names.items():
             makharij_counts[disp] += int(counts.get(key, 0) or 0)
+            
+        # Musaid indicators
+        for key, disp in musaid_display_names.items():
+            musaid_counts[disp] += int(counts.get(key, 0) or 0)
             
         # Group by daily trend
         if date_str:
@@ -391,3 +405,28 @@ def render_student_analytics(student_id: str, student_name: str) -> None:
             st.altair_chart(trend_chart, width="stretch")
         else:
             st.info("No trend data available yet.")
+            
+    st.divider()
+
+    # 7. Prepare Musaid Analysis Chart
+    has_musaid_data = False
+    musaid_list = [{"Indicator": k, "Count": v} for k, v in musaid_counts.items() if v > 0]
+    if musaid_list:
+        df_musaid = pd.DataFrame(musaid_list)
+        if not df_musaid.empty:
+            has_musaid_data = True
+            musaid_chart = alt.Chart(df_musaid).mark_bar(color="#5C3A21").encode(
+                y=alt.Y("Indicator:N", sort="-x", title="Musaid Indicator"),
+                x=alt.X("Count:Q", title="Sessions Check Count", axis=alt.Axis(tickMinStep=1)),
+                tooltip=["Indicator", "Count"]
+            ).properties(
+                title="Musaid Analysis Indicators Count",
+                height=220
+            )
+
+    col_m1, col_m2 = st.columns(2)
+    with col_m1:
+        if has_musaid_data:
+            st.altair_chart(musaid_chart, width="stretch")
+        else:
+            st.info("No Musaid analysis indicators recorded yet for this student.")

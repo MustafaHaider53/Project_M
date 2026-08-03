@@ -52,6 +52,15 @@ MAKHRAJ_CHARS = {
     "makhraj_yaa": "ي"
 }
 
+MUSAID_MAP = {
+    "musaid_end_part": "🔚 End Part",
+    "musaid_beg_part": "🔝 Beginning Part",
+    "musaid_ayat_after_ayat": "🔗 Ayat Linkage",
+    "musaid_page_after_page": "📖 Page Transition",
+    "musaid_no_image": "🖼️ No Page Image",
+    "musaid_lehen": "🎵 Lehen only"
+}
+
 def _format_ahkam_email(counts: Dict[str, Any]) -> str:
     badges = []
     for col, label in AHKAM_MAP.items():
@@ -71,6 +80,16 @@ def _format_makharij_email(counts: Dict[str, Any]) -> str:
             lbl = f"{char}" if val == 1 else f"{char} ({val})"
             badges.append(
                 f'<span style="display: inline-block; padding: 2px 6px; font-size: 11px; font-weight: bold; border-radius: 12px; margin: 2px; white-space: nowrap; background-color: #ebf8ff; color: #2b6cb0; border: 1px solid #bee3f8; font-family: \'Amiri\', \'Traditional Arabic\', serif;">{lbl}</span>'
+            )
+    return "".join(badges)
+
+def _format_musaid_email(counts: Dict[str, Any]) -> str:
+    badges = []
+    for col, label in MUSAID_MAP.items():
+        val = counts.get(col, 0)
+        if val > 0:
+            badges.append(
+                f'<span style="display: inline-block; padding: 2px 6px; font-size: 10px; font-weight: bold; border-radius: 12px; margin: 2px; white-space: nowrap; background-color: #fefaf0; color: #8c6b2d; border: 1px solid #fbd38d;">{label}</span>'
             )
     return "".join(badges)
 
@@ -109,14 +128,17 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
             # format mistakes
             ahkam_str = _format_ahkam_email(counts)
             makharij_str = _format_makharij_email(counts)
+            musaid_str = _format_musaid_email(counts)
             
             mistakes_detail = ""
-            if ahkam_str or makharij_str:
+            if ahkam_str or makharij_str or musaid_str:
                 mistakes_detail += '<div style="margin-top: 5px; padding-top: 4px; border-top: 1px dotted #e0dcd5; text-align: left; line-height: 1.5;">'
                 if ahkam_str:
                     mistakes_detail += ahkam_str
                 if makharij_str:
                     mistakes_detail += makharij_str
+                if musaid_str:
+                    mistakes_detail += musaid_str
                 mistakes_detail += '</div>'
             
             # calculate grade/marks (consistent with 10 - 0.5 * talqeen - 0.25 * tanbeeh)
@@ -196,14 +218,17 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
             # format mistakes
             ahkam_str = _format_ahkam_email(counts)
             makharij_str = _format_makharij_email(counts)
+            musaid_str = _format_musaid_email(counts)
             
             mistakes_detail = ""
-            if ahkam_str or makharij_str:
+            if ahkam_str or makharij_str or musaid_str:
                 mistakes_detail += '<div style="margin-top: 5px; padding-top: 4px; border-top: 1px dotted #e0dcd5; text-align: left; line-height: 1.5;">'
                 if ahkam_str:
                     mistakes_detail += ahkam_str
                 if makharij_str:
                     mistakes_detail += makharij_str
+                if musaid_str:
+                    mistakes_detail += musaid_str
                 mistakes_detail += '</div>'
             
             is_zero = bool(counts.get("is_zero_marks", False))
