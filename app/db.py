@@ -537,6 +537,7 @@ def increment_mistake_bg(session_id: str, kind: str, counts: Dict[str, int]) -> 
 
 
 def _bg_update_mistake(rest: SupabaseRest, session_id: str, kind: str, counts: Dict[str, int]) -> None:
+    global _db_supported_columns
     try:
         patch = {
             "talqeen": counts["talqeen"],
@@ -571,14 +572,28 @@ def _bg_update_mistake(rest: SupabaseRest, session_id: str, kind: str, counts: D
             "iqlab",
             "is_zero_marks",
         ] + MAKHARIJ_COLS
+        
+        if not _db_supported_columns:
+            all_possible_cols = {
+                "session_id", "talqeen", "tanbeeh", "repeat_mistake", "mutashabehat", "irab", "updated_at",
+                "awakhir_ul_ayat", "irab_talqeen", "irab_tanbeeh", "repeat_mistake_talqeen", "repeat_mistake_tanbeeh",
+                "mutashabehat_talqeen", "mutashabehat_tanbeeh", "awakhir_ul_ayat_talqeen", "awakhir_ul_ayat_tanbeeh",
+                "ikhfa", "izhaar", "qalqalah", "ism_jalalah", "tahreek_sakin", "gunnah", "idgham", "madd_lazim",
+                "madd_muttasil", "mad_tabaiee", "ikhfa_shafawi", "iqlab", "is_zero_marks"
+            } | set(MAKHARIJ_COLS)
+            _db_supported_columns = all_possible_cols
+
         for col in new_cols:
             if _db_supported_columns and col in _db_supported_columns:
                 patch[col] = counts.get(col, 0)
 
-        rest.update(
+        # Use upsert to handle new sessions where the mistake_counts row does not exist yet
+        payload = {"session_id": session_id, **patch}
+        rest.upsert(
             "mistake_counts",
-            match={"session_id": session_id},
-            patch=patch,
+            [payload],
+            on_conflict="session_id",
+            returning="minimal"
         )
         if kind != "is_zero_marks":
             rest.insert(
