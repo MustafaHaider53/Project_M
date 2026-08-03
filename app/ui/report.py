@@ -394,6 +394,7 @@ def render_parent_views_dashboard() -> None:
 
     # Fetch students
     students = list_students()
+    students = [s for s in students if "test" not in s["full_name"].lower()]
     if not students:
         st.info("No students found.")
         return

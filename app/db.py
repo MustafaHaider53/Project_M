@@ -1119,6 +1119,7 @@ def get_all_students_current_jadeed() -> List[Dict[str, Any]]:
         return []
     
     students = rest.select("students", select="id,full_name", params={"order": "full_name.asc"})
+    students = [s for s in students if "test" not in s["full_name"].lower()]
     if not students:
         return []
 
@@ -1340,6 +1341,7 @@ def fetch_collective_attendance_report(*, year: int, month: int) -> Dict[str, An
         raise RuntimeError("Supabase is not configured.")
 
     students = list_students()
+    students = [s for s in students if "test" not in s["full_name"].lower()]
     if not students:
         return {"students": [], "days": [], "year": year, "month": month}
 
@@ -1618,7 +1620,8 @@ def fetch_ikhtebar_report(*, from_date: str, to_date: str) -> Dict[str, Any]:
         raise RuntimeError("Supabase is not configured.")
 
     def fetch_students():
-        return rest.select("students", select="id,full_name", params={"order": "full_name.asc"})
+        rows = rest.select("students", select="id,full_name", params={"order": "full_name.asc"})
+        return [r for r in rows if "test" not in r["full_name"].lower()]
 
     def fetch_jadeed():
         return rest.select(
@@ -1735,6 +1738,7 @@ def fetch_ummul_banin_report_data() -> List[Dict[str, Any]]:
         return []
         
     students = list_students()
+    students = [s for s in students if "test" not in s["full_name"].lower()]
     if not students:
         return []
         
