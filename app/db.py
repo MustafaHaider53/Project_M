@@ -849,8 +849,20 @@ def fetch_monthly_report(*, student_id: str, year: int, month: int) -> List[Dict
             row["surat"] = f"{surah.get('number', '')} - {surah.get('name_en', '')}".strip(" -")
             row["surah_name_ar"] = surah.get("name_ar", "")
             row["surah_number"] = surah.get("number", "")
+            row["page_number"] = int(s.get("page_number") or 0)
             by_date[d]["murajat"].append(row)
         elif s.get("mode") == "juzulhali":
+            surah = s.get("surahs") or {}
+            if isinstance(surah, list):
+                surah = surah[0] if surah else {}
+            if surah.get("number"):
+                row["surat"] = f"{surah.get('number', '')} - {surah.get('name_en', '')}".strip(" -")
+                row["surah_name_ar"] = surah.get("name_ar", "")
+                row["surah_number"] = surah.get("number", "")
+            else:
+                row["surat"] = ""
+                row["surah_name_ar"] = ""
+                row["surah_number"] = ""
             row["page_number"] = int(s.get("page_number") or 0)
             by_date[d]["juzulhali"].append(row)
 
@@ -1464,6 +1476,7 @@ def fetch_collective_attendance_report(*, year: int, month: int) -> Dict[str, An
             juzulhali = day_data["juzulhali"]
             jadeed = day_data["jadeed"]
             no_jadeed = day_data["no_jadeed"]
+            takhteet = day_data["takhteet"]
             is_present = bool(
                 murajat
                 or juzulhali
@@ -1698,6 +1711,116 @@ def fetch_parent_views(*, date_str: str) -> List[Dict[str, Any]]:
     except Exception as e:
         print(f"[fetch_parent_views error] {e}")
         return []
+
+
+def fetch_ummul_banin_report_data() -> List[Dict[str, Any]]:
+    import concurrent.futures
+    rest = get_rest()
+    if rest is None:
+        return []
+        
+    students = list_students()
+    if not students:
+        return []
+        
+    today = today_iso()
+    
+    # Fetch today's jadeed entries
+    today_entries = rest.select(
+        "jadeed_entries",
+        select="student_id,activity_date,surah_id,page_number,ayah_number,volume,created_at,surahs(name_en,name_ar,number)",
+        params={
+            "activity_date": f"eq.{today}"
+        }
+    )
+    
+    # Fetch today's no_jadeed daily flags
+    today_no_jadeed = rest.select(
+        "jadeed_daily",
+        select="student_id,no_jadeed",
+        params={
+            "activity_date": f"eq.{today}"
+        }
+    )
+    no_jadeed_map = {row["student_id"]: bool(row["no_jadeed"]) for row in today_no_jadeed}
+    
+    # Fetch today's takhteet (jadeed only)
+    today_takhteet = rest.select(
+        "takhteet_daily",
+        select="student_id,jadeed_text_clean",
+        params={
+            "activity_date": f"eq.{today}"
+        }
+    )
+    takhteet_map = {row["student_id"]: (row["jadeed_text_clean"] or "") for row in today_takhteet}
+    
+    # For each today's entry, map student_id -> entry (sort by created_at desc to get latest if multiple today)
+    today_entries_map = {}
+    for entry in sorted(today_entries, key=lambda x: x.get("created_at") or "", reverse=True):
+        sid = entry["student_id"]
+        if sid not in today_entries_map:
+            today_entries_map[sid] = entry
+            
+    # We will build a list of student records
+    # If a student has no entry today OR has no_jadeed map as True, we need their last historical entry
+    historical_needed_ids = []
+    for s in students:
+        sid = s["id"]
+        has_today = (sid in today_entries_map)
+        is_no_jadeed = no_jadeed_map.get(sid, False)
+        if not has_today or is_no_jadeed:
+            historical_needed_ids.append(sid)
+            
+    # Fetch last historical entry for each of these students in parallel
+    historical_entries_map = {}
+    if historical_needed_ids:
+        def fetch_last_entry(sid: str):
+            try:
+                res = rest.select(
+                    "jadeed_entries",
+                    select="student_id,activity_date,surah_id,page_number,ayah_number,volume,created_at,surahs(name_en,name_ar,number)",
+                    params={
+                        "student_id": f"eq.{sid}",
+                        "activity_date": f"lt.{today}",
+                        "order": "activity_date.desc,created_at.desc",
+                        "limit": "1"
+                    }
+                )
+                return sid, res[0] if res else None
+            except Exception:
+                return sid, None
+                
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            results = executor.map(fetch_last_entry, historical_needed_ids)
+            for sid, entry in results:
+                if entry:
+                    historical_entries_map[sid] = entry
+                    
+    report_data = []
+    for s in students:
+        sid = s["id"]
+        has_today = (sid in today_entries_map)
+        is_no_jadeed = no_jadeed_map.get(sid, False)
+        
+        entry = None
+        is_historical = False
+        
+        if has_today and not is_no_jadeed:
+            entry = today_entries_map[sid]
+        else:
+            entry = historical_entries_map.get(sid)
+            is_historical = True
+            
+        report_data.append({
+            "student_id": sid,
+            "student_name": s["full_name"],
+            "entry": entry,
+            "is_historical": is_historical,
+            "is_no_jadeed_today": is_no_jadeed,
+            "takhteet_jadeed": takhteet_map.get(sid, ""),
+        })
+        
+    return report_data
 
 
 

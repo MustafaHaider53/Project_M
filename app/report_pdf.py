@@ -362,6 +362,12 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type
                         parts = surah_name.split(" - ")
                         surah_name = parts[1] if len(parts) > 1 else surah_name
                         
+                    page = m.get("page_number", 0)
+                    if page > 0:
+                        surah_display = f"{surah_name} (p. {page})"
+                    else:
+                        surah_display = surah_name
+                        
                     counts = m
                     talqeen = counts.get("talqeen", 0)
                     tanbeeh = counts.get("tanbeeh", 0)
@@ -373,7 +379,7 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type
                     marks = m.get("marks", 0.0)
                     grade_badge = _format_grade_badge(marks)
                     
-                    cells.append(f'<td class="text-left" style="font-weight: 600; font-size: 9pt;">{escape(surah_name)}</td>')
+                    cells.append(f'<td class="text-left" style="font-weight: 600; font-size: 9pt;">{escape(surah_display)}</td>')
                     cells.append(f'<td>{talqeen}</td>')
                     cells.append(f'<td>{tanbeeh}</td>')
                     cells.append(f'<td>{irab}</td>')
@@ -403,7 +409,15 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type
                 if sub_idx < len(juzulhali):
                     j = juzulhali[sub_idx]
                     page = j.get("page_number", 0)
-                    page_display = f"Page {page}" if page > 0 else "-"
+                    surah_name = j.get("surah_name_ar") or j.get("surat") or ""
+                    if surah_name and " - " in surah_name:
+                        parts = surah_name.split(" - ")
+                        surah_name = parts[1] if len(parts) > 1 else surah_name
+                        
+                    if surah_name:
+                        page_display = f"{surah_name} (p. {page})"
+                    else:
+                        page_display = f"Page {page}" if page > 0 else "-"
                     
                     counts = j
                     talqeen = counts.get("talqeen", 0)
@@ -416,7 +430,7 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type
                     marks = j.get("marks", 0.0)
                     grade_badge = _format_grade_badge(marks)
                     
-                    cells.append(f'<td style="font-weight: 600; font-size: 9pt;">{page_display}</td>')
+                    cells.append(f'<td class="text-left" style="font-weight: 600; font-size: 9pt;">{escape(page_display)}</td>')
                     cells.append(f'<td>{talqeen}</td>')
                     cells.append(f'<td>{tanbeeh}</td>')
                     cells.append(f'<td>{irab}</td>')
@@ -503,7 +517,7 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type
         thead_html = """
       <tr>
         <th style="width: 15%;">Date / Day</th>
-        <th style="width: 20%;">Surah</th>
+        <th style="width: 20%;">Surah (Page)</th>
         <th style="width: 7%;">Talqeen</th>
         <th style="width: 7%;">Tanbeeh</th>
         <th style="width: 7%;">I'rab</th>
@@ -517,7 +531,7 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type
         thead_html = """
       <tr>
         <th style="width: 15%;">Date / Day</th>
-        <th style="width: 20%;">Page</th>
+        <th style="width: 20%;">Surah / Page</th>
         <th style="width: 7%;">Talqeen</th>
         <th style="width: 7%;">Tanbeeh</th>
         <th style="width: 7%;">I'rab</th>
@@ -1913,6 +1927,253 @@ def build_ikhtebar_report_html(
         <th style="width: 12%;">Days Present</th>
         <th style="width: 12%;">Days Absent</th>
         <th style="width: 10%;">Grade</th>
+      </tr>
+    </thead>
+    <tbody>
+      {"".join(table_rows)}
+    </tbody>
+  </table>
+
+  <!-- Floating Print Button -->
+  <button class="print-btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
+
+</body>
+</html>
+"""
+
+
+def build_ummul_banin_report_html(report_data: List[Dict[str, Any]]) -> str:
+    """
+    Generates a beautiful HTML report containing the latest Jadeed recitation
+    and Jadeed takhteet for all students.
+    """
+    table_rows = []
+    
+    for idx, s in enumerate(report_data):
+        s_name = s["student_name"]
+        entry = s["entry"]
+        is_historical = s["is_historical"]
+        is_no_jadeed_today = s["is_no_jadeed_today"]
+        takhteet_jadeed = s["takhteet_jadeed"]
+        
+        # Determine status and color badge
+        if entry is None:
+            status_badge = '<span class="status-badge status-none">No History</span>'
+            date_str = "-"
+            recitation_str = "No Jadeed entry found"
+        else:
+            activity_date = entry.get("activity_date") or ""
+            # Format date for readability
+            try:
+                dt = datetime.strptime(str(activity_date), "%Y-%m-%d")
+                date_str = dt.strftime("%b %d, %Y")
+            except Exception:
+                date_str = str(activity_date)
+                
+            surah = entry.get("surahs") or {}
+            if isinstance(surah, list):
+                surah = surah[0] if surah else {}
+            surah_name = surah.get("name_en") or ""
+            
+            p_num = entry.get("page_number") or 0
+            a_num = entry.get("ayah_number") or 0
+            vol = entry.get("volume") or ""
+            
+            recitation_parts = []
+            if surah_name:
+                recitation_parts.append(surah_name)
+            if p_num > 0:
+                recitation_parts.append(f"Pg {p_num}")
+            if a_num > 0:
+                recitation_parts.append(f"Ayah {a_num}")
+            if vol:
+                recitation_parts.append(f"Vol {vol}")
+                
+            recitation_str = ", ".join(recitation_parts) if recitation_parts else "-"
+            
+            if is_no_jadeed_today:
+                status_badge = '<span class="status-badge status-no-jadeed">No Jadeed (Today)</span>'
+            elif is_historical:
+                status_badge = '<span class="status-badge status-historical">Last Recited</span>'
+            else:
+                status_badge = '<span class="status-badge status-today">Today\'s Jadeed</span>'
+                
+        # Alternating row background
+        row_bg_class = "even-row" if idx % 2 == 1 else "odd-row"
+        
+        table_rows.append(f"""
+        <tr class="{row_bg_class}">
+            <td style="font-weight: 600; color: #1b4d3e; font-size: 9.5pt;">{escape(s_name)}</td>
+            <td style="text-align: center; font-size: 9pt;">{status_badge}</td>
+            <td style="font-size: 9.5pt; font-weight: 500;">{escape(recitation_str)}</td>
+            <td style="text-align: center; font-size: 9pt; font-weight: 500; color: #666;">{escape(date_str)}</td>
+            <td style="font-size: 9pt; white-space: pre-wrap; font-family: sans-serif; color: #444; line-height: 1.4;">{escape(takhteet_jadeed) if takhteet_jadeed.strip() else '<span class="muted">-</span>'}</td>
+        </tr>
+        """)
+        
+    return f"""<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Ummul Banin Ben Report</title>
+  <style>
+    :root {{
+      --green-dark: #1b4d3e;
+      --gold: #c5a880;
+      --gray-light: #fcfbfa;
+      --gray-border: #e8e4db;
+      --text: #333333;
+    }}
+    body {{
+      font-family: 'Outfit', 'Inter', 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 30px;
+      color: var(--text);
+      background-color: #ffffff;
+    }}
+    .header-banner {{
+      background: linear-gradient(135deg, var(--green-dark) 0%, #113027 100%);
+      padding: 25px 30px;
+      border-radius: 12px;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      margin-bottom: 25px;
+      border: 1px solid var(--gold);
+    }}
+    .header-title {{
+      margin: 0;
+      font-size: 20pt;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }}
+    .header-subtitle {{
+      margin: 0;
+      font-size: 9.5pt;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--gold);
+      font-weight: 600;
+    }}
+    
+    table {{
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      font-size: 9.5pt;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+    }}
+    th {{
+      background-color: var(--green-dark);
+      color: white;
+      padding: 12px 10px;
+      font-weight: 600;
+      font-size: 8.5pt;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border: 1px solid var(--green-dark);
+    }}
+    td {{
+      padding: 10px;
+      border: 1px solid var(--gray-border);
+    }}
+    .odd-row {{
+      background-color: #ffffff;
+    }}
+    .even-row {{
+      background-color: var(--gray-light);
+    }}
+    
+    .status-badge {{
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 8pt;
+      font-weight: 600;
+      text-align: center;
+      width: 110px;
+    }}
+    .status-today {{
+      background-color: #e2f0d9;
+      color: #385723;
+      border: 1px solid #c5e0b4;
+    }}
+    .status-no-jadeed {{
+      background-color: #fce4d6;
+      color: #c65911;
+      border: 1px solid #f8cbad;
+    }}
+    .status-historical {{
+      background-color: #fff2cc;
+      color: #7f6000;
+      border: 1px solid #ffe699;
+    }}
+    .status-none {{
+      background-color: #f2f2f2;
+      color: #7f7f7f;
+      border: 1px solid #d9d9d9;
+    }}
+    .muted {{
+      color: #999;
+      font-style: italic;
+    }}
+    .print-btn {{
+      position: fixed;
+      bottom: 25px;
+      right: 25px;
+      background: linear-gradient(135deg, var(--green-dark) 0%, #113027 100%);
+      color: white;
+      border: 1px solid var(--gold);
+      padding: 12px 20px;
+      border-radius: 50px;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      font-size: 10pt;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }}
+    .print-btn:hover {{
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+    }}
+    
+    @media print {{
+      .print-btn {{
+        display: none;
+      }}
+      body {{
+        padding: 0;
+        background-color: #ffffff;
+      }}
+    }}
+  </style>
+</head>
+<body>
+
+  <!-- Header Banner -->
+  <div class="header-banner">
+    <div>
+      <div class="header-subtitle">Al Madrasa-tus-Saifiyah-tul-Burhaniyah</div>
+      <div class="header-title">Ummul Banin Ben Report (تقرير أم البنين)</div>
+    </div>
+    <div style="text-align: right;">
+      <div class="header-subtitle">Report Date</div>
+      <div style="font-size: 11pt; font-weight: bold; margin-top: 1px;">{datetime.now().strftime("%B %d, %Y")}</div>
+    </div>
+  </div>
+
+  <!-- Report Data Grid Table -->
+  <table>
+    <thead>
+      <tr>
+        <th style="text-align: left; width: 20%;">Student Name</th>
+        <th style="width: 15%;">Status</th>
+        <th style="text-align: left; width: 25%;">Latest Jadeed Recited</th>
+        <th style="width: 15%;">Recitation Date</th>
+        <th style="text-align: left; width: 25%;">Takhteet (Jadeed Homework)</th>
       </tr>
     </thead>
     <tbody>

@@ -28,10 +28,10 @@ create table if not exists public.listening_sessions (
   page_number int,
   created_at timestamptz not null default now(),
   constraint murajat_needs_surah check (
-    (mode <> 'murajat') or (surah_id is not null and page_number is null)
+    (mode <> 'murajat') or (surah_id is not null)
   ),
   constraint juzulhali_needs_page check (
-    (mode <> 'juzulhali') or (page_number is not null and surah_id is null)
+    (mode <> 'juzulhali') or (page_number is not null)
   )
 );
 

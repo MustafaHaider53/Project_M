@@ -147,16 +147,29 @@ def render_student_analytics(student_id: str, student_name: str) -> None:
             s_num = surah.get("number", 0)
             s_num_val = int(s_num or 0)
             s_en = surah.get("name_en", "")
-            s_ar = surah.get("name_ar", "")
-            surah_display = f"{s_num_val:03d} — {s_en} ({s_ar})"
+            p_num = int(s.get("page_number") or 0)
+            if p_num > 0:
+                surah_display = f"{s_num_val:03d} — {s_en} (p. {p_num})"
+            else:
+                s_ar = surah.get("name_ar", "")
+                surah_display = f"{s_num_val:03d} — {s_en} ({s_ar})"
             
             surah_mistakes.append({"Surah": surah_display, "Mistake Type": "Talqeen", "Count": tq})
             surah_mistakes.append({"Surah": surah_display, "Mistake Type": "Tanbeeh", "Count": tb})
                 
         # Group by Page (for Juzulhali)
-        if mode == "juzulhali" and s.get("page_number") is not None:
+        if mode == "juzulhali":
+            surah = s.get("surahs")
             p_num = int(s.get("page_number") or 0)
-            page_display = f"Page {p_num:02d}"
+            if surah:
+                if isinstance(surah, list):
+                    surah = surah[0] if surah else {}
+                s_num = surah.get("number", 0)
+                s_num_val = int(s_num or 0)
+                s_en = surah.get("name_en", "")
+                page_display = f"{s_num_val:03d} — {s_en} (p. {p_num})"
+            else:
+                page_display = f"Page {p_num:02d}"
             page_mistakes.append({"Page": page_display, "Mistake Type": "Talqeen", "Count": tq})
             page_mistakes.append({"Page": page_display, "Mistake Type": "Tanbeeh", "Count": tb})
 
@@ -208,7 +221,7 @@ def render_student_analytics(student_id: str, student_name: str) -> None:
             df_surah_plot = df_surah[df_surah["Surah"].isin(top_surahs)]
             
             surah_chart = alt.Chart(df_surah_plot).mark_bar().encode(
-                y=alt.Y("Surah:N", sort=top_surahs, title="Surah"),
+                y=alt.Y("Surah:N", sort=top_surahs, title="Surah", axis=alt.Axis(labelLimit=300)),
                 x=alt.X("Count:Q", title="Mistakes Count"),
                 color=alt.Color(
                     "Mistake Type:N",
@@ -233,7 +246,7 @@ def render_student_analytics(student_id: str, student_name: str) -> None:
             df_page_plot = df_page[df_page["Page"].isin(top_pages)]
             
             page_chart = alt.Chart(df_page_plot).mark_bar().encode(
-                y=alt.Y("Page:N", sort=top_pages, title="Page"),
+                y=alt.Y("Page:N", sort=top_pages, title="Page", axis=alt.Axis(labelLimit=300)),
                 x=alt.X("Count:Q", title="Mistakes Count"),
                 color=alt.Color(
                     "Mistake Type:N",
