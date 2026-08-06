@@ -111,7 +111,11 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
             surah = m.get("surahs") or {}
             surah_name = surah.get("name_en") or "Surah"
             surah_ar = surah.get("name_ar") or ""
-            page = m.get("page_number", 0)
+            page_val = m.get("page_number")
+            try:
+                page = int(page_val) if page_val is not None else 0
+            except (ValueError, TypeError):
+                page = 0
             if page > 0:
                 surah_display = f"{surah_name} (Page {page})"
             else:

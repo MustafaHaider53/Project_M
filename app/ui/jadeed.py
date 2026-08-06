@@ -98,8 +98,8 @@ def render_jadeed() -> None:
             surah_name = surah_info.get("name_en", "Unknown")
             surah_ar = surah_info.get("name_ar", "")
             surah_num = surah_info.get("number", 0)
-            page_num = entry.get("page_number", 0)
-            ayah_num = entry.get("ayah_number", 0)
+            page_num = entry.get("page_number") or 0
+            ayah_num = entry.get("ayah_number") or 0
             volume = entry.get("volume", "")
             
             # Premium card design for each entry
@@ -168,7 +168,13 @@ def render_jadeed() -> None:
 
     # Reset/Initialize session state keys to avoid cascading dropdown lags
     init_session_key = f"jadeed_state_init::{student_id}"
-    if st.session_state.get("jadeed_state_init") != init_session_key:
+    if (
+        st.session_state.get("jadeed_state_init") != init_session_key
+        or "jadeed_surah" not in st.session_state
+        or "jadeed_page" not in st.session_state
+        or "jadeed_ayah" not in st.session_state
+        or "jadeed_volume" not in st.session_state
+    ):
         st.session_state.jadeed_state_init = init_session_key
         
         # Try to load last jadeed entry to pre-fill
@@ -229,8 +235,8 @@ def render_jadeed() -> None:
             pages_dict = quran_metadata["surahs"][s_num_str]["pages"]
             page_options = sorted(list(pages_dict.keys()), key=int)
             
-            # Guard against out-of-bounds selection in state
-            if st.session_state.jadeed_page not in page_options:
+            # Guard against out-of-bounds or uninitialized selection in state
+            if "jadeed_page" not in st.session_state or st.session_state.jadeed_page not in page_options:
                 st.session_state.jadeed_page = page_options[0]
                 
             selected_page = st.selectbox(
@@ -244,8 +250,8 @@ def render_jadeed() -> None:
             # Dynamically fetch ayahs on the selected page for the selected Surah
             ayah_options = sorted(pages_dict[selected_page], key=int)
             
-            # Guard against out-of-bounds selection in state
-            if st.session_state.jadeed_ayah not in ayah_options:
+            # Guard against out-of-bounds or uninitialized selection in state
+            if "jadeed_ayah" not in st.session_state or st.session_state.jadeed_ayah not in ayah_options:
                 st.session_state.jadeed_ayah = ayah_options[0]
                 
             selected_ayah = st.selectbox(
@@ -255,6 +261,10 @@ def render_jadeed() -> None:
             )
             
         with col_v:
+            # Guard against invalid or uninitialized selection in state
+            if "jadeed_volume" not in st.session_state or st.session_state.jadeed_volume not in ["Kamil", "Ruba", "Nisf", "Sulus"]:
+                st.session_state.jadeed_volume = "Kamil"
+                
             selected_volume = st.selectbox(
                 "Volume",
                 options=["Kamil", "Ruba", "Nisf", "Sulus"],

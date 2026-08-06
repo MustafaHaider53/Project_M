@@ -1182,8 +1182,10 @@ def get_all_students_current_jadeed() -> List[Dict[str, Any]]:
             surah_ar = surah.get("name_ar", "")
             surah_num = surah.get("number", "?")
             surah_display = f"{surah_num} - {surah_name} ({surah_ar})"
-            page_num = str(latest_entry.get("page_number", "-"))
-            ayah_num = str(latest_entry.get("ayah_number", "-"))
+            pg_val = latest_entry.get("page_number")
+            page_num = str(pg_val) if pg_val is not None else "-"
+            ay_val = latest_entry.get("ayah_number")
+            ayah_num = str(ay_val) if ay_val is not None else "-"
             volume_val = latest_entry.get("volume", "-")
             last_date = entry_date
             current_status = "Active"
