@@ -179,7 +179,8 @@ def render_report() -> None:
         "📅 Class Attendance",
         "📖 Ummul Banin Ben Report",
         "🎓 OPR - One Page Report",
-        "👪 Parent Views"
+        "👪 Parent Views",
+        "✉️ Email Log"
     ]
     if "selected_report_category" not in st.session_state:
         st.session_state.selected_report_category = "👥 Murajat Report"
@@ -363,6 +364,9 @@ def render_report() -> None:
 
     elif selected_category == "👪 Parent Views":
         render_parent_views_dashboard()
+        
+    elif selected_category == "✉️ Email Log":
+        render_email_log_dashboard()
 
 
 def render_parent_views_dashboard() -> None:
@@ -470,6 +474,133 @@ def render_parent_views_dashboard() -> None:
       <table style="width: 100%; border-collapse: collapse; text-align: left; font-family: system-ui, -apple-system, sans-serif; font-size: 0.82rem; line-height: 1.2;">
         <thead>
           <tr style="background-color: var(--card); border-bottom: 2px solid var(--border);">
+            {header_html}
+          </tr>
+        </thead>
+        <tbody>
+          {rows_html}
+        </tbody>
+      </table>
+    </div>
+    """
+    
+    st.markdown(table_html.replace("\n", " "), unsafe_allow_html=True)
+
+
+def render_email_log_dashboard() -> None:
+    from app.db import get_daily_email_status
+    
+    st.markdown("### ✉️ Daily Email Dispatch Status")
+    st.caption("Track which students have received their daily recitation progress or absence emails today.")
+
+    # Select Date
+    col_date, _ = st.columns([2, 2])
+    with col_date:
+        selected_date = st.date_input(
+            "Select Date:",
+            value=date.today(),
+            key="email_log_date_input"
+        )
+        
+    date_str = selected_date.isoformat()
+    
+    with st.spinner("Fetching email status..."):
+        logs = get_daily_email_status(date_str)
+        
+    if not logs:
+        st.info("No students found in the database.")
+        return
+
+    # Count statistics
+    total = len(logs)
+    sent_count = sum(1 for l in logs if l["sent"])
+    not_sent_count = total - sent_count
+    
+    # Render premium summary cards
+    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+    col_stats = st.columns(3)
+    with col_stats[0]:
+        st.markdown(
+            f"""
+            <div style='background-color: var(--card); border: 1.5px solid var(--border); padding: 15px; border-radius: 8px; text-align: center;'>
+                <div style='font-size: 0.85rem; color: var(--ink); opacity: 0.7; font-weight: 500;'>Total Students</div>
+                <div style='font-size: 1.8rem; font-weight: bold; color: var(--ink); margin-top: 5px;'>{total}</div>
+            </div>
+            """.replace("\n", " "),
+            unsafe_allow_html=True
+        )
+    with col_stats[1]:
+        st.markdown(
+            f"""
+            <div style='background-color: rgba(16, 185, 129, 0.08); border: 1.5px solid #10b981; padding: 15px; border-radius: 8px; text-align: center;'>
+                <div style='font-size: 0.85rem; color: #0f766e; font-weight: 500;'>Sent Successfully</div>
+                <div style='font-size: 1.8rem; font-weight: bold; color: #0f766e; margin-top: 5px;'>🟢 {sent_count}</div>
+            </div>
+            """.replace("\n", " "),
+            unsafe_allow_html=True
+        )
+    with col_stats[2]:
+        st.markdown(
+            f"""
+            <div style='background-color: rgba(239, 68, 68, 0.08); border: 1.5px solid #ef4444; padding: 15px; border-radius: 8px; text-align: center;'>
+                <div style='font-size: 0.85rem; color: #b91c1c; font-weight: 500;'>Not Sent</div>
+                <div style='font-size: 1.8rem; font-weight: bold; color: #b91c1c; margin-top: 5px;'>🔴 {not_sent_count}</div>
+            </div>
+            """.replace("\n", " "),
+            unsafe_allow_html=True
+        )
+
+    st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
+    
+    # Search / filter
+    search_query = st.text_input("🔍 Search Student:", value="", key="email_log_search")
+    
+    filtered_logs = logs
+    if search_query.strip():
+        q = search_query.strip().lower()
+        filtered_logs = [l for l in logs if q in l["student_name"].lower()]
+
+    # Construct HTML Table
+    header_html = """
+    <th style="padding: 12px; font-weight: bold; text-align: left; background-color: #F7EFD8; border-bottom: 2px solid var(--border);">👤 Student Name</th>
+    <th style="padding: 12px; font-weight: bold; text-align: left; background-color: #F7EFD8; border-bottom: 2px solid var(--border);">✉️ Email Address</th>
+    <th style="padding: 12px; font-weight: bold; text-align: center; background-color: #F7EFD8; border-bottom: 2px solid var(--border);">🚦 Status</th>
+    """
+    
+    rows_html = ""
+    for l in filtered_logs:
+        name = l["student_name"]
+        email = l["student_email"]
+        sent = l["sent"]
+        
+        # Format status indicator
+        if sent:
+            status_html = '<span style="background-color: rgba(16, 185, 129, 0.15); color: #10b981; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold;">🟢 Sent</span>'
+        else:
+            status_html = '<span style="background-color: rgba(239, 68, 68, 0.15); color: #ef4444; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold;">🔴 Not Sent</span>'
+            
+        rows_html += f"""
+        <tr style="border-bottom: 1px solid var(--border); font-size: 0.88rem;">
+            <td style="padding: 12px; font-weight: 600;">{name}</td>
+            <td style="padding: 12px; opacity: 0.85;">{email}</td>
+            <td style="padding: 12px; text-align: center;">{status_html}</td>
+        </tr>
+        """
+        
+    if not filtered_logs:
+        rows_html = f"""
+        <tr>
+            <td colspan="3" style="padding: 20px; text-align: center; font-style: italic; color: var(--ink); opacity: 0.6;">
+                No students found matching your search.
+            </td>
+        </tr>
+        """
+        
+    table_html = f"""
+    <div style="overflow: auto; border: 1px solid var(--border); border-radius: 8px; background-color: var(--card);">
+      <table style="width: 100%; border-collapse: collapse; text-align: left; font-family: system-ui, -apple-system, sans-serif; line-height: 1.4;">
+        <thead>
+          <tr style="background-color: var(--card);">
             {header_html}
           </tr>
         </thead>

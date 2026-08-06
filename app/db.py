@@ -1853,6 +1853,59 @@ def fetch_ummul_banin_report_data() -> List[Dict[str, Any]]:
     return report_data
 
 
+def log_email_status(student_id: str, activity_date: str, sent: bool) -> None:
+    client = get_rest()
+    if not client:
+        return
+    try:
+        client.upsert(
+            "email_logs",
+            [
+                {
+                    "student_id": student_id,
+                    "activity_date": activity_date,
+                    "sent": sent,
+                }
+            ],
+            on_conflict="student_id,activity_date",
+        )
+    except Exception as e:
+        print(f"Failed to log email status: {e}")
+
+
+def get_daily_email_status(date_str: str) -> List[Dict[str, Any]]:
+    client = get_rest()
+    if not client:
+        return []
+    try:
+        # Get all students
+        students = client.select("students", select="id,full_name,email")
+        # Get email logs for the specific date
+        logs = client.select("email_logs", select="student_id,sent", params={"activity_date": f"eq.{date_str}"})
+        
+        log_map = {l["student_id"]: l["sent"] for l in logs}
+        
+        result = []
+        for s in students:
+            # Exclude test students
+            if "test" in s["full_name"].lower():
+                continue
+            is_sent = log_map.get(s["id"], False)
+            result.append({
+                "student_id": s["id"],
+                "student_name": s["full_name"],
+                "student_email": s["email"] or "No Email Registered",
+                "sent": is_sent,
+            })
+        # Sort by student name
+        result.sort(key=lambda x: x["student_name"])
+        return result
+    except Exception as e:
+        print(f"Failed to get daily email status: {e}")
+        return []
+
+
+
 
 
 
