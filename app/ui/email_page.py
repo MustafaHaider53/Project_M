@@ -105,6 +105,15 @@ def render_email_page() -> None:
                             print(f"[SMTP Error] {msg}")
                         else:
                             print(f"[SMTP Success] {msg}")
+                        try:
+                            from app.db import log_email_status
+                            log_email_status(
+                                student_id=student_id,
+                                activity_date=today,
+                                sent=success
+                            )
+                        except Exception as ex:
+                            print(f"[DB Error Logging Email] {ex}")
                     threading.Thread(target=_send_bg, daemon=True).start()
                     st.info(f"✉️ Email dispatch started in the background to {email}. It will send silently without locking the app.")
 
