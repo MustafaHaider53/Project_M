@@ -362,7 +362,11 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type
                         parts = surah_name.split(" - ")
                         surah_name = parts[1] if len(parts) > 1 else surah_name
                         
-                    page = m.get("page_number", 0)
+                    page_val = m.get("page_number")
+                    try:
+                        page = int(page_val) if page_val is not None else 0
+                    except (ValueError, TypeError):
+                        page = 0
                     if page > 0:
                         surah_display = f"{surah_name} (p. {page})"
                     else:
@@ -408,7 +412,11 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type
                 
                 if sub_idx < len(juzulhali):
                     j = juzulhali[sub_idx]
-                    page = j.get("page_number", 0)
+                    page_val = j.get("page_number")
+                    try:
+                        page = int(page_val) if page_val is not None else 0
+                    except (ValueError, TypeError):
+                        page = 0
                     surah_name = j.get("surah_name_ar") or j.get("surat") or ""
                     if surah_name and " - " in surah_name:
                         parts = surah_name.split(" - ")
@@ -476,8 +484,16 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type
                             parts = surah_name.split(" - ")
                             surah_name = parts[1] if len(parts) > 1 else surah_name
                             
-                        page = jd.get("page_number", 0)
-                        ayah = jd.get("ayah_number", 0)
+                        page_val = jd.get("page_number")
+                        try:
+                            page = int(page_val) if page_val is not None else 0
+                        except (ValueError, TypeError):
+                            page = 0
+                        ayah_val = jd.get("ayah_number")
+                        try:
+                            ayah = int(ayah_val) if ayah_val is not None else 0
+                        except (ValueError, TypeError):
+                            ayah = 0
                         volume = jd.get("volume") or "-"
                         
                         cells.append(f'<td class="text-left" style="font-weight: 600; font-size: 9pt;">{escape(surah_name)}</td>')
@@ -853,8 +869,10 @@ def build_current_jadeed_report_html(
         surah_ar = surah.get("name_ar", "")
         surah_num = surah.get("number", "?")
         
-        page = current_entry.get("page_number", "-")
-        ayah = current_entry.get("ayah_number", "-")
+        pg_val = current_entry.get("page_number")
+        page = pg_val if pg_val is not None else "-"
+        ay_val = current_entry.get("ayah_number")
+        ayah = ay_val if ay_val is not None else "-"
         volume = current_entry.get("volume", "-")
         date_recited = current_entry.get("activity_date", "-")
         
