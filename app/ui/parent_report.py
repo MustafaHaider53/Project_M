@@ -292,3 +292,11 @@ def render_parent_report() -> None:
     </div>
     """
     st.markdown(html_str.replace("\n", " "), unsafe_allow_html=True)
+
+    # Render Mistake Analytics inside an expander for instant loading and zero rendering lag
+    st.divider()
+    with st.expander("📊 View Recitation & Mistake Analytics", expanded=False):
+        st.markdown("### 📊 Recitation & Mistake Analytics")
+        st.caption("Visual analysis of mistake categories, pronunciation articulation points, rules, and daily trend.")
+        from app.ui.analytics import render_student_analytics
+        render_student_analytics(student_id=student_id, student_name=student_name, skip_kpi_dashboard=True)
