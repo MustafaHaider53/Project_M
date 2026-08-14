@@ -3,6 +3,22 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Tuple
 
 import streamlit as st
+import hmac
+import hashlib
+
+
+def generate_session_signature(user_role: str, student_id: str) -> str:
+    # Use the Supabase Key as a server-side secret key for HMAC signatures
+    secret_key = st.secrets.get("SUPABASE_KEY", "mukhayyam-secure-fallback-key-53")
+    message = f"{user_role}:{student_id}"
+    return hmac.new(secret_key.encode(), message.encode(), hashlib.sha256).hexdigest()
+
+
+def verify_session_signature(user_role: str, student_id: str, sig: str) -> bool:
+    if not sig:
+        return False
+    expected = generate_session_signature(user_role, student_id)
+    return hmac.compare_digest(expected, sig)
 
 
 def back_home_button() -> None:

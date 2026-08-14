@@ -54,6 +54,15 @@ def render_login() -> None:
                     if username_clean == CORRECT_USERNAME and password == CORRECT_PASSWORD:
                         st.session_state.logged_in = True
                         st.session_state.user_role = "admin"
+                        st.session_state.student_id = None
+                        st.session_state.student_name = None
+                        
+                        from app.ui.shared import generate_session_signature
+                        sig = generate_session_signature("admin", "")
+                        st.query_params["logged_in"] = "true"
+                        st.query_params["user_role"] = "admin"
+                        st.query_params["sig"] = sig
+                        
                         st.session_state.login_error = None
                         st.rerun()
                     else:
@@ -79,6 +88,16 @@ def render_login() -> None:
                             st.session_state.student_id = student["id"]
                             st.session_state.student_name = student["full_name"]
                             st.session_state.page = "parent_report"
+                            
+                            from app.ui.shared import generate_session_signature
+                            sig = generate_session_signature("parent", student["id"])
+                            st.query_params["logged_in"] = "true"
+                            st.query_params["user_role"] = "parent"
+                            st.query_params["student_id"] = student["id"]
+                            st.query_params["student_name"] = student["full_name"]
+                            st.query_params["page"] = "parent_report"
+                            st.query_params["sig"] = sig
+                            
                             st.session_state.login_error = None
                             st.rerun()
                         else:
