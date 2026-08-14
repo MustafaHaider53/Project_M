@@ -1639,7 +1639,7 @@ def fetch_ikhtebar_report(*, from_date: str, to_date: str) -> Dict[str, Any]:
             "jadeed_entries",
             select="student_id,activity_date,page_number,ayah_number,volume,created_at,surahs(number,name_en,name_ar)",
             params={
-                "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
+                "activity_date": f"lte.{to_date}",
                 "order": "activity_date.asc,created_at.asc"
             }
         )
