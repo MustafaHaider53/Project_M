@@ -10,7 +10,9 @@ import hashlib
 def generate_session_signature(user_role: str, student_id: str) -> str:
     # Use the Supabase Key as a server-side secret key for HMAC signatures
     secret_key = st.secrets.get("SUPABASE_KEY", "mukhayyam-secure-fallback-key-53")
-    message = f"{user_role}:{student_id}"
+    # For admin/teachers, student_id is dynamic, so we do not include it in the signature message
+    sig_student_id = "" if user_role == "admin" else student_id
+    message = f"{user_role}:{sig_student_id}"
     return hmac.new(secret_key.encode(), message.encode(), hashlib.sha256).hexdigest()
 
 
