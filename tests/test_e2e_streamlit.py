@@ -126,8 +126,8 @@ def test_full_flow_student_murajat_juzulhali_jadeed(driver):
         driver.get(base)
 
         # Login
-        _fill_text_input(driver, "Username", "mukhayyam")
-        _fill_text_input(driver, "Password", "mukhayyam12")
+        _fill_text_input(driver, "Username", "Mushaf")
+        _fill_text_input(driver, "Password", "Mushaf@53")
         _click_button_by_text(driver, "Sign In")
 
         # Home: add student
