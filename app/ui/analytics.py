@@ -8,8 +8,9 @@ from typing import Any, Dict, List
 from app.db import get_student_sessions_with_counts
 
 
-def render_student_analytics(student_id: str, student_name: str) -> None:
-    st.markdown(f"#### 📊 Recitation & Mistake Analytics — {student_name}")
+def render_student_analytics(student_id: str, student_name: str, skip_kpi_dashboard: bool = False) -> None:
+    if not skip_kpi_dashboard:
+        st.markdown(f"#### 📊 Recitation & Mistake Analytics — {student_name}")
     
     with st.spinner("Analyzing student recitation history..."):
         sessions = get_student_sessions_with_counts(student_id=student_id)
@@ -189,39 +190,40 @@ def render_student_analytics(student_id: str, student_name: str) -> None:
 
     avg_marks = total_marks / total_sessions if total_sessions > 0 else 0.0
     
-    # Modern KPI Dashboard using the Progress & Achievement green theme
-    dashboard_html = f"""
-    <div style='background: linear-gradient(135deg, #1b4d3e 0%, #0f352a 100%); padding: 25px; border-radius: 12px; color: white; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 1px solid #c5a880; font-family: "Outfit", "Segoe UI", sans-serif;'>
-        <div style='display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px;'>
-            <div>
-                <h3 style='margin: 0; color: #c5a880; font-size: 20px; font-weight: 600;'>📊 Recitation & Mistake Analytics Dashboard</h3>
-                <p style='margin: 3px 0 0 0; font-size: 13px; opacity: 0.8;'>Aggregated metrics and visual reports for student {student_name}.</p>
+    if not skip_kpi_dashboard:
+        # Modern KPI Dashboard using the Progress & Achievement green theme
+        dashboard_html = f"""
+        <div style='background: linear-gradient(135deg, #1b4d3e 0%, #0f352a 100%); padding: 25px; border-radius: 12px; color: white; margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 1px solid #c5a880; font-family: "Outfit", "Segoe UI", sans-serif;'>
+            <div style='display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px;'>
+                <div>
+                    <h3 style='margin: 0; color: #c5a880; font-size: 20px; font-weight: 600;'>📊 Recitation & Mistake Analytics Dashboard</h3>
+                    <p style='margin: 3px 0 0 0; font-size: 13px; opacity: 0.8;'>Aggregated metrics and visual reports for student {student_name}.</p>
+                </div>
+                <div style='background-color: rgba(197, 168, 128, 0.2); border: 1px solid #c5a880; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; color: #c5a880;'>
+                    Live Data
+                </div>
             </div>
-            <div style='background-color: rgba(197, 168, 128, 0.2); border: 1px solid #c5a880; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; color: #c5a880;'>
-                Live Data
+            <div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px;'>
+                <div style='background-color: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); text-align: center;'>
+                    <div style='font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7; margin-bottom: 5px;'>Total Sessions</div>
+                    <div style='font-size: 24px; font-weight: bold; color: #ffffff;'>{total_sessions}</div>
+                </div>
+                <div style='background-color: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); text-align: center;'>
+                    <div style='font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7; margin-bottom: 5px;'>Average Grade</div>
+                    <div style='font-size: 24px; font-weight: bold; color: #ffffff;'>{avg_marks:.2f} / 10</div>
+                </div>
+                <div style='background-color: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); text-align: center;'>
+                    <div style='font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7; margin-bottom: 5px;'>Total Talqeen</div>
+                    <div style='font-size: 24px; font-weight: bold; color: #ff6b6b;'>{total_talqeen} 🔴</div>
+                </div>
+                <div style='background-color: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); text-align: center;'>
+                    <div style='font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7; margin-bottom: 5px;'>Total Tanbeeh</div>
+                    <div style='font-size: 24px; font-weight: bold; color: #ffd257;'>{total_tanbeeh} 🟡</div>
+                </div>
             </div>
         </div>
-        <div style='display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px;'>
-            <div style='background-color: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); text-align: center;'>
-                <div style='font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7; margin-bottom: 5px;'>Total Sessions</div>
-                <div style='font-size: 24px; font-weight: bold; color: #ffffff;'>{total_sessions}</div>
-            </div>
-            <div style='background-color: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); text-align: center;'>
-                <div style='font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7; margin-bottom: 5px;'>Average Grade</div>
-                <div style='font-size: 24px; font-weight: bold; color: #ffffff;'>{avg_marks:.2f} / 10</div>
-            </div>
-            <div style='background-color: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); text-align: center;'>
-                <div style='font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7; margin-bottom: 5px;'>Total Talqeen</div>
-                <div style='font-size: 24px; font-weight: bold; color: #ff6b6b;'>{total_talqeen} 🔴</div>
-            </div>
-            <div style='background-color: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); text-align: center;'>
-                <div style='font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7; margin-bottom: 5px;'>Total Tanbeeh</div>
-                <div style='font-size: 24px; font-weight: bold; color: #ffd257;'>{total_tanbeeh} 🟡</div>
-            </div>
-        </div>
-    </div>
-    """
-    st.markdown(dashboard_html, unsafe_allow_html=True)
+        """
+        st.markdown(dashboard_html, unsafe_allow_html=True)
 
     # 1. Prepare Surah Mistakes Chart
     has_surah_data = False
