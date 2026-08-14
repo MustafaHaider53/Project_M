@@ -4,14 +4,7 @@ warnings.filterwarnings("ignore", category=UserWarning)
 
 import streamlit as st
 
-from app.ui.home import render_home
-from app.ui.jadeed import render_jadeed
-from app.ui.juzulhali import render_juzulhali
-from app.ui.murajat import render_murajat
-from app.ui.report import render_report
 from app.ui.style import apply_islamic_theme
-from app.ui.takhteet import render_takhteet
-from app.ui.planner import render_planner
 
 
 def main() -> None:
@@ -309,19 +302,25 @@ def main() -> None:
         st.session_state.page = "murajat"
         st.rerun()
     elif current_page == "murajat":
+        from app.ui.murajat import render_murajat
         render_murajat()
     elif current_page == "juzulhali":
+        from app.ui.juzulhali import render_juzulhali
         render_juzulhali()
     elif current_page == "jadeed":
+        from app.ui.jadeed import render_jadeed
         render_jadeed()
     elif current_page == "takhteet":
+        from app.ui.takhteet import render_takhteet
         render_takhteet()
     elif current_page == "planner":
+        from app.ui.planner import render_planner
         render_planner()
     elif current_page == "email":
         from app.ui.email_page import render_email_page
         render_email_page()
     elif current_page == "report":
+        from app.ui.report import render_report
         render_report()
     else:
         st.session_state.page = "home"
