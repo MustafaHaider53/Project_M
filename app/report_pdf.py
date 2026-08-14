@@ -1706,29 +1706,44 @@ def build_ikhtebar_report_html(
         # Jadeed Start / End
         s_jadeed = student_jadeed.get(s_id, [])
         if s_jadeed:
-            first_j = s_jadeed[0]
-            last_j = s_jadeed[-1]
-            
-            f_surah = first_j.get("surahs") or {}
-            f_surah_num = int(f_surah.get("number", 0))
-            f_surah_name = f_surah.get("name_en", "Unknown")
-            f_ayah = int(first_j.get("ayah_number") or 1)
-            
-            l_surah = last_j.get("surahs") or {}
-            l_surah_num = int(l_surah.get("number", 0))
-            l_surah_name = l_surah.get("name_en", "Unknown")
-            l_ayah = int(last_j.get("ayah_number") or 1)
-            
-            # Lookup Quran page numbers dynamically using metadata to override any database entry errors
-            f_page = get_quran_page(f_surah_num, f_ayah) or first_j.get("page_number")
-            l_page = get_quran_page(l_surah_num, l_ayah) or last_j.get("page_number")
-            
-            jadeed_start_str = f"{f_surah_num} - {f_surah_name} (Ayah {f_ayah})"
-            jadeed_end_str = f"{l_surah_num} - {l_surah_name} (Ayah {l_ayah})"
-            
-            if f_page is not None and l_page is not None:
-                total_pages = abs(int(f_page) - int(l_page)) + 1
+            in_range_entries = [j for j in s_jadeed if from_date <= j.get("activity_date", "") <= to_date]
+            if in_range_entries:
+                last_j = in_range_entries[-1]
+                before_range_entries = [j for j in s_jadeed if j.get("activity_date", "") < from_date]
+                if before_range_entries:
+                    first_j = before_range_entries[-1]
+                    is_start_before_range = True
+                else:
+                    first_j = in_range_entries[0]
+                    is_start_before_range = False
+                
+                f_surah = first_j.get("surahs") or {}
+                f_surah_num = int(f_surah.get("number", 0))
+                f_surah_name = f_surah.get("name_en", "Unknown")
+                f_ayah = int(first_j.get("ayah_number") or 1)
+                
+                l_surah = last_j.get("surahs") or {}
+                l_surah_num = int(l_surah.get("number", 0))
+                l_surah_name = l_surah.get("name_en", "Unknown")
+                l_ayah = int(last_j.get("ayah_number") or 1)
+                
+                # Lookup Quran page numbers dynamically using metadata to override any database entry errors
+                f_page = get_quran_page(f_surah_num, f_ayah) or first_j.get("page_number")
+                l_page = get_quran_page(l_surah_num, l_ayah) or last_j.get("page_number")
+                
+                jadeed_start_str = f"{f_surah_num} - {f_surah_name} (Ayah {f_ayah})"
+                jadeed_end_str = f"{l_surah_num} - {l_surah_name} (Ayah {l_ayah})"
+                
+                if f_page is not None and l_page is not None:
+                    if is_start_before_range:
+                        total_pages = abs(int(l_page) - int(f_page))
+                    else:
+                        total_pages = abs(int(l_page) - int(f_page)) + 1
+                else:
+                    total_pages = 0
             else:
+                jadeed_start_str = "-"
+                jadeed_end_str = "-"
                 total_pages = 0
         else:
             jadeed_start_str = "-"
