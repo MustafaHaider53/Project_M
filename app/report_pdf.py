@@ -495,11 +495,19 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type
                         except (ValueError, TypeError):
                             ayah = 0
                         volume = jd.get("volume") or "-"
+                        volume_str = escape(volume)
+                        flag_badges = []
+                        if jd.get("weak_hifz"):
+                            flag_badges.append('<span style="background:#fff3cd; color:#856404; font-size:7pt; padding:1px 4px; border-radius:3px; font-weight:bold; margin-left:3px;">Weak</span>')
+                        if jd.get("airab_mistakes"):
+                            flag_badges.append('<span style="background:#f8d7da; color:#721c24; font-size:7pt; padding:1px 4px; border-radius:3px; font-weight:bold; margin-left:3px;">I\'rab</span>')
+                        if flag_badges:
+                            volume_str += " " + "".join(flag_badges)
                         
                         cells.append(f'<td class="text-left" style="font-weight: 600; font-size: 9pt;">{escape(surah_name)}</td>')
                         cells.append(f'<td>{page if page > 0 else "-"}</td>')
                         cells.append(f'<td>{ayah if ayah > 0 else "-"}</td>')
-                        cells.append(f'<td>{escape(volume)}</td>')
+                        cells.append(f'<td>{volume_str}</td>')
                     else:
                         cells.extend(['<td></td>'] * 4)
                     

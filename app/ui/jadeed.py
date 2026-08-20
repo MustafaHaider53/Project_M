@@ -101,20 +101,32 @@ def render_jadeed() -> None:
             page_num = entry.get("page_number") or 0
             ayah_num = entry.get("ayah_number") or 0
             volume = entry.get("volume", "")
+            is_weak = bool(entry.get("weak_hifz", False))
+            is_airab = bool(entry.get("airab_mistakes", False))
             
-            # Premium card design for each entry
-            card_html = f"""
-            <div style='background-color: var(--card); border: 1.5px solid var(--border); padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.02);'>
-                <div>
-                    <span style='font-size: 1.1rem; font-weight: bold; color: var(--emerald);'>📖 Surah {surah_num} — {surah_name} ({surah_ar})</span>
-                    <div style='font-size: 0.9rem; color: var(--ink); opacity: 0.85; margin-top: 4px;'>
-                        <span style='margin-right: 15px;'>📄 <b>Page:</b> {page_num}</span>
-                        <span style='margin-right: 15px;'>🔢 <b>Ayah:</b> {ayah_num}</span>
-                        <span>📊 <b>Volume:</b> {volume}</span>
-                    </div>
-                </div>
-            </div>
-            """
+            badges_html = []
+            if is_weak:
+                badges_html.append("<span style='background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; padding: 2px 8px; border-radius: 12px; font-size: 0.78rem; font-weight: bold; margin-left: 8px;'>⚠️ Weak Hifz</span>")
+            if is_airab:
+                badges_html.append("<span style='background-color: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; padding: 2px 8px; border-radius: 12px; font-size: 0.78rem; font-weight: bold; margin-left: 8px;'>🔤 Airab Mistakes</span>")
+            badges_str = "".join(badges_html)
+
+            # Premium card design for each entry (dedented to prevent markdown code-block interpretation)
+            card_html = (
+                "<div style='background-color: var(--card); border: 1.5px solid var(--border); padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.02);'>"
+                "<div>"
+                "<div style='display: flex; align-items: center; flex-wrap: wrap; gap: 4px;'>"
+                f"<span style='font-size: 1.1rem; font-weight: bold; color: var(--emerald);'>📖 Surah {surah_num} — {surah_name} ({surah_ar})</span>"
+                f"{badges_str}"
+                "</div>"
+                "<div style='font-size: 0.9rem; color: var(--ink); opacity: 0.85; margin-top: 4px;'>"
+                f"<span style='margin-right: 15px;'>📄 <b>Page:</b> {page_num}</span>"
+                f"<span style='margin-right: 15px;'>🔢 <b>Ayah:</b> {ayah_num}</span>"
+                f"<span>📊 <b>Volume:</b> {volume}</span>"
+                "</div>"
+                "</div>"
+                "</div>"
+            )
             c_card, c_btn = st.columns([5, 1])
             with c_card:
                 st.markdown(card_html, unsafe_allow_html=True)
@@ -130,7 +142,9 @@ def render_jadeed() -> None:
                                 "surah_id": e.get("surah_id"),
                                 "page_number": int(e.get("page_number") or 1),
                                 "ayah_number": int(e.get("ayah_number") or 1),
-                                "volume": e.get("volume") or "Kamil"
+                                "volume": e.get("volume") or "Kamil",
+                                "weak_hifz": bool(e.get("weak_hifz", False)),
+                                "airab_mistakes": bool(e.get("airab_mistakes", False)),
                             })
                     with st.spinner("Deleting entry..."):
                         insert_jadeed_rows(student_id=student_id, rows=payload)
@@ -271,6 +285,42 @@ def render_jadeed() -> None:
                 key="jadeed_volume"
             )
             
+        # One-click toggle buttons (Weak Hifz, Airab Mistakes) - not compulsory, green when active just like Makharij
+        if "jadeed_weak_hifz" not in st.session_state:
+            st.session_state.jadeed_weak_hifz = False
+        if "jadeed_airab_mistakes" not in st.session_state:
+            st.session_state.jadeed_airab_mistakes = False
+            
+        def _toggle_weak_hifz():
+            st.session_state.jadeed_weak_hifz = not st.session_state.get("jadeed_weak_hifz", False)
+            
+        def _toggle_airab_mistakes():
+            st.session_state.jadeed_airab_mistakes = not st.session_state.get("jadeed_airab_mistakes", False)
+
+        is_weak = st.session_state.get("jadeed_weak_hifz", False)
+        is_airab = st.session_state.get("jadeed_airab_mistakes", False)
+
+        st.markdown("<div style='height: 4px;'></div>", unsafe_allow_html=True)
+        col_t1, col_t2, _ = st.columns([1.5, 1.5, 3])
+        with col_t1:
+            weak_active_class = "makhraj-active" if is_weak else "makhraj-inactive"
+            st.markdown(f"<span class='{weak_active_class}' style='display: none;'>active</span>", unsafe_allow_html=True)
+            st.button(
+                "⚠️ Weak Hifz",
+                on_click=_toggle_weak_hifz,
+                key="btn_toggle_weak_hifz",
+                width="stretch"
+            )
+        with col_t2:
+            airab_active_class = "makhraj-active" if is_airab else "makhraj-inactive"
+            st.markdown(f"<span class='{airab_active_class}' style='display: none;'>active</span>", unsafe_allow_html=True)
+            st.button(
+                "🔤 Airab Mistakes",
+                on_click=_toggle_airab_mistakes,
+                key="btn_toggle_airab_mistakes",
+                width="stretch"
+            )
+            
         st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
         
         # Action buttons
@@ -286,7 +336,9 @@ def render_jadeed() -> None:
                         "surah_id": db_surah["id"],
                         "page_number": int(selected_page),
                         "ayah_number": int(selected_ayah),
-                        "volume": selected_volume
+                        "volume": selected_volume,
+                        "weak_hifz": bool(is_weak),
+                        "airab_mistakes": bool(is_airab),
                     }
                     
                     # Prepare payload of all existing + new
@@ -296,13 +348,17 @@ def render_jadeed() -> None:
                             "surah_id": e.get("surah_id"),
                             "page_number": int(e.get("page_number") or 1),
                             "ayah_number": int(e.get("ayah_number") or 1),
-                            "volume": e.get("volume") or "Kamil"
+                            "volume": e.get("volume") or "Kamil",
+                            "weak_hifz": bool(e.get("weak_hifz", False)),
+                            "airab_mistakes": bool(e.get("airab_mistakes", False)),
                         })
                     payload.append(new_row)
                     
                     with st.spinner("Saving new entry..."):
                         insert_jadeed_rows(student_id=student_id, rows=payload)
                     st.session_state.pop("jadeed_state_init", None)
+                    st.session_state.jadeed_weak_hifz = False
+                    st.session_state.jadeed_airab_mistakes = False
                     st.session_state.jadeed_flash = "New Jadeed entry added successfully!"
                     st.rerun()
                     
