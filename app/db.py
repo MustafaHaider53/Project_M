@@ -1774,15 +1774,22 @@ def fetch_ummul_banin_report_data() -> List[Dict[str, Any]]:
     )
     no_jadeed_map = {row["student_id"]: bool(row["no_jadeed"]) for row in today_no_jadeed}
     
-    # Fetch today's takhteet (jadeed only)
+    # Fetch today's takhteet (murajat, juzulhali, jadeed)
     today_takhteet = rest.select(
         "takhteet_daily",
-        select="student_id,jadeed_text_clean",
+        select="student_id,murajat_text_clean,juzulhali_text_clean,jadeed_text_clean,murajat_text_raw,juzulhali_text_raw,jadeed_text_raw",
         params={
             "activity_date": f"eq.{today}"
         }
     )
-    takhteet_map = {row["student_id"]: (row["jadeed_text_clean"] or "") for row in today_takhteet}
+    takhteet_map = {
+        row["student_id"]: {
+            "jadeed": (row.get("jadeed_text_clean") or row.get("jadeed_text_raw") or "").strip(),
+            "juzulhali": (row.get("juzulhali_text_clean") or row.get("juzulhali_text_raw") or "").strip(),
+            "murajat": (row.get("murajat_text_clean") or row.get("murajat_text_raw") or "").strip(),
+        }
+        for row in today_takhteet
+    }
     
     # For each today's entry, map student_id -> entry (sort by created_at desc to get latest if multiple today)
     today_entries_map = {}
@@ -1841,13 +1848,16 @@ def fetch_ummul_banin_report_data() -> List[Dict[str, Any]]:
             entry = historical_entries_map.get(sid)
             is_historical = True
             
+        t_info = takhteet_map.get(sid, {})
         report_data.append({
             "student_id": sid,
             "student_name": s["full_name"],
             "entry": entry,
             "is_historical": is_historical,
             "is_no_jadeed_today": is_no_jadeed,
-            "takhteet_jadeed": takhteet_map.get(sid, ""),
+            "takhteet_jadeed": t_info.get("jadeed", ""),
+            "takhteet_juzulhali": t_info.get("juzulhali", ""),
+            "takhteet_murajat": t_info.get("murajat", ""),
         })
         
     return report_data

@@ -252,7 +252,7 @@ def render_report() -> None:
 
     elif selected_category == "📖 Ummul Banin Ben Report":
         st.markdown("### 📖 Ummul Banin Ben Report (تقرير أم البنين)")
-        st.caption("Class-wide report showing each student's latest Jadeed recitation (today's latest, or their last historical entry if not entered/marked as 'no jadeed' today) along with today's Jadeed homework.")
+        st.caption("Class-wide report showing each student's latest Jadeed recitation (today's latest, or their last historical entry if not entered/marked as 'no jadeed' today) along with today's complete homework (Jadeed, Juzulhali, and Murajat).")
         
         if st.button("🔄 Refresh Data", key="refresh_ummul_banin"):
             st.session_state.pop("ummul_banin_report_cache", None)
