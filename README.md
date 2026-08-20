@@ -431,8 +431,9 @@ In `streamlit_app.py`, an invisible iframe injects client-side JavaScript that b
   - Cached session management (`ensure_today_sessions`) binding the UI directly to today's active `listening_sessions` row.
   - Subtraction mode toggle allowing instant reversal of accidental clicks.
 - `jadeed.py`:
-  - Card-based view of today's Jadeed recitations with one-click deletion.
+  - Card-based view of today's Jadeed recitations with one-click deletion and quality flag badges.
   - Dropdown cascading from Surah $\to$ Page $\to$ Ayah $\to$ Volume.
+  - **One-Click Quality Toggles**: `⚠️ Weak Hifz` and `🔤 Airab Mistakes` toggle buttons (non-compulsory, like Makharij) for tracking memorization strength and grammatical pronunciation on new lessons.
   - `Mark as 'No Jadeed' Today` toggle for excused/rest days.
 - `takhteet.py`:
   - Multi-line text areas for Murajat, Juzulhali, and Jadeed homework assignments.
