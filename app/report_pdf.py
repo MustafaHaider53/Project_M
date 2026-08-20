@@ -1978,7 +1978,7 @@ def build_ikhtebar_report_html(
 def build_ummul_banin_report_html(report_data: List[Dict[str, Any]]) -> str:
     """
     Generates a beautiful HTML report containing the latest Jadeed recitation
-    and Jadeed takhteet for all students.
+    and complete Takhteet (Jadeed, Juzulhali, Murajat) for all students.
     """
     table_rows = []
     
@@ -1987,7 +1987,9 @@ def build_ummul_banin_report_html(report_data: List[Dict[str, Any]]) -> str:
         entry = s["entry"]
         is_historical = s["is_historical"]
         is_no_jadeed_today = s["is_no_jadeed_today"]
-        takhteet_jadeed = s["takhteet_jadeed"]
+        takhteet_jadeed = s.get("takhteet_jadeed", "") or ""
+        takhteet_juzulhali = s.get("takhteet_juzulhali", "") or ""
+        takhteet_murajat = s.get("takhteet_murajat", "") or ""
         
         # Determine status and color badge
         if entry is None:
@@ -2031,6 +2033,20 @@ def build_ummul_banin_report_html(report_data: List[Dict[str, Any]]) -> str:
             else:
                 status_badge = '<span class="status-badge status-today">Today\'s Jadeed</span>'
                 
+        # Build multi-line Takhteet items with badges
+        hw_items = []
+        if takhteet_jadeed.strip():
+            hw_items.append(f"""<div style="margin-bottom: 4px;"><span class="hw-pill hw-jadeed">Jadeed</span> <span style="color: #222; font-weight: 500; word-break: break-word;">{escape(takhteet_jadeed)}</span></div>""")
+        if takhteet_juzulhali.strip():
+            hw_items.append(f"""<div style="margin-bottom: 4px;"><span class="hw-pill hw-juzulhali">Juzulhali</span> <span style="color: #222; font-weight: 500; word-break: break-word;">{escape(takhteet_juzulhali)}</span></div>""")
+        if takhteet_murajat.strip():
+            hw_items.append(f"""<div><span class="hw-pill hw-murajat">Murajat</span> <span style="color: #222; font-weight: 500; word-break: break-word;">{escape(takhteet_murajat)}</span></div>""")
+            
+        if hw_items:
+            takhteet_html = "".join(hw_items)
+        else:
+            takhteet_html = '<span class="muted">-</span>'
+
         # Alternating row background
         row_bg_class = "even-row" if idx % 2 == 1 else "odd-row"
         
@@ -2040,7 +2056,7 @@ def build_ummul_banin_report_html(report_data: List[Dict[str, Any]]) -> str:
             <td style="text-align: center; font-size: 9pt;">{status_badge}</td>
             <td style="font-size: 9.5pt; font-weight: 500;">{escape(recitation_str)}</td>
             <td style="text-align: center; font-size: 9pt; font-weight: 500; color: #666;">{escape(date_str)}</td>
-            <td style="font-size: 9pt; white-space: pre-wrap; font-family: sans-serif; color: #444; line-height: 1.4;">{escape(takhteet_jadeed) if takhteet_jadeed.strip() else '<span class="muted">-</span>'}</td>
+            <td style="font-size: 9pt; font-family: sans-serif; line-height: 1.4; padding: 8px 10px;">{takhteet_html}</td>
         </tr>
         """)
         
@@ -2111,6 +2127,7 @@ def build_ummul_banin_report_html(report_data: List[Dict[str, Any]]) -> str:
     td {{
       padding: 10px;
       border: 1px solid var(--gray-border);
+      vertical-align: middle;
     }}
     .odd-row {{
       background-color: #ffffff;
@@ -2147,6 +2164,32 @@ def build_ummul_banin_report_html(report_data: List[Dict[str, Any]]) -> str:
       background-color: #f2f2f2;
       color: #7f7f7f;
       border: 1px solid #d9d9d9;
+    }}
+    .hw-pill {{
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 7.5pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      margin-right: 4px;
+      vertical-align: middle;
+    }}
+    .hw-jadeed {{
+      background-color: #e2f0d9;
+      color: #276a3c;
+      border: 1px solid #c5e0b4;
+    }}
+    .hw-juzulhali {{
+      background-color: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fde68a;
+    }}
+    .hw-murajat {{
+      background-color: #ebf8ff;
+      color: #2b6cb0;
+      border: 1px solid #bee3f8;
     }}
     .muted {{
       color: #999;
@@ -2202,11 +2245,11 @@ def build_ummul_banin_report_html(report_data: List[Dict[str, Any]]) -> str:
   <table>
     <thead>
       <tr>
-        <th style="text-align: left; width: 20%;">Student Name</th>
-        <th style="width: 15%;">Status</th>
-        <th style="text-align: left; width: 25%;">Latest Jadeed Recited</th>
-        <th style="width: 15%;">Recitation Date</th>
-        <th style="text-align: left; width: 25%;">Takhteet (Jadeed Homework)</th>
+        <th style="text-align: left; width: 17%;">Student Name</th>
+        <th style="width: 13%;">Status</th>
+        <th style="text-align: left; width: 22%;">Latest Jadeed Recited</th>
+        <th style="width: 12%;">Recitation Date</th>
+        <th style="text-align: left; width: 36%;">Takhteet (Homework)</th>
       </tr>
     </thead>
     <tbody>
