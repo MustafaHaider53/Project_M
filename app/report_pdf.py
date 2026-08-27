@@ -2273,3 +2273,446 @@ def build_ummul_banin_report_html(report_data: List[Dict[str, Any]]) -> str:
 """
 
 
+def _format_pages_num(val: float) -> str:
+    if val <= 0:
+        return "0"
+    if float(val).is_integer():
+        return str(int(val))
+    return f"{val:.2f}".rstrip("0").rstrip(".")
+
+
+def build_jadeed_pages_summary_html(data: Dict[str, Any]) -> str:
+    """
+    Builds a responsive, elegant HTML table and print view for Jadeed Total Pages by student,
+    broken down by month and sorted in descending order.
+    """
+    from datetime import datetime
+    
+    from_date = data.get("from_date", "")
+    to_date = data.get("to_date", "")
+    months = data.get("months", [])
+    students = data.get("students", [])
+    stats = data.get("stats", {})
+
+    try:
+        f_dt = datetime.strptime(from_date, "%Y-%m-%d")
+        t_dt = datetime.strptime(to_date, "%Y-%m-%d")
+        range_label = f"{f_dt.strftime('%b %d, %Y')} — {t_dt.strftime('%b %d, %Y')}"
+    except Exception:
+        range_label = f"{from_date} — {to_date}"
+
+    # Calculate monthly totals for the summary footer row
+    month_totals = {m["key"]: 0.0 for m in months}
+    for s in students:
+        for m_key, pgs in s.get("months_pages", {}).items():
+            month_totals[m_key] += pgs
+
+    total_class_pages = stats.get("total_class_pages", 0.0)
+
+    # Build Header Months Th
+    month_th_list = []
+    for m in months:
+        month_th_list.append(f'<th style="text-align: center; width: {max(9, int(45 / max(len(months), 1)))}%;">{escape(m["short_label"])}</th>')
+    month_ths = "".join(month_th_list)
+
+    # Build Table Rows
+    table_rows = []
+    for s in students:
+        has_jadeed = s.get("has_jadeed", False)
+        tot_pages = s.get("total_pages", 0.0)
+        rank_val = s.get("rank", "-")
+        s_name = s.get("student_name", "")
+        
+        # Monthly Cells
+        month_cells = []
+        for m in months:
+            m_val = s.get("months_pages", {}).get(m["key"], 0.0)
+            if m_val > 0:
+                month_cells.append(f'<td class="page-col" style="text-align: center; font-weight: 600; color: #166534;"><span class="month-pill">{_format_pages_num(m_val)}</span></td>')
+            else:
+                month_cells.append('<td class="page-col" style="text-align: center; color: #9ca3af; font-size: 8.5pt;">-</td>')
+        
+        month_cells_str = "".join(month_cells)
+
+        if has_jadeed and tot_pages > 0:
+            rank_badge = f'<span class="rank-badge rank-active">{rank_val}</span>'
+            if rank_val == 1:
+                rank_badge = '<span class="rank-badge rank-gold">🥇 1</span>'
+            elif rank_val == 2:
+                rank_badge = '<span class="rank-badge rank-silver">🥈 2</span>'
+            elif rank_val == 3:
+                rank_badge = '<span class="rank-badge rank-bronze">🥉 3</span>'
+
+            tot_badge = f'<span class="tot-badge tot-active">{_format_pages_num(tot_pages)} pgs</span>'
+            
+            # Status milestone
+            latest = s.get("latest_entry")
+            if latest and latest.get("surah_name"):
+                status_html = f'<div style="font-size: 8pt; color: #4b5563;">Surah {latest.get("surah_number")} ({latest.get("surah_name")}) p.{latest.get("page_number") or "-"}</div>'
+            else:
+                status_html = f'<span style="color: #166534; font-size: 8pt; font-weight: 500;">Active ({s.get("active_days", 0)} days)</span>'
+
+            row_class = "student-row-active"
+        else:
+            rank_badge = '<span class="rank-badge rank-none">-</span>'
+            tot_badge = '<span class="tot-badge tot-zero">0 pgs</span>'
+            status_html = '<span class="badge-no-jadeed">No Jadeed Recorded</span>'
+            row_class = "student-row-empty"
+
+        table_rows.append(f"""
+        <tr class="{row_class}">
+          <td style="text-align: center; width: 6%;">{rank_badge}</td>
+          <td style="font-weight: 600; color: #111827; text-align: left;">{escape(s_name)}</td>
+          {month_cells_str}
+          <td style="text-align: center; width: 14%;">{tot_badge}</td>
+          <td style="text-align: left; width: 22%;">{status_html}</td>
+        </tr>
+        """)
+
+    # Footer Row
+    month_footers = []
+    for m in months:
+        m_tot = month_totals.get(m["key"], 0.0)
+        month_footers.append(f'<td style="text-align: center; font-weight: 700; color: #065f46;">{_format_pages_num(m_tot)}</td>')
+    month_footers_str = "".join(month_footers)
+
+    footer_row = f"""
+    <tr class="footer-summary-row">
+      <td colspan="2" style="text-align: right; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; padding-right: 15px;">Class Monthly Totals:</td>
+      {month_footers_str}
+      <td style="text-align: center; font-weight: 800; color: #064e3b; font-size: 10pt;">{_format_pages_num(total_class_pages)} pgs</td>
+      <td style="font-size: 8.5pt; font-weight: 600; color: #4b5563;">{stats.get('students_with_jadeed', 0)} of {stats.get('total_students', 0)} Students Active</td>
+    </tr>
+    """
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Jadeed Total Pages Summary — {range_label}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+
+    :root {{
+      --emerald-dark: #074332;
+      --emerald: #0E6B50;
+      --emerald-light: #e6f4ea;
+      --gold: #D4AF37;
+      --gold-light: #fef9e7;
+      --gold-dark: #b88917;
+      --border-color: #e5e7eb;
+      --bg-cream: #fbf9f5;
+    }}
+
+    * {{
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }}
+
+    body {{
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f8fafc;
+      color: #1f2937;
+      font-size: 9pt;
+      line-height: 1.4;
+    }}
+
+    .container {{
+      max-width: 1100px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
+    }}
+
+    /* Header Banner */
+    .header-banner {{
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(135deg, #074332 0%, #0E6B50 100%);
+      color: #ffffff;
+      padding: 20px 24px;
+      border-radius: 10px;
+      border: 1.5px solid var(--gold);
+      margin-bottom: 20px;
+      box-shadow: 0 4px 12px rgba(7, 67, 50, 0.15);
+    }}
+
+    .header-title {{
+      font-family: 'Outfit', sans-serif;
+      font-size: 16pt;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      color: #ffffff;
+      margin: 0;
+    }}
+
+    .header-subtitle {{
+      font-size: 8.5pt;
+      color: var(--gold);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 3px;
+    }}
+
+    .date-badge {{
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(212, 175, 55, 0.5);
+      color: #ffffff;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 8.5pt;
+      font-weight: 600;
+      text-align: right;
+    }}
+
+    /* KPI Summary Stats */
+    .kpi-grid {{
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 22px;
+    }}
+
+    .kpi-card {{
+      background-color: var(--bg-cream);
+      border: 1px solid #e7e3da;
+      border-radius: 8px;
+      padding: 12px 14px;
+      text-align: center;
+    }}
+
+    .kpi-label {{
+      font-size: 7.5pt;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: #6b7280;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }}
+
+    .kpi-val {{
+      font-family: 'Outfit', sans-serif;
+      font-size: 15pt;
+      font-weight: 700;
+      color: var(--emerald-dark);
+    }}
+
+    /* Main Table */
+    table {{
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 9pt;
+    }}
+
+    th {{
+      background-color: #f1f5f9;
+      color: #374151;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 8pt;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 10px 8px;
+      border-top: 1.5px solid var(--border-color);
+      border-bottom: 2px solid var(--border-color);
+    }}
+
+    td {{
+      padding: 8px 8px;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: middle;
+    }}
+
+    tr.student-row-active:hover {{
+      background-color: #f8fafc;
+    }}
+
+    tr.student-row-empty {{
+      background-color: #fafafa;
+      opacity: 0.65;
+    }}
+
+    .rank-badge {{
+      display: inline-block;
+      min-width: 24px;
+      padding: 2px 6px;
+      border-radius: 12px;
+      font-size: 7.5pt;
+      font-weight: 700;
+      text-align: center;
+    }}
+
+    .rank-gold {{ background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }}
+    .rank-silver {{ background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; }}
+    .rank-bronze {{ background: #ffedd5; color: #9a3412; border: 1px solid #fed7aa; }}
+    .rank-active {{ background: #e0f2fe; color: #0369a1; }}
+    .rank-none {{ color: #9ca3af; }}
+
+    .month-pill {{
+      background-color: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 8.5pt;
+    }}
+
+    .tot-badge {{
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 14px;
+      font-weight: 700;
+      font-size: 9pt;
+      font-family: 'Outfit', sans-serif;
+    }}
+
+    .tot-active {{
+      background: linear-gradient(135deg, #074332 0%, #0E6B50 100%);
+      color: #ffffff;
+      border: 1px solid var(--gold);
+      box-shadow: 0 2px 4px rgba(7, 67, 50, 0.15);
+    }}
+
+    .tot-zero {{
+      background: #f3f4f6;
+      color: #9ca3af;
+      border: 1px solid #e5e7eb;
+    }}
+
+    .badge-no-jadeed {{
+      background-color: #fef2f2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 7.5pt;
+      font-weight: 600;
+      display: inline-block;
+    }}
+
+    .footer-summary-row {{
+      background-color: #f0fdf4 !important;
+      border-top: 2px solid #86efac !important;
+      border-bottom: 2px solid #86efac !important;
+    }}
+
+    .footer-summary-row td {{
+      padding: 11px 8px;
+    }}
+
+    /* Print Button */
+    .print-btn {{
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: linear-gradient(135deg, #074332, #0E6B50);
+      color: #ffffff;
+      border: 1.5px solid var(--gold);
+      padding: 10px 18px;
+      border-radius: 24px;
+      font-weight: 700;
+      font-size: 9.5pt;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      transition: all 0.2s ease;
+      z-index: 9999;
+    }}
+
+    .print-btn:hover {{
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+      border-color: #ffffff;
+    }}
+
+    @media print {{
+      body {{
+        padding: 0;
+        background-color: #ffffff;
+      }}
+      .container {{
+        border: none;
+        box-shadow: none;
+        padding: 0;
+        max-width: 100%;
+      }}
+      .print-btn {{
+        display: none !important;
+      }}
+    }}
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Header Banner -->
+    <div class="header-banner">
+      <div>
+        <div class="header-subtitle">Al Madrasa-tus-Saifiyah-tul-Burhaniyah</div>
+        <h1 class="header-title">تقرير مجموع صفحات الجديد للطلاب (Jadeed Pages Summary)</h1>
+      </div>
+      <div class="date-badge">
+        <div style="font-size: 7.5pt; opacity: 0.8; text-transform: uppercase;">Selected Range</div>
+        <div style="font-size: 9pt; font-weight: bold; margin-top: 1px;">{range_label}</div>
+      </div>
+    </div>
+
+    <!-- Executive Summary Cards -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Total Class Pages</div>
+        <div class="kpi-val" style="color: var(--emerald);">{_format_pages_num(total_class_pages)} <span style="font-size: 9pt; font-weight: normal; color: #6b7280;">pgs</span></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Active Jadeed Students</div>
+        <div class="kpi-val">{stats.get('students_with_jadeed', 0)} <span style="font-size: 9pt; font-weight: normal; color: #6b7280;">/ {stats.get('total_students', 0)}</span></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Class Average</div>
+        <div class="kpi-val">{stats.get('avg_pages_per_student', 0)} <span style="font-size: 9pt; font-weight: normal; color: #6b7280;">pgs/student</span></div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">🏆 Top Performer</div>
+        <div class="kpi-val" style="font-size: 11pt; color: #92400e; margin-top: 4px;">{escape(stats.get('top_student', 'None'))}</div>
+      </div>
+    </div>
+
+    <!-- Main Table Grid -->
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 6%; text-align: center;">Rank</th>
+          <th style="text-align: left;">Student Name</th>
+          {month_ths}
+          <th style="text-align: center; width: 14%;">Total Pages</th>
+          <th style="text-align: left; width: 22%;">Status / Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {"".join(table_rows)}
+      </tbody>
+      <tfoot>
+        {footer_row}
+      </tfoot>
+    </table>
+  </div>
+
+  <!-- Print Button -->
+  <button class="print-btn" onclick="window.print()">🖨️ Print / Save PDF</button>
+
+</body>
+</html>
+"""
+
+
+
