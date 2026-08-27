@@ -1989,6 +1989,217 @@ def get_daily_email_status(date_str: str) -> List[Dict[str, Any]]:
         return []
 
 
+def volume_to_page_weight(vol: Optional[str]) -> float:
+    """Converts a Jadeed volume string to fractional Quran pages."""
+    if not vol:
+        return 1.0
+    v = str(vol).strip().lower()
+    if "kamil" in v or "full" in v:
+        return 1.0
+    if "nisf" in v or "half" in v or "0.5" in v:
+        return 0.5
+    if "ruba" in v or "quarter" in v or "0.25" in v:
+        return 0.25
+    if "sulus" in v or "0.75" in v:
+        return 0.75
+    return 1.0
+
+
+@st.cache_data(show_spinner=False)
+def fetch_jadeed_pages_summary_report(*, from_date: str, to_date: str) -> Dict[str, Any]:
+    """
+    Fetches collective Jadeed total pages for all students within an arbitrary date range,
+    broken down by month and sorted in descending order by total pages recited.
+    """
+    import concurrent.futures
+    from datetime import datetime
+    rest = get_rest()
+    if rest is None:
+        raise RuntimeError("Supabase is not configured.")
+
+    def fetch_students():
+        rows = rest.select("students", select="id,full_name,email", params={"order": "full_name.asc"})
+        return [r for r in rows if "test" not in r["full_name"].lower()]
+
+    def fetch_jadeed():
+        try:
+            return rest.select(
+                "jadeed_entries",
+                select="id,student_id,activity_date,page_number,ayah_number,volume,weak_hifz,airab_mistakes,created_at,surahs(number,name_en,name_ar)",
+                params={
+                    "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
+                    "order": "activity_date.asc,created_at.asc"
+                }
+            )
+        except Exception:
+            return rest.select(
+                "jadeed_entries",
+                select="id,student_id,activity_date,page_number,ayah_number,volume,created_at,surahs(number,name_en,name_ar)",
+                params={
+                    "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
+                    "order": "activity_date.asc,created_at.asc"
+                }
+            )
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+        future_students = executor.submit(fetch_students)
+        future_jadeed = executor.submit(fetch_jadeed)
+
+        students = future_students.result()
+        jadeed_rows = future_jadeed.result()
+
+    # Determine unique months between from_date and to_date
+    start_dt = datetime.strptime(from_date, "%Y-%m-%d")
+    end_dt = datetime.strptime(to_date, "%Y-%m-%d")
+
+    months = []
+    curr_y, curr_m = start_dt.year, start_dt.month
+    end_y, end_m = end_dt.year, end_dt.month
+
+    while (curr_y, curr_m) <= (end_y, end_m):
+        m_key = f"{curr_y:04d}-{curr_m:02d}"
+        dt_month = datetime(curr_y, curr_m, 1)
+        months.append({
+            "key": m_key,
+            "label": dt_month.strftime("%B %Y"),
+            "short_label": dt_month.strftime("%b %Y"),
+            "year": curr_y,
+            "month": curr_m
+        })
+        if curr_m == 12:
+            curr_y += 1
+            curr_m = 1
+        else:
+            curr_m += 1
+
+    # Map Jadeed entries by student_id
+    from collections import defaultdict
+    student_jadeed_map = defaultdict(list)
+    for j in jadeed_rows:
+        s_id = j.get("student_id")
+        if s_id:
+            student_jadeed_map[s_id].append(j)
+
+    student_records = []
+    total_class_pages = 0.0
+    active_student_count = 0
+
+    for s in students:
+        s_id = s["id"]
+        s_name = s["full_name"]
+        s_entries = student_jadeed_map.get(s_id, [])
+
+        # Group student entries by month
+        month_entries = defaultdict(list)
+        distinct_days = set()
+        for e in s_entries:
+            act_date = str(e.get("activity_date") or "")
+            if act_date:
+                m_key = act_date[:7]
+                distinct_days.add(act_date)
+                month_entries[m_key].append(e)
+
+        # Physical Quran pages computation per month
+        months_pages = {m["key"]: 0 for m in months}
+        for m in months:
+            k = m["key"]
+            m_list = month_entries.get(k, [])
+            if not m_list:
+                months_pages[k] = 0
+                continue
+
+            # Group by Surah in this month to calculate physical page span
+            surah_pages = defaultdict(set)
+            for e in m_list:
+                s_info = e.get("surahs") or {}
+                if isinstance(s_info, list):
+                    s_info = s_info[0] if s_info else {}
+                s_num = s_info.get("number")
+                p_num = e.get("page_number")
+                if s_num and p_num:
+                    try:
+                        surah_pages[int(s_num)].add(int(p_num))
+                    except (ValueError, TypeError):
+                        pass
+
+            m_tot = 0
+            for s_num, p_set in surah_pages.items():
+                if p_set:
+                    span = max(p_set) - min(p_set) + 1
+                    m_tot += span
+            months_pages[k] = m_tot
+
+        total_pages = sum(months_pages.values())
+        has_jadeed = len(s_entries) > 0 and total_pages > 0
+
+        if has_jadeed:
+            active_student_count += 1
+            total_class_pages += total_pages
+
+        latest_entry = s_entries[-1] if s_entries else None
+        latest_surah = None
+        if latest_entry:
+            s_info = latest_entry.get("surahs") or {}
+            if isinstance(s_info, list):
+                s_info = s_info[0] if s_info else {}
+            latest_surah = {
+                "surah_number": s_info.get("number"),
+                "surah_name": s_info.get("name_en"),
+                "surah_name_ar": s_info.get("name_ar"),
+                "page_number": latest_entry.get("page_number"),
+                "ayah_number": latest_entry.get("ayah_number"),
+                "volume": latest_entry.get("volume"),
+                "date": latest_entry.get("activity_date"),
+            }
+
+        student_records.append({
+            "student_id": s_id,
+            "student_name": s_name,
+            "student_email": s.get("email") or "",
+            "months_pages": months_pages,
+            "total_pages": int(total_pages),
+            "total_entries": len(s_entries),
+            "active_days": len(distinct_days),
+            "has_jadeed": has_jadeed,
+            "latest_entry": latest_surah,
+        })
+
+    # Sort descending by total_pages, then alphabetically by name
+    student_records.sort(key=lambda x: (-x["total_pages"], x["student_name"].lower()))
+
+    # Assign ranks
+    current_rank = 1
+    for idx, rec in enumerate(student_records):
+        if rec["has_jadeed"] and rec["total_pages"] > 0:
+            rec["rank"] = current_rank
+            current_rank += 1
+        else:
+            rec["rank"] = "-"
+
+    top_student_str = "None"
+    if student_records and student_records[0]["has_jadeed"]:
+        top = student_records[0]
+        pages_fmt = int(top["total_pages"]) if top["total_pages"].is_integer() else top["total_pages"]
+        top_student_str = f"{top['student_name']} ({pages_fmt} pgs)"
+
+    avg_pages = (total_class_pages / len(students)) if students else 0.0
+
+    return {
+        "from_date": from_date,
+        "to_date": to_date,
+        "months": months,
+        "students": student_records,
+        "stats": {
+            "total_students": len(students),
+            "students_with_jadeed": active_student_count,
+            "students_without_jadeed": len(students) - active_student_count,
+            "total_class_pages": round(total_class_pages, 2),
+            "avg_pages_per_student": round(avg_pages, 1),
+            "top_student": top_student_str,
+        }
+    }
+
+
 
 
 

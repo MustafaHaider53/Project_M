@@ -9,13 +9,15 @@ from app.db import (
     get_all_students_current_jadeed,
     fetch_collective_attendance_report,
     get_earliest_global_activity_date,
-    fetch_ikhtebar_report
+    fetch_ikhtebar_report,
+    fetch_jadeed_pages_summary_report
 )
 from app.report_pdf import (
     build_report_html,
     build_current_jadeed_report_html,
     build_collective_attendance_report_html,
-    build_ikhtebar_report_html
+    build_ikhtebar_report_html,
+    build_jadeed_pages_summary_html
 )
 from app.ui.shared import back_home_button
 from app.ui.student import current_student_badge
@@ -76,6 +78,69 @@ def render_holiday_picker(start_date: date, end_date: date) -> None:
                 st.session_state.pending_exclusions.clear()
                 st.session_state.holiday_picker_val = start_date
                 st.rerun()
+
+
+@st.fragment
+def render_jadeed_pages_summary_fragment(now_date: date) -> None:
+    st.markdown("### 📄 Jadeed Total Pages by Student (تقرير مجموع صفحات الجديد)")
+    st.caption("Class-wide monthly breakdown and total Jadeed pages recited per student within any custom date range, ranked in descending order.")
+
+    # Preset Quick Dates
+    col_p1, col_p2, col_p3, col_p4 = st.columns(4)
+    with col_p1:
+        if st.button("📅 Current Month", key="preset_current_month", use_container_width=True):
+            st.session_state.jpages_from = date(now_date.year, now_date.month, 1)
+            st.session_state.jpages_to = now_date
+            st.rerun(scope="fragment")
+    with col_p2:
+        if st.button("📅 Last 30 Days", key="preset_last_30", use_container_width=True):
+            st.session_state.jpages_from = now_date - timedelta(days=30)
+            st.session_state.jpages_to = now_date
+            st.rerun(scope="fragment")
+    with col_p3:
+        if st.button("📅 July – August 2026", key="preset_jul_aug", use_container_width=True):
+            st.session_state.jpages_from = date(2026, 7, 15)
+            st.session_state.jpages_to = date(2026, 8, 22)
+            st.rerun(scope="fragment")
+    with col_p4:
+        if st.button("📅 Year to Date (2026)", key="preset_ytd", use_container_width=True):
+            st.session_state.jpages_from = date(2026, 1, 1)
+            st.session_state.jpages_to = now_date
+            st.rerun(scope="fragment")
+
+    # Date Pickers
+    if "jpages_from" not in st.session_state:
+        st.session_state.jpages_from = date(2026, 7, 15)
+    if "jpages_to" not in st.session_state:
+        st.session_state.jpages_to = now_date
+
+    col_jfrom, col_jto, col_jbtn = st.columns([2, 2, 1])
+    with col_jfrom:
+        jp_from = st.date_input("Start Date", value=st.session_state.jpages_from, key="jpages_from_input")
+        st.session_state.jpages_from = jp_from
+    with col_jto:
+        jp_to = st.date_input("End Date", value=st.session_state.jpages_to, key="jpages_to_input")
+        st.session_state.jpages_to = jp_to
+    with col_jbtn:
+        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+        if st.button("🔄 Refresh", key="refresh_jpages_btn", use_container_width=True):
+            st.cache_data.clear()
+            st.rerun(scope="fragment")
+
+    if jp_from > jp_to:
+        st.error("Error: Start Date must be before or equal to End Date.")
+    else:
+        with st.spinner("Loading Jadeed Pages Summary..."):
+            jpages_data = fetch_jadeed_pages_summary_report(
+                from_date=jp_from.isoformat(),
+                to_date=jp_to.isoformat()
+            )
+
+        if not jpages_data or not jpages_data.get("students"):
+            st.info("No student records found.")
+        else:
+            html_jpages = build_jadeed_pages_summary_html(jpages_data)
+            st.iframe(html_jpages, height=780)
 
 
 def render_report() -> None:
@@ -173,6 +238,7 @@ def render_report() -> None:
         "👥 Murajat Report",
         "📖 Juzulhali Report",
         "📝 Jadeed Report",
+        "📄 Jadeed Pages Summary",
         "📋 Takhteet Report",
         "🌟 Current Jadeed",
         "📊 Mistake Analytics",
@@ -219,6 +285,9 @@ def render_report() -> None:
         else:
             html_jadeed = build_report_html(student_name=student_name, rows=rows, report_type="jadeed")
             st.iframe(html_jadeed, height=700)
+
+    elif selected_category == "📄 Jadeed Pages Summary":
+        render_jadeed_pages_summary_fragment(now.date())
         
     elif selected_category == "📋 Takhteet Report":
         rows = get_monthly_rows()
