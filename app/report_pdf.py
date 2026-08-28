@@ -2715,4 +2715,542 @@ def build_jadeed_pages_summary_html(data: Dict[str, Any]) -> str:
 """
 
 
+def build_unified_3in1_report_html(student_name: str, rows: List[Dict[str, Any]]) -> str:
+    """
+    Builds a unified 3-in-1 monthly recitation summary report containing:
+    - Murajat: Surah, Page No, Marks
+    - Juzulhali: Surah, Page No, Marks
+    - Jadeed: Surah, Page No, Ayah No (No Volume)
+    """
+    sorted_rows = sorted(rows, key=lambda x: x.get("activity_date", ""))
+    month_year_str = _get_month_year_str(sorted_rows)
+
+    # Statistics Calculation
+    total_active_days = 0
+    total_working_days = 0
+    murajat_pages = 0
+    murajat_marks_sum = 0.0
+    murajat_marks_count = 0
+    juzulhali_pages = 0
+    juzulhali_marks_sum = 0.0
+    juzulhali_marks_count = 0
+    jadeed_count = 0
+
+    today_str = date.today().isoformat()
+
+    for r in sorted_rows:
+        activity_date = r.get("activity_date", "")
+        try:
+            dt = datetime.strptime(activity_date, "%Y-%m-%d")
+            wd = dt.weekday()
+        except Exception:
+            wd = 0
+        is_weekend = wd in (5, 6)
+
+        if not is_weekend and activity_date <= today_str:
+            total_working_days += 1
+
+        murajat = r.get("murajat", [])
+        juzulhali = r.get("juzulhali", [])
+        jadeed = r.get("jadeed", [])
+        t = r.get("takhteet") or {}
+
+        has_activity = bool(
+            murajat or juzulhali or jadeed or not (
+                r.get("no_jadeed", True)
+                and not str(t.get("murajat") or "").strip()
+                and not str(t.get("juzulhali") or "").strip()
+                and not str(t.get("jadeed") or "").strip()
+            )
+        )
+        if has_activity and not is_weekend:
+            total_active_days += 1
+
+        # Murajat stats
+        for m in murajat:
+            murajat_pages += 1
+            if "marks" in m:
+                murajat_marks_sum += float(m.get("marks", 10.0))
+                murajat_marks_count += 1
+
+        # Juzulhali stats
+        for j in juzulhali:
+            juzulhali_pages += 1
+            if "marks" in j:
+                juzulhali_marks_sum += float(j.get("marks", 10.0))
+                juzulhali_marks_count += 1
+
+        # Jadeed stats
+        if jadeed:
+            jadeed_count += len(jadeed)
+
+    avg_murajat_marks = (murajat_marks_sum / murajat_marks_count) if murajat_marks_count > 0 else 10.0
+    avg_juzulhali_marks = (juzulhali_marks_sum / juzulhali_marks_count) if juzulhali_marks_count > 0 else 10.0
+
+    table_rows = []
+    for idx, r in enumerate(sorted_rows):
+        activity_date = r.get("activity_date", "")
+        date_num = idx + 1
+
+        date_sub = ""
+        if len(activity_date) == 10:
+            date_sub = f"{activity_date[8:10]}/{activity_date[5:7]}"
+
+        try:
+            dt = datetime.strptime(activity_date, "%Y-%m-%d")
+            wd = dt.weekday()
+        except Exception:
+            wd = 0
+
+        day_names_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        day_name_en = day_names_en[wd]
+        is_weekend = wd in (5, 6)
+
+        murajat = r.get("murajat", [])
+        juzulhali = r.get("juzulhali", [])
+        jadeed = r.get("jadeed", [])
+
+        is_absent = (
+            not is_weekend
+            and activity_date <= today_str
+            and not murajat
+            and not juzulhali
+            and not jadeed
+            and not r.get("no_jadeed")
+            and not str((r.get("takhteet") or {}).get("murajat") or "").strip()
+            and not str((r.get("takhteet") or {}).get("juzulhali") or "").strip()
+            and not str((r.get("takhteet") or {}).get("jadeed") or "").strip()
+        )
+
+        is_weekend_empty = (
+            is_weekend
+            and not murajat
+            and not juzulhali
+            and not jadeed
+            and not r.get("no_jadeed")
+            and not str((r.get("takhteet") or {}).get("murajat") or "").strip()
+            and not str((r.get("takhteet") or {}).get("juzulhali") or "").strip()
+            and not str((r.get("takhteet") or {}).get("jadeed") or "").strip()
+        )
+
+        # 1. Render Absent Row
+        if is_absent:
+            cells = [
+                f'<td class="date-col"><div class="day-title">Day {date_num}</div><div class="day-subtitle">{day_name_en} {date_sub}</div></td>',
+                '<td colspan="9" class="absent-cell" style="text-align: center; color: #b91c1c; font-style: italic; font-weight: 600; background-color: #fef2f2; padding: 8px;">Absent / غائب</td>'
+            ]
+            row_class = ' class="day-separator week-end-separator"' if wd == 6 else ' class="day-separator"'
+            table_rows.append(f'<tr{row_class}>{"".join(cells)}</tr>')
+            continue
+
+        # 2. Render Empty Weekend Row
+        if is_weekend_empty:
+            weekend_label = "Saturday - Weekend" if wd == 5 else "Sunday - Weekend"
+            cells = [
+                f'<td class="date-col"><div class="day-title">Day {date_num}</div><div class="day-subtitle">{day_name_en} {date_sub}</div></td>',
+                f'<td colspan="9" class="weekend-cell" style="text-align: center; color: #6b7280; background-color: #f8fafc; font-style: italic; padding: 8px;">{weekend_label}</td>'
+            ]
+            row_class = ' class="day-separator week-end-separator"' if wd == 6 else ' class="day-separator"'
+            table_rows.append(f'<tr{row_class}>{"".join(cells)}</tr>')
+            continue
+
+        # 3. Active Day Rows
+        N_rows = max(len(murajat), len(juzulhali), len(jadeed), 1)
+        for sub_idx in range(N_rows):
+            cells = []
+            if sub_idx == 0:
+                cells.append(
+                    f'<td class="date-col" rowspan="{N_rows}">'
+                    f'  <div class="day-title">Day {date_num}</div>'
+                    f'  <div class="day-subtitle">{day_name_en} {date_sub}</div>'
+                    f'</td>'
+                )
+
+            # Murajat Columns: Surah, Page, Marks
+            if sub_idx < len(murajat):
+                m = murajat[sub_idx]
+                s_name = m.get("surah_name_ar") or m.get("surat") or ""
+                if s_name and " - " in s_name:
+                    parts = s_name.split(" - ")
+                    s_name = parts[1] if len(parts) > 1 else s_name
+                if not s_name and m.get("surahs"):
+                    s_name = m["surahs"].get("name_en") or m["surahs"].get("name_ar") or ""
+
+                p_val = m.get("page_number") or "-"
+                m_marks = m.get("marks", 10.0)
+                grade_html = _format_grade_badge(m_marks)
+
+                cells.append(f'<td class="text-left border-left-murajat" style="font-weight: 600; font-size: 8.5pt;">{escape(str(s_name))}</td>')
+                cells.append(f'<td style="text-align: center; font-weight: 500;">{p_val}</td>')
+                cells.append(f'<td style="text-align: center;">{grade_html}</td>')
+            elif len(murajat) == 0 and sub_idx == 0:
+                cells.append('<td class="border-left-murajat" style="text-align: center; color: #9ca3af; font-size: 8pt;">-</td>')
+                cells.append('<td style="text-align: center; color: #9ca3af; font-size: 8pt;">-</td>')
+                cells.append('<td style="text-align: center; color: #9ca3af; font-size: 8pt;">-</td>')
+            else:
+                cells.append('<td class="border-left-murajat"></td><td></td><td></td>')
+
+            # Juzulhali Columns: Surah, Page, Marks
+            if sub_idx < len(juzulhali):
+                j = juzulhali[sub_idx]
+                s_name = j.get("surah_name_ar") or j.get("surat") or ""
+                if s_name and " - " in s_name:
+                    parts = s_name.split(" - ")
+                    s_name = parts[1] if len(parts) > 1 else s_name
+                if not s_name and j.get("surahs"):
+                    s_name = j["surahs"].get("name_en") or j["surahs"].get("name_ar") or ""
+
+                p_val = j.get("page_number") or "-"
+                j_marks = j.get("marks", 10.0)
+                grade_html = _format_grade_badge(j_marks)
+
+                cells.append(f'<td class="text-left border-left-juzulhali" style="font-weight: 600; font-size: 8.5pt;">{escape(str(s_name))}</td>')
+                cells.append(f'<td style="text-align: center; font-weight: 500;">{p_val}</td>')
+                cells.append(f'<td style="text-align: center;">{grade_html}</td>')
+            elif len(juzulhali) == 0 and sub_idx == 0:
+                cells.append('<td class="border-left-juzulhali" style="text-align: center; color: #9ca3af; font-size: 8pt;">-</td>')
+                cells.append('<td style="text-align: center; color: #9ca3af; font-size: 8pt;">-</td>')
+                cells.append('<td style="text-align: center; color: #9ca3af; font-size: 8pt;">-</td>')
+            else:
+                cells.append('<td class="border-left-juzulhali"></td><td></td><td></td>')
+
+            # Jadeed Columns: Surah, Page, Ayah (NO VOLUME)
+            if sub_idx < len(jadeed):
+                jd = jadeed[sub_idx]
+                s_name = jd.get("surah_name_ar") or jd.get("surat") or ""
+                if s_name and " - " in s_name:
+                    parts = s_name.split(" - ")
+                    s_name = parts[1] if len(parts) > 1 else s_name
+                if not s_name and jd.get("surahs"):
+                    s_name = jd["surahs"].get("name_en") or jd["surahs"].get("name_ar") or ""
+
+                p_val = jd.get("page_number") or "-"
+                a_val = jd.get("ayah_number") or "-"
+
+                cells.append(f'<td class="text-left border-left-jadeed" style="font-weight: 600; font-size: 8.5pt;">{escape(str(s_name))}</td>')
+                cells.append(f'<td style="text-align: center; font-weight: 500;">{p_val}</td>')
+                cells.append(f'<td style="text-align: center; font-weight: 500;">{a_val}</td>')
+            elif r.get("no_jadeed") and sub_idx == 0:
+                cells.append('<td colspan="3" class="border-left-jadeed" style="text-align: center; color: #854d0e; background: #fef9c3; font-style: italic; font-size: 8pt; padding: 4px;">No Jadeed</td>')
+            elif len(jadeed) == 0 and sub_idx == 0:
+                cells.append('<td class="border-left-jadeed" style="text-align: center; color: #9ca3af; font-size: 8pt;">-</td>')
+                cells.append('<td style="text-align: center; color: #9ca3af; font-size: 8pt;">-</td>')
+                cells.append('<td style="text-align: center; color: #9ca3af; font-size: 8pt;">-</td>')
+            else:
+                cells.append('<td class="border-left-jadeed"></td><td></td><td></td>')
+
+            is_last_sub = (sub_idx == N_rows - 1)
+            row_class = ' class="day-separator week-end-separator"' if (is_last_sub and wd == 6) else (' class="day-separator"' if is_last_sub else '')
+            table_rows.append(f"<tr{row_class}>{''.join(cells)}</tr>")
+
+    attendance_pct = (total_active_days / total_working_days * 100) if total_working_days > 0 else 100.0
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Unified Recitation Summary — {escape(student_name)} ({month_year_str})</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {{
+      --emerald-dark: #074332;
+      --emerald: #0E6B50;
+      --gold: #D4AF37;
+      --gold-dark: #b88917;
+      --murajat-color: #0369a1;
+      --murajat-bg: #e0f2fe;
+      --juzulhali-color: #b45309;
+      --juzulhali-bg: #fef3c7;
+      --jadeed-color: #15803d;
+      --jadeed-bg: #dcfce7;
+      --border-color: #e5e7eb;
+    }}
+
+    * {{
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }}
+
+    body {{
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 16px;
+      background-color: #f8fafc;
+      color: #1f2937;
+      font-size: 8.5pt;
+      line-height: 1.35;
+    }}
+
+    .container {{
+      max-width: 1150px;
+      margin: 0 auto;
+      background-color: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
+    }}
+
+    /* Header Banner */
+    .header-banner {{
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: linear-gradient(135deg, #074332 0%, #0E6B50 100%);
+      color: #ffffff;
+      padding: 16px 20px;
+      border-radius: 10px;
+      border: 1.5px solid var(--gold);
+      margin-bottom: 16px;
+    }}
+
+    .header-title {{
+      font-family: 'Outfit', sans-serif;
+      font-size: 15pt;
+      font-weight: 700;
+      color: #ffffff;
+      margin: 0;
+    }}
+
+    .header-subtitle {{
+      font-size: 8pt;
+      color: var(--gold);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 2px;
+    }}
+
+    .student-badge {{
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(212, 175, 55, 0.5);
+      color: #ffffff;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 8.5pt;
+      font-weight: 600;
+      text-align: right;
+    }}
+
+    /* KPI Summary Stats */
+    .kpi-grid {{
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }}
+
+    .kpi-card {{
+      border-radius: 8px;
+      padding: 10px 12px;
+      text-align: center;
+      border: 1px solid var(--border-color);
+    }}
+
+    .kpi-card-murajat {{ background-color: #f0f9ff; border-color: #bae6fd; }}
+    .kpi-card-juzulhali {{ background-color: #fffbeb; border-color: #fde68a; }}
+    .kpi-card-jadeed {{ background-color: #f0fdf4; border-color: #bbf7d0; }}
+    .kpi-card-att {{ background-color: #fbf9f5; border-color: #e7e3da; }}
+
+    .kpi-label {{
+      font-size: 7pt;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 700;
+      margin-bottom: 3px;
+    }}
+
+    .kpi-val {{
+      font-family: 'Outfit', sans-serif;
+      font-size: 13pt;
+      font-weight: 700;
+    }}
+
+    /* Main Table */
+    table {{
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 8.5pt;
+    }}
+
+    th {{
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 8pt;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      padding: 7px 6px;
+      border: 1px solid var(--border-color);
+      text-align: center;
+    }}
+
+    td {{
+      padding: 6px 6px;
+      border: 1px solid #f1f5f9;
+      vertical-align: middle;
+    }}
+
+    .text-left {{ text-align: left !important; }}
+
+    .date-col {{
+      width: 11%;
+      background-color: #f8fafc;
+      text-align: center;
+      font-weight: 600;
+      border-right: 1.5px solid #cbd5e1 !important;
+    }}
+
+    .day-title {{
+      font-weight: 700;
+      color: #1e293b;
+      font-size: 8.5pt;
+    }}
+
+    .day-subtitle {{
+      font-size: 7pt;
+      color: #64748b;
+    }}
+
+    .border-left-murajat {{ border-left: 2px solid #38bdf8 !important; }}
+    .border-left-juzulhali {{ border-left: 2px solid #f59e0b !important; }}
+    .border-left-jadeed {{ border-left: 2px solid #22c55e !important; }}
+
+    .grade-badge {{
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 7.5pt;
+    }}
+
+    .grade-excellent {{ background-color: #dcfce7; color: #166534; border: 1px solid #86efac; }}
+    .grade-passing {{ background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; }}
+    .grade-warning {{ background-color: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }}
+
+    tr.day-separator td {{
+      border-bottom: 1.5px solid #cbd5e1;
+    }}
+
+    tr.week-end-separator td {{
+      border-bottom: 2.5px solid #94a3b8;
+    }}
+
+    /* Print Button */
+    .print-btn {{
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: linear-gradient(135deg, #074332, #0E6B50);
+      color: #ffffff;
+      border: 1.5px solid var(--gold);
+      padding: 9px 16px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 9pt;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      transition: all 0.2s ease;
+      z-index: 9999;
+    }}
+
+    .print-btn:hover {{
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+      border-color: #ffffff;
+    }}
+
+    @media print {{
+      body {{
+        padding: 0;
+        background-color: #ffffff;
+      }}
+      .container {{
+        border: none;
+        box-shadow: none;
+        padding: 0;
+        max-width: 100%;
+      }}
+      .print-btn {{
+        display: none !important;
+      }}
+    }}
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Header Banner -->
+    <div class="header-banner">
+      <div>
+        <div class="header-subtitle">Al Madrasa-tus-Saifiyah-tul-Burhaniyah</div>
+        <h1 class="header-title">Monthly Recitation Summary (تقرير التسميع الشهري الشامل)</h1>
+      </div>
+      <div class="student-badge">
+        <div style="font-size: 7.5pt; opacity: 0.8; text-transform: uppercase;">Student / Month</div>
+        <div style="font-size: 9.5pt; font-weight: bold; margin-top: 1px;">{escape(student_name)} • {month_year_str}</div>
+      </div>
+    </div>
+
+    <!-- KPI Summary Cards -->
+    <div class="kpi-grid">
+      <div class="kpi-card kpi-card-murajat">
+        <div class="kpi-label" style="color: var(--murajat-color);">👥 Murajat Pages / Avg</div>
+        <div class="kpi-val" style="color: var(--murajat-color);">{murajat_pages} <span style="font-size: 8.5pt; font-weight: normal; color: #475569;">pgs • Avg {avg_murajat_marks:.1f}/10</span></div>
+      </div>
+      <div class="kpi-card kpi-card-juzulhali">
+        <div class="kpi-label" style="color: var(--juzulhali-color);">📖 Juzulhali Pages / Avg</div>
+        <div class="kpi-val" style="color: var(--juzulhali-color);">{juzulhali_pages} <span style="font-size: 8.5pt; font-weight: normal; color: #475569;">pgs • Avg {avg_juzulhali_marks:.1f}/10</span></div>
+      </div>
+      <div class="kpi-card kpi-card-jadeed">
+        <div class="kpi-label" style="color: var(--jadeed-color);">📝 Jadeed Lessons</div>
+        <div class="kpi-val" style="color: var(--jadeed-color);">{jadeed_count} <span style="font-size: 8.5pt; font-weight: normal; color: #475569;">recitations</span></div>
+      </div>
+      <div class="kpi-card kpi-card-att">
+        <div class="kpi-label" style="color: #4b5563;">📅 Attendance</div>
+        <div class="kpi-val" style="color: var(--emerald-dark);">{total_active_days} / {total_working_days} <span style="font-size: 8.5pt; font-weight: normal; color: #6b7280;">({attendance_pct:.0f}%)</span></div>
+      </div>
+    </div>
+
+    <!-- Main Table Grid -->
+    <table>
+      <thead>
+        <tr>
+          <th rowspan="2" style="width: 11%; background-color: #f1f5f9;">Date</th>
+          <th colspan="3" style="background: var(--murajat-bg); color: var(--murajat-color); border-bottom: 2px solid #38bdf8;">👥 Murajat (مراجعة)</th>
+          <th colspan="3" style="background: var(--juzulhali-bg); color: var(--juzulhali-color); border-bottom: 2px solid #f59e0b;">📖 Juzulhali (جزء الحالي)</th>
+          <th colspan="3" style="background: var(--jadeed-bg); color: var(--jadeed-color); border-bottom: 2px solid #22c55e;">📝 Jadeed (جديد)</th>
+        </tr>
+        <tr>
+          <!-- Murajat -->
+          <th style="background: #f0f9ff; color: var(--murajat-color); width: 17%;">Surah</th>
+          <th style="background: #f0f9ff; color: var(--murajat-color); width: 6%;">Page</th>
+          <th style="background: #f0f9ff; color: var(--murajat-color); width: 7%;">Marks</th>
+          <!-- Juzulhali -->
+          <th style="background: #fffbeb; color: var(--juzulhali-color); width: 17%;">Surah</th>
+          <th style="background: #fffbeb; color: var(--juzulhali-color); width: 6%;">Page</th>
+          <th style="background: #fffbeb; color: var(--juzulhali-color); width: 7%;">Marks</th>
+          <!-- Jadeed -->
+          <th style="background: #f0fdf4; color: var(--jadeed-color); width: 17%;">Surah</th>
+          <th style="background: #f0fdf4; color: var(--jadeed-color); width: 6%;">Page</th>
+          <th style="background: #f0fdf4; color: var(--jadeed-color); width: 6%;">Ayah</th>
+        </tr>
+      </thead>
+      <tbody>
+        {"".join(table_rows)}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Print Button -->
+  <button class="print-btn" onclick="window.print()">🖨️ Print / Save PDF</button>
+
+</body>
+</html>
+"""
+
+
+
 

@@ -446,19 +446,20 @@ In `streamlit_app.py`, an invisible iframe injects client-side JavaScript that b
 - Email dispatch directly sending the HTML monthly plan to the student's registered inbox.
 
 ### 8.6 Reporting & Analytics Engine (`report.py`, `report_pdf.py`, `analytics.py`, `parent_report.py`)
-- `report.py`: Pills selector rendering 12 report categories:
+- `report.py`: Pills selector rendering 13 report categories:
   1. `👥 Murajat Report`: Date-wise Murajat log, Surahs, pages, mistake breakdown, daily marks, monthly average.
   2. `📖 Juzulhali Report`: Date-wise Juzulhali log, pages recited, grades, attendance.
   3. `📝 Jadeed Report`: Date-wise Jadeed log, Surah names, page/ayah ranges, volumes.
-  4. `📄 Jadeed Pages Summary`: Date-range customizable class-wide report breaking down total Jadeed pages recited month-by-month for each student, ranked in descending order with "No Jadeed Recorded" status.
-  5. `📋 Takhteet Report`: Date-wise homework assignments given to the student.
-  6. `🌟 Current Jadeed`: Individual & class-wide snapshot of active recitation positions.
-  7. `📊 Mistake Analytics`: Visual KPI cards, mistake category charts, Ahkam frequencies, 28-letter Makharij heatmap, daily score trendline.
-  8. `📅 Class Attendance`: Matrix of all students against days of the month with attendance badges (P = Present, A = Absent, H = Holiday).
-  9. `📖 Ummul Banin Ben Report`: Institutional daily progress report showing each student's current status and complete homework (Jadeed, Juzulhali, Murajat).
-  10. `🎓 OPR - One Page Report`: Cumulative software-inception report showing starting Surah/Ayah, current position, total pages completed, and attendance metrics. Features interactive `@st.fragment` holiday date exclusion picker.
-  11. `👪 Parent Views`: Real-time audit log of which parents logged in and viewed their child's portal today.
-  12. `✉️ Email Log`: Audit trail of all automated daily/monthly email dispatches.
+  4. `📑 Unified Summary Report`: 3-in-1 monthly summary report uniting Murajat (Surah, Page, Marks), Juzulhali (Surah, Page, Marks), and Jadeed (Surah, Page, Ayah) into a single high-density table.
+  5. `📄 Jadeed Pages Summary`: Date-range customizable class-wide report breaking down total Jadeed pages recited month-by-month for each student, ranked in descending order with "No Jadeed Recorded" status.
+  6. `📋 Takhteet Report`: Date-wise homework assignments given to the student.
+  7. `🌟 Current Jadeed`: Individual & class-wide snapshot of active recitation positions.
+  8. `📊 Mistake Analytics`: Visual KPI cards, mistake category charts, Ahkam frequencies, 28-letter Makharij heatmap, daily score trendline.
+  9. `📅 Class Attendance`: Matrix of all students against days of the month with attendance badges (P = Present, A = Absent, H = Holiday).
+  10. `📖 Ummul Banin Ben Report`: Institutional daily progress report showing each student's current status and complete homework (Jadeed, Juzulhali, Murajat).
+  11. `🎓 OPR - One Page Report`: Cumulative software-inception report showing starting Surah/Ayah, current position, total pages completed, and attendance metrics. Features interactive `@st.fragment` holiday date exclusion picker.
+  12. `👪 Parent Views`: Real-time audit log of which parents logged in and viewed their child's portal today.
+  13. `✉️ Email Log`: Audit trail of all automated daily/monthly email dispatches.
 - `report_pdf.py`: High-fidelity HTML templates styled for A4 printing and automated conversion to PDF via Playwright (`export_html_to_pdf_bytes`).
 
 ### 8.7 Email Notification Engine (`email_page.py`, `email_utils.py`)

@@ -14,6 +14,7 @@ from app.db import (
 )
 from app.report_pdf import (
     build_report_html,
+    build_unified_3in1_report_html,
     build_current_jadeed_report_html,
     build_collective_attendance_report_html,
     build_ikhtebar_report_html,
@@ -238,6 +239,7 @@ def render_report() -> None:
         "👥 Murajat Report",
         "📖 Juzulhali Report",
         "📝 Jadeed Report",
+        "📑 Unified Summary Report",
         "📄 Jadeed Pages Summary",
         "📋 Takhteet Report",
         "🌟 Current Jadeed",
@@ -285,6 +287,14 @@ def render_report() -> None:
         else:
             html_jadeed = build_report_html(student_name=student_name, rows=rows, report_type="jadeed")
             st.iframe(html_jadeed, height=700)
+
+    elif selected_category == "📑 Unified Summary Report":
+        rows = get_monthly_rows()
+        if not rows:
+            st.info("No recitation summary data found for this student in the selected month.")
+        else:
+            html_unified = build_unified_3in1_report_html(student_name=student_name, rows=rows)
+            st.iframe(html_unified, height=750)
 
     elif selected_category == "📄 Jadeed Pages Summary":
         render_jadeed_pages_summary_fragment(now.date())
