@@ -5,6 +5,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import Any, Dict, Tuple
 from datetime import datetime
+from html import escape
 import streamlit as st
 
 
@@ -92,6 +93,26 @@ def _format_musaid_email(counts: Dict[str, Any]) -> str:
                 f'<span style="display: inline-block; padding: 2px 6px; font-size: 10px; font-weight: bold; border-radius: 12px; margin: 2px; white-space: nowrap; background-color: #fefaf0; color: #8c6b2d; border: 1px solid #fbd38d;">{label}</span>'
             )
     return "".join(badges)
+
+
+def _format_takhteet_for_email(label: str, text: str) -> str:
+    """Formats homework text with clean line breaks and bullet points for HTML emails."""
+    if not text or not str(text).strip():
+        return ""
+    raw_lines = str(text).replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    lines = [escape(l.strip()) for l in raw_lines if l.strip()]
+    if not lines:
+        return ""
+    if len(lines) == 1:
+        return f"<div style='margin: 8px 0; font-size: 13px; line-height: 1.4;'><b style='color: #1b4d3e;'>{label}</b>: <span style='color: #2c3e50;'>{lines[0]}</span></div>"
+    
+    formatted_body = "<br>".join([f"<span style='display: inline-block; margin: 2px 0;'>• {line}</span>" for line in lines])
+    return (
+        f"<div style='margin: 10px 0; font-size: 13px; line-height: 1.45;'>"
+        f"  <div style='font-weight: bold; color: #1b4d3e; margin-bottom: 3px;'>{label}:</div>"
+        f"  <div style='padding-left: 10px; color: #2c3e50;'>{formatted_body}</div>"
+        f"</div>"
+    )
 
 
 def generate_progress_html(summary: Dict[str, Any]) -> str:
@@ -335,22 +356,22 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
     # 4. Takhteet Section
     takhteet_html = ""
     t = summary.get("takhteet") or {}
-    t_murajat = t.get("murajat_text_raw", "").strip()
-    t_juzulhali = t.get("juzulhali_text_raw", "").strip()
-    t_jadeed = t.get("jadeed_text_raw", "").strip()
+    t_murajat = t.get("murajat_text_raw", "").strip() or t.get("murajat_text_clean", "").strip()
+    t_juzulhali = t.get("juzulhali_text_raw", "").strip() or t.get("juzulhali_text_clean", "").strip()
+    t_jadeed = t.get("jadeed_text_raw", "").strip() or t.get("jadeed_text_clean", "").strip()
 
     if t_murajat or t_juzulhali or t_jadeed:
+        m_html = _format_takhteet_for_email("Murajat Homework", t_murajat)
+        j_html = _format_takhteet_for_email("Juzulhali Homework", t_juzulhali)
+        jd_html = _format_takhteet_for_email("Jadeed Homework", t_jadeed)
         takhteet_html = f"""
         <h3 style="color: #1b4d3e; border-bottom: 2px solid #c5a880; padding-bottom: 4px; margin-top: 25px;">4. Takhteet (Homework Assigned)</h3>
-        <div style="font-size: 13px; background-color: #fcfbfa; border: 1px solid #e8e4db; border-radius: 4px; padding: 12px; margin-top: 10px;">
+        <div style="font-size: 13px; background-color: #fcfbfa; border: 1px solid #e8e4db; border-radius: 6px; padding: 12px 14px; margin-top: 10px;">
+            {m_html}
+            {j_html}
+            {jd_html}
+        </div>
         """
-        if t_murajat:
-            takhteet_html += f"<p style='margin: 4px 0;'><b>Murajat Homework</b>: {t_murajat}</p>"
-        if t_juzulhali:
-            takhteet_html += f"<p style='margin: 4px 0;'><b>Juzulhali Homework</b>: {t_juzulhali}</p>"
-        if t_jadeed:
-            takhteet_html += f"<p style='margin: 4px 0;'><b>Jadeed Homework</b>: {t_jadeed}</p>"
-        takhteet_html += "</div>"
 
     return f"""<!doctype html>
 <html>
