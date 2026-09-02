@@ -204,98 +204,99 @@ def render_parent_report() -> None:
     surahs = list_surahs()
     name_to_num = {s["name_en"]: int(s["number"]) for s in surahs}
 
-    if locked_df is None or locked_df.empty:
-        st.info("No recitation lesson plan has been set/locked by the teacher for this month yet.")
-        return
+    has_plan = locked_df is not None and not locked_df.empty
 
-    # Find today's plan row
-    today_plan = None
-    for _, r in locked_df.iterrows():
-        if r["Date"] == date_str:
-            today_plan = r
-            break
+    if has_plan:
+        # Find today's plan row
+        today_plan = None
+        for _, r in locked_df.iterrows():
+            if r["Date"] == date_str:
+                today_plan = r
+                break
 
-    if today_plan is None:
-        today_plan = {
-            "Date": date_str,
-            "Day": day_name,
-            "Include?": False,
-            "Surah": "",
-            "From Ayah": 0,
-            "To Ayah": 0,
-            "Volume": ""
-        }
+        if today_plan is None:
+            today_plan = {
+                "Date": date_str,
+                "Day": day_name,
+                "Include?": False,
+                "Surah": "",
+                "From Ayah": 0,
+                "To Ayah": 0,
+                "Volume": ""
+            }
 
-    # Evaluate comparison for today
-    status_key, status_label = get_comparison_status(today_plan, actuals, no_jadeed, name_to_num)
+        # Evaluate comparison for today
+        status_key, status_label = get_comparison_status(today_plan, actuals, no_jadeed, name_to_num)
 
-    # Color-coded badge styling
-    badge_color = "var(--border)"
-    badge_text_color = "var(--ink)"
-    if status_key == "On Track":
-        badge_color = "rgba(16, 185, 129, 0.15)"
-        badge_text_color = "var(--emerald)"
-    elif status_key == "Ahead":
-        badge_color = "rgba(30, 58, 138, 0.15)"
-        badge_text_color = "#3b82f6"
-    elif status_key == "Behind":
-        badge_color = "rgba(217, 119, 6, 0.15)"
-        badge_text_color = "#d97706"
-    elif status_key == "Missed":
-        badge_color = "rgba(153, 27, 27, 0.15)"
-        badge_text_color = "#ef4444"
+        # Color-coded badge styling
+        badge_color = "var(--border)"
+        badge_text_color = "var(--ink)"
+        if status_key == "On Track":
+            badge_color = "rgba(16, 185, 129, 0.15)"
+            badge_text_color = "var(--emerald)"
+        elif status_key == "Ahead":
+            badge_color = "rgba(30, 58, 138, 0.15)"
+            badge_text_color = "#3b82f6"
+        elif status_key == "Behind":
+            badge_color = "rgba(217, 119, 6, 0.15)"
+            badge_text_color = "#d97706"
+        elif status_key == "Missed":
+            badge_color = "rgba(153, 27, 27, 0.15)"
+            badge_text_color = "#ef4444"
 
-    # Format plan text
-    if today_plan.get("Include?"):
-        plan_text = f"📖 <b>{today_plan.get('Surah')}</b>: {today_plan.get('From Ayah')} – {today_plan.get('To Ayah')} ({today_plan.get('Volume')})"
-    else:
-        plan_text = "😴 No lesson planned (Rest Day / Weekend)"
+        # Format plan text
+        if today_plan.get("Include?"):
+            plan_text = f"📖 <b>{today_plan.get('Surah')}</b>: {today_plan.get('From Ayah')} – {today_plan.get('To Ayah')} ({today_plan.get('Volume')})"
+        else:
+            plan_text = "😴 No lesson planned (Rest Day / Weekend)"
 
-    # Format actual text
-    if actuals:
-        act_texts = []
-        for act in actuals:
-            s_info = act.get("surahs") or {}
-            if isinstance(s_info, list): s_info = s_info[0] if s_info else {}
-            act_texts.append(f"✅ <b>{s_info.get('name_en', 'Unknown')}</b> (Ayah {act.get('ayah_number')} – {act.get('volume')})")
-        actual_text = "<br>".join(act_texts)
-    elif no_jadeed:
-        actual_text = "🌙 Marked: No Jadeed lesson today"
-    else:
-        actual_text = "❌ No recitation recorded"
+        # Format actual text
+        if actuals:
+            act_texts = []
+            for act in actuals:
+                s_info = act.get("surahs") or {}
+                if isinstance(s_info, list): s_info = s_info[0] if s_info else {}
+                act_texts.append(f"✅ <b>{s_info.get('name_en', 'Unknown')}</b> (Ayah {act.get('ayah_number')} – {act.get('volume')})")
+            actual_text = "<br>".join(act_texts)
+        elif no_jadeed:
+            actual_text = "🌙 Marked: No Jadeed lesson today"
+        else:
+            actual_text = "❌ No recitation recorded"
 
-    # Show single beautiful today's card
-    st.markdown("### 🗓️ Today's Progress vs. Plan")
-    st.caption("Here is how your child's recitation today compares to their daily target:")
+        # Show single beautiful today's card
+        st.markdown("### 🗓️ Today's Progress vs. Plan")
+        st.caption("Here is how your child's recitation today compares to their daily target:")
 
-    html_str = f"""
-    <div style='background-color: rgba(16, 185, 129, 0.03); border: 2px solid var(--emerald); padding: 25px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.02);'>
-        <div style='display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 15px;'>
-            <div>
-                <span style='font-weight: bold; font-size: 1.25rem; color: var(--ink);'>🗓️ {formatted_date}</span>
-                <span style='font-size: 1.05rem; opacity: 0.7; margin-left: 5px;'>({day_name})</span>
+        html_str = f"""
+        <div style='background-color: rgba(16, 185, 129, 0.03); border: 2px solid var(--emerald); padding: 25px; border-radius: 12px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.02);'>
+            <div style='display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 15px;'>
+                <div>
+                    <span style='font-weight: bold; font-size: 1.25rem; color: var(--ink);'>🗓️ {formatted_date}</span>
+                    <span style='font-size: 1.05rem; opacity: 0.7; margin-left: 5px;'>({day_name})</span>
+                </div>
+                <span style='background-color: {badge_color}; color: {badge_text_color}; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: bold;'>
+                    {status_label}
+                </span>
             </div>
-            <span style='background-color: {badge_color}; color: {badge_text_color}; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: bold;'>
-                {status_label}
-            </span>
+            <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 10px;'>
+                <div style='background-color: var(--card); border: 1px solid var(--border); padding: 15px; border-radius: 8px;'>
+                    <div style='font-size: 0.8rem; text-transform: uppercase; opacity: 0.6; margin-bottom: 6px; font-weight: bold;'>🎯 Planned Target</div>
+                    <div style='font-size: 1rem; color: var(--ink);'>{plan_text}</div>
+                </div>
+                <div style='background-color: var(--card); border: 1px solid var(--border); padding: 15px; border-radius: 8px;'>
+                    <div style='font-size: 0.8rem; text-transform: uppercase; opacity: 0.6; margin-bottom: 6px; font-weight: bold;'>✨ Actual Progress</div>
+                    <div style='font-size: 1rem; color: var(--ink);'>{actual_text}</div>
+                </div>
+            </div>
         </div>
-        <div style='display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 10px;'>
-            <div style='background-color: var(--card); border: 1px solid var(--border); padding: 15px; border-radius: 8px;'>
-                <div style='font-size: 0.8rem; text-transform: uppercase; opacity: 0.6; margin-bottom: 6px; font-weight: bold;'>🎯 Planned Target</div>
-                <div style='font-size: 1rem; color: var(--ink);'>{plan_text}</div>
-            </div>
-            <div style='background-color: var(--card); border: 1px solid var(--border); padding: 15px; border-radius: 8px;'>
-                <div style='font-size: 0.8rem; text-transform: uppercase; opacity: 0.6; margin-bottom: 6px; font-weight: bold;'>✨ Actual Progress</div>
-                <div style='font-size: 1rem; color: var(--ink);'>{actual_text}</div>
-            </div>
-        </div>
-    </div>
-    """
-    st.markdown(html_str.replace("\n", " "), unsafe_allow_html=True)
+        """
+        st.markdown(html_str.replace("\n", " "), unsafe_allow_html=True)
+        st.divider()
+    else:
+        st.info("ℹ️ No monthly lesson plan has been set/locked by the teacher for this month yet. Your child's recitation & mistake analytics are available below.")
 
-    # Render Mistake Analytics inside an expander for instant loading and zero rendering lag
-    st.divider()
-    with st.expander("📊 View Recitation & Mistake Analytics", expanded=False):
+    # Render Mistake Analytics inside an expander (expanded by default if no plan exists)
+    with st.expander("📊 View Recitation & Mistake Analytics", expanded=not has_plan):
         st.markdown("### 📊 Recitation & Mistake Analytics")
         st.caption("Visual analysis of mistake categories, pronunciation articulation points, rules, and daily trend.")
         from app.ui.analytics import render_student_analytics
