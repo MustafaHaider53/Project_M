@@ -147,50 +147,49 @@ def render_murajat() -> None:
             st.button("Next ▶", disabled=not has_next, width="stretch", on_click=click_next)
 
     if surah_id is not None and page_number is not None:
-        with st.spinner("Preparing recitation session..."):
-            if (
-                st.session_state.get("murajat_surah_id") != surah_id
-                or st.session_state.get("murajat_page_number") != page_number
-                or st.session_state.get("murajat_student_id") != student_id
-                or not st.session_state.get("murajat_session_id")
-            ):
-                st.session_state.murajat_surah_id = surah_id
-                st.session_state.murajat_page_number = page_number
-                st.session_state.murajat_student_id = student_id
-                
-                # Check if there is an existing session for this student, mode, surah and page today using local cache
-                ensure_today_sessions(student_id)
-                key = ("murajat", int(surah_id), int(page_number))
-                existing_id = st.session_state.today_sessions.get(key)
-                if existing_id:
-                    st.session_state.murajat_session_id = existing_id
-                else:
-                    st.session_state.murajat_session_id = None
-                st.session_state.pop("murajat_counts", None)
-                st.session_state.pop("murajat_counts_session_id", None)
-
-            session_id = st.session_state.get("murajat_session_id")
-
-            if session_id:
-                if "murajat_counts" not in st.session_state or st.session_state.get("murajat_counts_session_id") != session_id:
-                    st.session_state.murajat_counts = get_session_counts(session_id)
-                    st.session_state.murajat_counts_session_id = session_id
-                counts = st.session_state.murajat_counts
+        if (
+            st.session_state.get("murajat_surah_id") != surah_id
+            or st.session_state.get("murajat_page_number") != page_number
+            or st.session_state.get("murajat_student_id") != student_id
+            or not st.session_state.get("murajat_session_id")
+        ):
+            st.session_state.murajat_surah_id = surah_id
+            st.session_state.murajat_page_number = page_number
+            st.session_state.murajat_student_id = student_id
+            
+            # Check if there is an existing session for this student, mode, surah and page today using local cache
+            ensure_today_sessions(student_id)
+            key = ("murajat", int(surah_id), int(page_number))
+            existing_id = st.session_state.today_sessions.get(key)
+            if existing_id:
+                st.session_state.murajat_session_id = existing_id
             else:
-                counts = {
-                    "talqeen": 0, "tanbeeh": 0, "repeat_mistake": 0, "mutashabehat": 0, "irab": 0, "awakhir_ul_ayat": 0,
-                    "irab_talqeen": 0, "irab_tanbeeh": 0,
-                    "repeat_mistake_talqeen": 0, "repeat_mistake_tanbeeh": 0,
-                    "mutashabehat_talqeen": 0, "mutashabehat_tanbeeh": 0,
-                    "awakhir_ul_ayat_talqeen": 0, "awakhir_ul_ayat_tanbeeh": 0,
-                    "ikhfa": 0, "izhaar": 0, "qalqalah": 0, "ism_jalalah": 0, "tahreek_sakin": 0, "gunnah": 0,
-                    "idgham": 0, "madd_lazim": 0, "madd_muttasil": 0, "mad_tabaiee": 0, "ikhfa_shafawi": 0, "iqlab": 0
-                }
-                from app.db import MAKHARIJ_COLS, MUSAID_COLS
-                for col in MAKHARIJ_COLS:
-                    counts[col] = 0
-                for col in MUSAID_COLS:
-                    counts[col] = 0
+                st.session_state.murajat_session_id = None
+            st.session_state.pop("murajat_counts", None)
+            st.session_state.pop("murajat_counts_session_id", None)
+
+        session_id = st.session_state.get("murajat_session_id")
+
+        if session_id:
+            if "murajat_counts" not in st.session_state or st.session_state.get("murajat_counts_session_id") != session_id:
+                st.session_state.murajat_counts = get_session_counts(session_id)
+                st.session_state.murajat_counts_session_id = session_id
+            counts = st.session_state.murajat_counts
+        else:
+            counts = {
+                "talqeen": 0, "tanbeeh": 0, "repeat_mistake": 0, "mutashabehat": 0, "irab": 0, "awakhir_ul_ayat": 0,
+                "irab_talqeen": 0, "irab_tanbeeh": 0,
+                "repeat_mistake_talqeen": 0, "repeat_mistake_tanbeeh": 0,
+                "mutashabehat_talqeen": 0, "mutashabehat_tanbeeh": 0,
+                "awakhir_ul_ayat_talqeen": 0, "awakhir_ul_ayat_tanbeeh": 0,
+                "ikhfa": 0, "izhaar": 0, "qalqalah": 0, "ism_jalalah": 0, "tahreek_sakin": 0, "gunnah": 0,
+                "idgham": 0, "madd_lazim": 0, "madd_muttasil": 0, "mad_tabaiee": 0, "ikhfa_shafawi": 0, "iqlab": 0
+            }
+            from app.db import MAKHARIJ_COLS, MUSAID_COLS
+            for col in MAKHARIJ_COLS:
+                counts[col] = 0
+            for col in MUSAID_COLS:
+                counts[col] = 0
 
     def _on_click(kind: str) -> None:
         if surah_id is None or page_number is None:
@@ -335,10 +334,6 @@ def render_murajat() -> None:
     student_name = st.session_state.get("student_name", "Student")
 
     if surah_id is None or page_number is None:
-        show_analytics = st.toggle("📊 View Student Mistake Analytics & Progress", value=False, key="murajat_show_student_analytics_toggle")
-        if show_analytics:
-            from app.ui.analytics import render_student_analytics
-            render_student_analytics(student_id=student_id, student_name=student_name)
         st.info("Please select a Surah and Page to start Murajat recitation.")
         return
 
@@ -346,7 +341,7 @@ def render_murajat() -> None:
     with sticky_container:
         col_toggles, col_musaid = st.columns([1.5, 3.5])
         with col_toggles:
-            show_analytics = st.toggle("📊 View Student Mistake Analytics", value=False, key="murajat_show_student_analytics_toggle")
+            show_history = st.toggle("📈 **Page History & Progress**", value=False, key="murajat_page_history_toggle")
             st.toggle("➖ **Subtraction Mode**", value=False, key="sub_mode_toggle")
         with col_musaid:
             st.markdown("<div style='font-size: 0.85rem; font-weight: bold; margin-bottom: 5px; color: var(--emerald); text-align: left;'>Musaid Analysis (One-time Tap)</div>", unsafe_allow_html=True)
@@ -379,13 +374,18 @@ def render_murajat() -> None:
                     st.markdown(f"<span class='{active_class}' style='display: none;'>active</span>", unsafe_allow_html=True)
                     btn_type = "primary" if is_active else "secondary"
                     display_label = f"✓ {label}" if is_active else label
-                    if st.button(display_label, type=btn_type, key=f"btn_{col_key}", use_container_width=True):
+                    if st.button(display_label, type=btn_type, key=f"btn_{col_key}", width="stretch"):
                         _on_click(col_key)
                         st.rerun()
 
-    if st.session_state.get("murajat_show_student_analytics_toggle", False):
-        from app.ui.analytics import render_student_analytics
-        render_student_analytics(student_id=student_id, student_name=student_name)
+    if st.session_state.get("murajat_page_history_toggle", False) and page_number is not None:
+        from app.ui.page_comparison import render_page_comparison
+        render_page_comparison(
+            student_id=student_id,
+            student_name=student_name,
+            page_number=page_number,
+            mode="murajat"
+        )
 
     mistake_buttons(session_id=session_id or "", counts=counts, on_click=_on_click)
 

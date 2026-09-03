@@ -56,7 +56,7 @@ def render_holiday_picker(start_date: date, end_date: date) -> None:
             
     with col_btn:
         st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-        if st.button("➕ Exclude All", use_container_width=True, key="add_holiday_btn"):
+        if st.button("➕ Exclude All", width="stretch", key="add_holiday_btn"):
             if isinstance(new_date, date):
                 st.session_state.pending_exclusions.add(new_date)
             st.session_state.ikhtebar_holidays.update(st.session_state.pending_exclusions)
@@ -75,7 +75,7 @@ def render_holiday_picker(start_date: date, end_date: date) -> None:
         
         col_clear_pending, _ = st.columns([1, 4])
         with col_clear_pending:
-            if st.button("Clear Pending", key="clear_pending_btn", use_container_width=True):
+            if st.button("Clear Pending", key="clear_pending_btn", width="stretch"):
                 st.session_state.pending_exclusions.clear()
                 st.session_state.holiday_picker_val = start_date
                 st.rerun()
@@ -89,22 +89,22 @@ def render_jadeed_pages_summary_fragment(now_date: date) -> None:
     # Preset Quick Dates
     col_p1, col_p2, col_p3, col_p4 = st.columns(4)
     with col_p1:
-        if st.button("📅 Current Month", key="preset_current_month", use_container_width=True):
+        if st.button("📅 Current Month", key="preset_current_month", width="stretch"):
             st.session_state.jpages_from = date(now_date.year, now_date.month, 1)
             st.session_state.jpages_to = now_date
             st.rerun(scope="fragment")
     with col_p2:
-        if st.button("📅 Last 30 Days", key="preset_last_30", use_container_width=True):
+        if st.button("📅 Last 30 Days", key="preset_last_30", width="stretch"):
             st.session_state.jpages_from = now_date - timedelta(days=30)
             st.session_state.jpages_to = now_date
             st.rerun(scope="fragment")
     with col_p3:
-        if st.button("📅 July – August 2026", key="preset_jul_aug", use_container_width=True):
+        if st.button("📅 July – August 2026", key="preset_jul_aug", width="stretch"):
             st.session_state.jpages_from = date(2026, 7, 15)
             st.session_state.jpages_to = date(2026, 8, 22)
             st.rerun(scope="fragment")
     with col_p4:
-        if st.button("📅 Year to Date (2026)", key="preset_ytd", use_container_width=True):
+        if st.button("📅 Year to Date (2026)", key="preset_ytd", width="stretch"):
             st.session_state.jpages_from = date(2026, 1, 1)
             st.session_state.jpages_to = now_date
             st.rerun(scope="fragment")
@@ -124,7 +124,7 @@ def render_jadeed_pages_summary_fragment(now_date: date) -> None:
         st.session_state.jpages_to = jp_to
     with col_jbtn:
         st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
-        if st.button("🔄 Refresh", key="refresh_jpages_btn", use_container_width=True):
+        if st.button("🔄 Refresh", key="refresh_jpages_btn", width="stretch"):
             st.cache_data.clear()
             st.rerun(scope="fragment")
 
@@ -152,7 +152,7 @@ def render_report() -> None:
         st.subheader("Monthly Report")
         st.caption("Date-wise student progress and class-wide attendance report.")
     with col_ref:
-        if st.button("🔄 Refresh Data", use_container_width=True, key="refresh_all_reports_btn"):
+        if st.button("🔄 Refresh Data", width="stretch", key="refresh_all_reports_btn"):
             keys_to_clear = [
                 k for k in st.session_state.keys() 
                 if k.startswith(("monthly_report", "current_jadeed", "attendance_report", "ikhtebar_report", "earliest_global_activity_date"))
@@ -405,7 +405,7 @@ def render_report() -> None:
                 
                 col_c1, _ = st.columns([1, 4])
                 with col_c1:
-                    if st.button("Clear All", use_container_width=True, key="ikhtebar_clear_holidays"):
+                    if st.button("Clear All", width="stretch", key="ikhtebar_clear_holidays"):
                         st.session_state.ikhtebar_holidays.clear()
                         st.rerun()
             else:

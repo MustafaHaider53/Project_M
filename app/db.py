@@ -158,6 +158,7 @@ def clear_all_read_caches() -> None:
         get_all_students_current_jadeed.clear()
         get_student_sessions_with_counts.clear()
         get_session_counts.clear()
+        get_student_page_listening_history.clear()
         calculate_student_average_pace.clear()
         get_student_position_before_month.clear()
         get_student_monthly_actuals.clear()
@@ -2198,6 +2199,121 @@ def fetch_jadeed_pages_summary_report(*, from_date: str, to_date: str) -> Dict[s
             "top_student": top_student_str,
         }
     }
+
+
+@st.cache_data(show_spinner=False)
+def get_student_page_listening_history(
+    *, 
+    student_id: str, 
+    page_number: int, 
+    mode: Optional[str] = None
+) -> List[Dict[str, Any]]:
+    """
+    Fetches all historical listening sessions for a specific student and page number,
+    chronologically ordered, with calculated scores, mistake categories, and deltas.
+    """
+    rest = get_rest()
+    if rest is None:
+        return []
+
+    params: Dict[str, str] = {
+        "student_id": f"eq.{student_id}",
+        "page_number": f"eq.{page_number}",
+        "order": "activity_date.asc,created_at.asc"
+    }
+    if mode:
+        params["mode"] = f"eq.{mode}"
+
+    try:
+        rows = rest.select(
+            "listening_sessions",
+            select="id,student_id,activity_date,mode,page_number,surah_id,created_at,surahs(number,name_en,name_ar),mistake_counts(*)",
+            params=params
+        )
+    except Exception as e:
+        print(f"[get_student_page_listening_history error] {e}")
+        return []
+
+    history = []
+    prev_score = None
+
+    for idx, r in enumerate(rows):
+        counts = r.get("mistake_counts")
+        if isinstance(counts, list):
+            counts = counts[0] if counts else {}
+        elif not isinstance(counts, dict):
+            counts = {}
+
+        talqeen = int(counts.get("talqeen", 0) or 0)
+        tanbeeh = int(counts.get("tanbeeh", 0) or 0)
+        is_zero = bool(counts.get("is_zero_marks", False))
+
+        if is_zero:
+            score = 0.0
+        else:
+            score = max(0.0, 10.0 - (0.5 * talqeen) - (0.25 * tanbeeh))
+
+        score_delta = None
+        if prev_score is not None:
+            score_delta = score - prev_score
+        prev_score = score
+
+        s_info = r.get("surahs") or {}
+        if isinstance(s_info, list):
+            s_info = s_info[0] if s_info else {}
+
+        # Ahkam breakdown
+        ahkam_items = []
+        for col_name, label in [
+            ("ikhfa", "Ikhfa"), ("izhaar", "Izhaar"), ("qalqalah", "Qalqalah"),
+            ("ism_jalalah", "Ism Jalal"), ("tahreek_sakin", "Tahreek"), ("gunnah", "Gunnah"),
+            ("idgham", "Idgham"), ("madd_lazim", "M. Lazim"), ("madd_muttasil", "M. Mutta."),
+            ("mad_tabaiee", "M. Tabai.")
+        ]:
+            val = int(counts.get(col_name, 0) or 0)
+            if val > 0:
+                ahkam_items.append(f"{label} ({val})" if val > 1 else label)
+
+        # Makharij breakdown
+        makhraj_chars = {
+            "makhraj_alif": "أ", "makhraj_baa": "ب", "makhraj_taa": "ت", "makhraj_thaa": "ث",
+            "makhraj_jeem": "ج", "makhraj_haa": "ح", "makhraj_khaa": "خ", "makhraj_daal": "د",
+            "makhraj_thaal": "ذ", "makhraj_raa": "ر", "makhraj_zaa": "ز", "makhraj_seen": "س",
+            "makhraj_sheen": "ش", "makhraj_saad": "ص", "makhraj_daad": "ض", "makhraj_taa_thick": "ط",
+            "makhraj_zaa_thick": "ظ", "makhraj_ain": "ع", "makhraj_ghain": "غ", "makhraj_faa": "ف",
+            "makhraj_qaaf": "ق", "makhraj_kaaf": "ك", "makhraj_laam": "ل", "makhraj_meem": "م",
+            "makhraj_noon": "ن", "makhraj_waw": "و", "makhraj_haa_weak": "هـ", "makhraj_yaa": "ي"
+        }
+        makharij_items = []
+        for col_name, letter in makhraj_chars.items():
+            val = int(counts.get(col_name, 0) or 0)
+            if val > 0:
+                makharij_items.append(f"{letter} ({val})" if val > 1 else letter)
+
+        history.append({
+            "session_id": r.get("id"),
+            "attempt_number": idx + 1,
+            "activity_date": r.get("activity_date"),
+            "mode": r.get("mode"),
+            "page_number": r.get("page_number"),
+            "surah_number": s_info.get("number"),
+            "surah_name": s_info.get("name_en") or s_info.get("name_ar") or "Unknown",
+            "surah_name_ar": s_info.get("name_ar") or "",
+            "score": round(score, 2),
+            "score_delta": round(score_delta, 2) if score_delta is not None else None,
+            "talqeen": talqeen,
+            "tanbeeh": tanbeeh,
+            "irab": int(counts.get("irab", 0) or 0),
+            "awakhir": int(counts.get("awakhir_ul_ayat", 0) or 0),
+            "repeat": int(counts.get("repeat_mistake", 0) or 0),
+            "mutashabehat": int(counts.get("mutashabehat", 0) or 0),
+            "total_mistakes": talqeen + tanbeeh + int(counts.get("irab", 0) or 0) + int(counts.get("awakhir_ul_ayat", 0) or 0) + int(counts.get("repeat_mistake", 0) or 0) + int(counts.get("mutashabehat", 0) or 0),
+            "ahkam_list": ahkam_items,
+            "makharij_list": makharij_items,
+            "raw_counts": counts,
+        })
+
+    return history
 
 
 
