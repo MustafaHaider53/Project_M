@@ -305,7 +305,7 @@ def main() -> None:
         with header_cols[1]:
             st.markdown('<button id="fullscreen-toggle-btn" style="width: 100%; background: linear-gradient(180deg, var(--emerald), #0a4d3a); color: white; border: none; border-radius: 8px; padding: 2px 4px; font-weight: bold; cursor: pointer; font-size: 10px; height: 26px; min-height: 26px; line-height: 1.2; display: flex; align-items: center; justify-content: center; gap: 4px; font-family: sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.12);">📱 Fullscreen</button>', unsafe_allow_html=True)
         with header_cols[2]:
-            if st.button("🔒 Logout", use_container_width=True, key="header_logout_btn"):
+            if st.button("🔒 Logout", width="stretch", key="header_logout_btn"):
                 st.session_state.logged_in = False
                 st.session_state.student_id = None
                 st.session_state.student_name = None
@@ -327,7 +327,7 @@ def main() -> None:
     with header_cols[1]:
         st.markdown('<button id="fullscreen-toggle-btn" style="width: 100%; background: linear-gradient(180deg, var(--emerald), #0a4d3a); color: white; border: none; border-radius: 8px; padding: 2px 4px; font-weight: bold; cursor: pointer; font-size: 10px; height: 26px; min-height: 26px; line-height: 1.2; display: flex; align-items: center; justify-content: center; gap: 4px; font-family: sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.12);">📱 Fullscreen</button>', unsafe_allow_html=True)
     with header_cols[2]:
-        if st.button("🔒 Logout", use_container_width=True, key="header_logout_btn"):
+        if st.button("🔒 Logout", width="stretch", key="header_logout_btn"):
             st.session_state.logged_in = False
             st.session_state.student_id = None
             st.session_state.student_name = None
@@ -353,7 +353,7 @@ def main() -> None:
     
     cols = st.columns(8)
     with cols[0]:
-        if st.button("👥 Change", use_container_width=True):
+        if st.button("👥 Change", width="stretch"):
             st.session_state.student_id = None
             st.session_state.student_name = None
             st.session_state.page = "home"
@@ -363,43 +363,43 @@ def main() -> None:
             st.rerun()
             
     with cols[1]:
-        if st.button("Murajat", type="primary" if current_page == "murajat" else "secondary", use_container_width=True):
+        if st.button("Murajat", type="primary" if current_page == "murajat" else "secondary", width="stretch"):
             st.session_state.page = "murajat"
             st.query_params["page"] = "murajat"
             st.rerun()
             
     with cols[2]:
-        if st.button("Juzulhali", type="primary" if current_page == "juzulhali" else "secondary", use_container_width=True):
+        if st.button("Juzulhali", type="primary" if current_page == "juzulhali" else "secondary", width="stretch"):
             st.session_state.page = "juzulhali"
             st.query_params["page"] = "juzulhali"
             st.rerun()
             
     with cols[3]:
-        if st.button("Jadeed", type="primary" if current_page == "jadeed" else "secondary", use_container_width=True):
+        if st.button("Jadeed", type="primary" if current_page == "jadeed" else "secondary", width="stretch"):
             st.session_state.page = "jadeed"
             st.query_params["page"] = "jadeed"
             st.rerun()
             
     with cols[4]:
-        if st.button("Takhteet", type="primary" if current_page == "takhteet" else "secondary", use_container_width=True):
+        if st.button("Takhteet", type="primary" if current_page == "takhteet" else "secondary", width="stretch"):
             st.session_state.page = "takhteet"
             st.query_params["page"] = "takhteet"
             st.rerun()
 
     with cols[5]:
-        if st.button("Planner", type="primary" if current_page == "planner" else "secondary", use_container_width=True):
+        if st.button("Planner", type="primary" if current_page == "planner" else "secondary", width="stretch"):
             st.session_state.page = "planner"
             st.query_params["page"] = "planner"
             st.rerun()
             
     with cols[6]:
-        if st.button("Email", type="primary" if current_page == "email" else "secondary", use_container_width=True):
+        if st.button("Email", type="primary" if current_page == "email" else "secondary", width="stretch"):
             st.session_state.page = "email"
             st.query_params["page"] = "email"
             st.rerun()
             
     with cols[7]:
-        if st.button("Report", type="primary" if current_page == "report" else "secondary", use_container_width=True):
+        if st.button("Report", type="primary" if current_page == "report" else "secondary", width="stretch"):
             st.session_state.page = "report"
             st.query_params["page"] = "report"
             st.rerun()
