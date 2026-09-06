@@ -73,8 +73,9 @@ def _format_mistake_badges(m: Dict[str, Any]) -> str:
     for col, label in AHKAM_LABELS.items():
         val = m.get(col, 0)
         if val > 0:
+            lbl = f"{label}" if val == 1 else f"{label} ({val})"
             badges.append(
-                f'<span class="badge badge-ahkam">{label} ({val})</span>'
+                f'<span class="badge badge-ahkam">{lbl}</span>'
             )
     # Makharij
     for col, char in MAKHRAJ_CHARS.items():

@@ -2268,7 +2268,7 @@ def get_student_page_listening_history(
             ("ikhfa", "Ikhfa"), ("izhaar", "Izhaar"), ("qalqalah", "Qalqalah"),
             ("ism_jalalah", "Ism Jalal"), ("tahreek_sakin", "Tahreek"), ("gunnah", "Gunnah"),
             ("idgham", "Idgham"), ("madd_lazim", "M. Lazim"), ("madd_muttasil", "M. Mutta."),
-            ("mad_tabaiee", "M. Tabai.")
+            ("mad_tabaiee", "M. Tabai."), ("ikhfa_shafawi", "Ikh. Shaf."), ("iqlab", "Iqlab")
         ]:
             val = int(counts.get(col_name, 0) or 0)
             if val > 0:

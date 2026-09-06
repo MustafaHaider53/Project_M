@@ -287,15 +287,19 @@ def apply_islamic_theme() -> None:
             margin: 0 !important;
           }
 
-          /* Active green styling for Makharij letter buttons */
+          /* Active green styling for Makharij letter and Ahkam Tajweed buttons */
           div[data-testid="stElementContainer"]:has(.makhraj-active) + div[data-testid="stElementContainer"] button,
-          div[data-testid="stElementContainer"]:has(.makhraj-active) ~ div[data-testid="stElementContainer"] button {
+          div[data-testid="stElementContainer"]:has(.makhraj-active) ~ div[data-testid="stElementContainer"] button,
+          div[data-testid="stElementContainer"]:has(.ahkam-active) + div[data-testid="stElementContainer"] button,
+          div[data-testid="stElementContainer"]:has(.ahkam-active) ~ div[data-testid="stElementContainer"] button {
             background: linear-gradient(180deg, #15803d, #166534) !important;
             color: #ffffff !important;
             border-color: #14532d !important;
           }
           div[data-testid="stElementContainer"]:has(.makhraj-active) + div[data-testid="stElementContainer"] button:hover,
-          div[data-testid="stElementContainer"]:has(.makhraj-active) ~ div[data-testid="stElementContainer"] button:hover {
+          div[data-testid="stElementContainer"]:has(.makhraj-active) ~ div[data-testid="stElementContainer"] button:hover,
+          div[data-testid="stElementContainer"]:has(.ahkam-active) + div[data-testid="stElementContainer"] button:hover,
+          div[data-testid="stElementContainer"]:has(.ahkam-active) ~ div[data-testid="stElementContainer"] button:hover {
             background: linear-gradient(180deg, #166534, #14532d) !important;
           }
 
