@@ -320,10 +320,11 @@ def render_juzulhali() -> None:
             else:
                 local_counts["awakhir_ul_ayat_tanbeeh"] = local_counts.get("awakhir_ul_ayat_tanbeeh", 0) + 1
                 local_counts["awakhir_ul_ayat"] = local_counts.get("awakhir_ul_ayat", 0) + 1
-                local_counts["tanbeeh"] += 1
-        elif kind in ("ikhfa", "izhaar", "qalqalah", "ism_jalalah", "tahreek_sakin", "gunnah", "idgham", "madd_lazim", "madd_muttasil", "mad_tabaiee", "ikhfa_shafawi", "iqlab"):
-            local_counts[kind] = max(0, local_counts.get(kind, 0) + diff)
-        elif kind.startswith("makhraj_") or kind.startswith("musaid_"):
+        elif (
+            kind in ("ikhfa", "izhaar", "qalqalah", "ism_jalalah", "tahreek_sakin", "gunnah", "idgham", "madd_lazim", "madd_muttasil", "mad_tabaiee", "ikhfa_shafawi", "iqlab")
+            or kind.startswith("makhraj_")
+            or kind.startswith("musaid_")
+        ):
             local_counts[kind] = 1 if local_counts.get(kind, 0) == 0 else 0
             
         from app.db import increment_mistake_bg

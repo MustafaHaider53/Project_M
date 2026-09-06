@@ -204,47 +204,24 @@ def mistake_buttons(*, session_id: str, counts: Dict[str, int], on_click) -> Non
         with st.container(border=True):
             st.markdown("<div style='text-align: center; font-weight: bold; margin-bottom: 5px; color: var(--emerald);'>Ahkam Mistakes</div>", unsafe_allow_html=True)
             
-            # Row 1: Ikhfa & Izhaar
-            ar1_c1, ar1_c2 = st.columns(2)
-            with ar1_c1:
-                st.button(f"{prefix}Ikhfa ({counts.get('ikhfa', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "ikhfa"}, key="btn_ikhfa")
-            with ar1_c2:
-                st.button(f"{prefix}Izhaar ({counts.get('izhaar', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "izhaar"}, key="btn_izhaar")
-                
-            # Row 2: Qalqalah & Ismul Jalalah
-            ar2_c1, ar2_c2 = st.columns(2)
-            with ar2_c1:
-                st.button(f"{prefix}Qalqalah ({counts.get('qalqalah', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "qalqalah"}, key="btn_qalqalah")
-            with ar2_c2:
-                st.button(f"{prefix}Ism Jalal ({counts.get('ism_jalalah', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "ism_jalalah"}, key="btn_ism_jalalah")
-                
-            # Row 3: Tahreek Sakin & Gunnah
-            ar3_c1, ar3_c2 = st.columns(2)
-            with ar3_c1:
-                st.button(f"{prefix}Tahreek ({counts.get('tahreek_sakin', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "tahreek_sakin"}, key="btn_tahreek_sakin")
-            with ar3_c2:
-                st.button(f"{prefix}Gunnah ({counts.get('gunnah', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "gunnah"}, key="btn_gunnah")
-                
-            # Row 4: Idgham & Madd Lazim
-            ar4_c1, ar4_c2 = st.columns(2)
-            with ar4_c1:
-                st.button(f"{prefix}Idgham ({counts.get('idgham', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "idgham"}, key="btn_idgham")
-            with ar4_c2:
-                st.button(f"{prefix}M. Lazim ({counts.get('madd_lazim', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "madd_lazim"}, key="btn_madd_lazim")
-                
-            # Row 5: Madd Muttasil & Mad Tabaiee
-            ar5_c1, ar5_c2 = st.columns(2)
-            with ar5_c1:
-                st.button(f"{prefix}M. Mutta. ({counts.get('madd_muttasil', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "madd_muttasil"}, key="btn_madd_muttasil")
-            with ar5_c2:
-                st.button(f"{prefix}M. Tabai. ({counts.get('mad_tabaiee', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "mad_tabaiee"}, key="btn_mad_tabaiee")
+            ahkam_buttons_layout = [
+                [("ikhfa", "Ikhfa"), ("izhaar", "Izhaar")],
+                [("qalqalah", "Qalqalah"), ("ism_jalalah", "Ism Jalal")],
+                [("tahreek_sakin", "Tahreek"), ("gunnah", "Gunnah")],
+                [("idgham", "Idgham"), ("madd_lazim", "M. Lazim")],
+                [("madd_muttasil", "M. Mutta."), ("mad_tabaiee", "M. Tabai.")],
+                [("ikhfa_shafawi", "Ikh. Shaf."), ("iqlab", "Iqlab")],
+            ]
 
-            # Row 6: Ikhfa Shafawi & Iqlab
-            ar6_c1, ar6_c2 = st.columns(2)
-            with ar6_c1:
-                st.button(f"{prefix}Ikh. Shaf. ({counts.get('ikhfa_shafawi', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "ikhfa_shafawi"}, key="btn_ikhfa_shafawi")
-            with ar6_c2:
-                st.button(f"{prefix}Iqlab ({counts.get('iqlab', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "iqlab"}, key="btn_iqlab")
+            for row in ahkam_buttons_layout:
+                ar_c1, ar_c2 = st.columns(2)
+                for col_idx, (kind, label) in enumerate(row):
+                    target_col = ar_c1 if col_idx == 0 else ar_c2
+                    with target_col:
+                        is_active = counts.get(kind, 0) == 1
+                        active_class = "ahkam-active" if is_active else "ahkam-inactive"
+                        st.markdown(f"<span class='{active_class}' style='display: none;'>active</span>", unsafe_allow_html=True)
+                        st.button(label, width="stretch", on_click=on_click, kwargs={"kind": kind}, key=f"btn_{kind}")
 
     with col_makharij:
         with st.container(border=True):
