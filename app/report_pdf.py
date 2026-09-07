@@ -383,6 +383,14 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type
                     mistake_badges = _format_mistake_badges(counts)
                     marks = m.get("marks", 0.0)
                     grade_badge = _format_grade_badge(marks)
+                    dur_sec = m.get("duration_seconds", 0)
+                    if dur_sec and int(dur_sec) > 0:
+                        dur_m = int(dur_sec) // 60
+                        dur_s = int(dur_sec) % 60
+                        is_over = bool(m.get("time_exceeded") or int(dur_sec) > 600)
+                        bg = "#fee2e2" if is_over else "#e0f2fe"
+                        fg = "#dc2626" if is_over else "#0369a1"
+                        grade_badge += f'<div style="font-size:7pt; font-weight:bold; color:{fg}; background:{bg}; border-radius:3px; padding:1px 4px; margin-top:2px;">⏱️ {dur_m}m {dur_s:02d}s</div>'
                     
                     cells.append(f'<td class="text-left" style="font-weight: 600; font-size: 9pt;">{escape(surah_display)}</td>')
                     cells.append(f'<td>{talqeen}</td>')
@@ -438,6 +446,14 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type
                     mistake_badges = _format_mistake_badges(counts)
                     marks = j.get("marks", 0.0)
                     grade_badge = _format_grade_badge(marks)
+                    dur_sec = j.get("duration_seconds", 0)
+                    if dur_sec and int(dur_sec) > 0:
+                        dur_m = int(dur_sec) // 60
+                        dur_s = int(dur_sec) % 60
+                        is_over = bool(j.get("time_exceeded") or int(dur_sec) > 900)
+                        bg = "#fee2e2" if is_over else "#fef3c7"
+                        fg = "#dc2626" if is_over else "#b45309"
+                        grade_badge += f'<div style="font-size:7pt; font-weight:bold; color:{fg}; background:{bg}; border-radius:3px; padding:1px 4px; margin-top:2px;">⏱️ {dur_m}m {dur_s:02d}s</div>'
                     
                     cells.append(f'<td class="text-left" style="font-weight: 600; font-size: 9pt;">{escape(page_display)}</td>')
                     cells.append(f'<td>{talqeen}</td>')
@@ -502,6 +518,17 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type
                             flag_badges.append('<span style="background:#fff3cd; color:#856404; font-size:7pt; padding:1px 4px; border-radius:3px; font-weight:bold; margin-left:3px;">Weak</span>')
                         if jd.get("airab_mistakes"):
                             flag_badges.append('<span style="background:#f8d7da; color:#721c24; font-size:7pt; padding:1px 4px; border-radius:3px; font-weight:bold; margin-left:3px;">I\'rab</span>')
+                        dur_sec = jd.get("duration_seconds", 0)
+                        if jd.get("time_exceeded") or (dur_sec and int(dur_sec) > 300):
+                            flag_badges.append('<span style="background:#ffedd5; color:#c2410c; font-size:7pt; padding:1px 4px; border-radius:3px; font-weight:bold; margin-left:3px;">Overtime</span>')
+                        if jd.get("weak_murajat"):
+                            flag_badges.append('<span style="background:#dbeafe; color:#1e40af; font-size:7pt; padding:1px 4px; border-radius:3px; font-weight:bold; margin-left:3px;">Weak Mur</span>')
+                        if jd.get("weak_juzulhali"):
+                            flag_badges.append('<span style="background:#f3e8ff; color:#6b21a8; font-size:7pt; padding:1px 4px; border-radius:3px; font-weight:bold; margin-left:3px;">Weak JH</span>')
+                        if dur_sec and int(dur_sec) > 0:
+                            dur_m = int(dur_sec) // 60
+                            dur_s = int(dur_sec) % 60
+                            flag_badges.append(f'<span style="background:#e0f2fe; color:#0369a1; font-size:7pt; padding:1px 4px; border-radius:3px; font-weight:bold; margin-left:3px;">⏱️{dur_m}:{dur_s:02d}</span>')
                         if flag_badges:
                             volume_str += " " + "".join(flag_badges)
                         
@@ -2867,7 +2894,7 @@ def build_unified_3in1_report_html(student_name: str, rows: List[Dict[str, Any]]
                     f'</td>'
                 )
 
-            # Murajat Columns: Surah, Page, Marks
+            # Murajat Columns: Surah, Page, Marks + Duration
             if sub_idx < len(murajat):
                 m = murajat[sub_idx]
                 s_name = m.get("surah_name_ar") or m.get("surat") or ""
@@ -2881,9 +2908,21 @@ def build_unified_3in1_report_html(student_name: str, rows: List[Dict[str, Any]]
                 m_marks = m.get("marks", 10.0)
                 grade_html = _format_grade_badge(m_marks)
 
+                dur_sec = m.get("duration_seconds", 0)
+                dur_badge = ""
+                if dur_sec and int(dur_sec) > 0:
+                    dur_m = int(dur_sec) // 60
+                    dur_s = int(dur_sec) % 60
+                    is_over = bool(m.get("time_exceeded") or int(dur_sec) > 600)
+                    bg = "#fee2e2" if is_over else "#f0fdf4"
+                    fg = "#dc2626" if is_over else "#0369a1"
+                    dur_badge = f'<div style="font-size: 7pt; font-weight: bold; color: {fg}; background: {bg}; border-radius: 4px; padding: 1px 4px; margin-top: 2px;">⏱️ {dur_m}m {dur_s:02d}s{" (Over)" if is_over else ""}</div>'
+                elif m.get("time_exceeded"):
+                    dur_badge = '<div style="font-size: 7pt; font-weight: bold; color: #dc2626; background: #fee2e2; border-radius: 4px; padding: 1px 4px; margin-top: 2px;">⏱️ Overtime</div>'
+
                 cells.append(f'<td class="text-left border-left-murajat" style="font-weight: 600; font-size: 8.5pt;">{escape(str(s_name))}</td>')
                 cells.append(f'<td style="text-align: center; font-weight: 500;">{p_val}</td>')
-                cells.append(f'<td style="text-align: center;">{grade_html}</td>')
+                cells.append(f'<td style="text-align: center;">{grade_html}{dur_badge}</td>')
             elif len(murajat) == 0 and sub_idx == 0:
                 cells.append('<td class="border-left-murajat" style="text-align: center; color: #9ca3af; font-size: 8pt;">-</td>')
                 cells.append('<td style="text-align: center; color: #9ca3af; font-size: 8pt;">-</td>')
@@ -2891,7 +2930,7 @@ def build_unified_3in1_report_html(student_name: str, rows: List[Dict[str, Any]]
             else:
                 cells.append('<td class="border-left-murajat"></td><td></td><td></td>')
 
-            # Juzulhali Columns: Surah, Page, Marks
+            # Juzulhali Columns: Surah, Page, Marks + Duration
             if sub_idx < len(juzulhali):
                 j = juzulhali[sub_idx]
                 s_name = j.get("surah_name_ar") or j.get("surat") or ""
@@ -2905,9 +2944,21 @@ def build_unified_3in1_report_html(student_name: str, rows: List[Dict[str, Any]]
                 j_marks = j.get("marks", 10.0)
                 grade_html = _format_grade_badge(j_marks)
 
+                dur_sec = j.get("duration_seconds", 0)
+                dur_badge = ""
+                if dur_sec and int(dur_sec) > 0:
+                    dur_m = int(dur_sec) // 60
+                    dur_s = int(dur_sec) % 60
+                    is_over = bool(j.get("time_exceeded") or int(dur_sec) > 900)
+                    bg = "#fee2e2" if is_over else "#fef3c7"
+                    fg = "#dc2626" if is_over else "#b45309"
+                    dur_badge = f'<div style="font-size: 7pt; font-weight: bold; color: {fg}; background: {bg}; border-radius: 4px; padding: 1px 4px; margin-top: 2px;">⏱️ {dur_m}m {dur_s:02d}s{" (Over)" if is_over else ""}</div>'
+                elif j.get("time_exceeded"):
+                    dur_badge = '<div style="font-size: 7pt; font-weight: bold; color: #dc2626; background: #fee2e2; border-radius: 4px; padding: 1px 4px; margin-top: 2px;">⏱️ Overtime</div>'
+
                 cells.append(f'<td class="text-left border-left-juzulhali" style="font-weight: 600; font-size: 8.5pt;">{escape(str(s_name))}</td>')
                 cells.append(f'<td style="text-align: center; font-weight: 500;">{p_val}</td>')
-                cells.append(f'<td style="text-align: center;">{grade_html}</td>')
+                cells.append(f'<td style="text-align: center;">{grade_html}{dur_badge}</td>')
             elif len(juzulhali) == 0 and sub_idx == 0:
                 cells.append('<td class="border-left-juzulhali" style="text-align: center; color: #9ca3af; font-size: 8pt;">-</td>')
                 cells.append('<td style="text-align: center; color: #9ca3af; font-size: 8pt;">-</td>')
@@ -2915,7 +2966,7 @@ def build_unified_3in1_report_html(student_name: str, rows: List[Dict[str, Any]]
             else:
                 cells.append('<td class="border-left-juzulhali"></td><td></td><td></td>')
 
-            # Jadeed Columns: Surah, Page, Ayah (NO VOLUME)
+            # Jadeed Columns: Surah, Page, Ayah + Duration (NO VOLUME)
             if sub_idx < len(jadeed):
                 jd = jadeed[sub_idx]
                 s_name = jd.get("surah_name_ar") or jd.get("surat") or ""
@@ -2928,9 +2979,21 @@ def build_unified_3in1_report_html(student_name: str, rows: List[Dict[str, Any]]
                 p_val = jd.get("page_number") or "-"
                 a_val = jd.get("ayah_number") or "-"
 
+                dur_sec = jd.get("duration_seconds", 0)
+                dur_badge = ""
+                if dur_sec and int(dur_sec) > 0:
+                    dur_m = int(dur_sec) // 60
+                    dur_s = int(dur_sec) % 60
+                    is_over = bool(jd.get("time_exceeded") or int(dur_sec) > 300)
+                    bg = "#fee2e2" if is_over else "#f0fdf4"
+                    fg = "#dc2626" if is_over else "#16a34a"
+                    dur_badge = f'<div style="font-size: 7pt; font-weight: bold; color: {fg}; background: {bg}; border-radius: 4px; padding: 1px 4px; margin-top: 2px;">⏱️ {dur_m}m {dur_s:02d}s{" (Over)" if is_over else ""}</div>'
+                elif jd.get("time_exceeded"):
+                    dur_badge = '<div style="font-size: 7pt; font-weight: bold; color: #dc2626; background: #fee2e2; border-radius: 4px; padding: 1px 4px; margin-top: 2px;">⏱️ Overtime</div>'
+
                 cells.append(f'<td class="text-left border-left-jadeed" style="font-weight: 600; font-size: 8.5pt;">{escape(str(s_name))}</td>')
                 cells.append(f'<td style="text-align: center; font-weight: 500;">{p_val}</td>')
-                cells.append(f'<td style="text-align: center; font-weight: 500;">{a_val}</td>')
+                cells.append(f'<td style="text-align: center; font-weight: 500;">{a_val}{dur_badge}</td>')
             elif r.get("no_jadeed") and sub_idx == 0:
                 cells.append('<td colspan="3" class="border-left-jadeed" style="text-align: center; color: #854d0e; background: #fef9c3; font-style: italic; font-size: 8pt; padding: 4px;">No Jadeed</td>')
             elif len(jadeed) == 0 and sub_idx == 0:

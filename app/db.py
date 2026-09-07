@@ -149,6 +149,7 @@ def clear_all_read_caches() -> None:
     try:
         get_today_listening_sessions.clear()
         list_jadeed_entries.clear()
+        list_jadeed_mistake_history.clear()
         get_takhteet_today.clear()
         get_previous_takhteet.clear()
         fetch_monthly_report.clear()
@@ -536,19 +537,46 @@ def increment_mistake(session_id: str, kind: str) -> Dict[str, int]:
     return counts
 
 
-def increment_mistake_bg(session_id: str, kind: str, counts: Dict[str, int]) -> None:
+def update_session_duration(session_id: str, duration_seconds: int, time_exceeded: bool = False) -> None:
     rest = get_rest()
-    if rest is None:
+    if rest is None or not session_id:
         return
-    clear_all_read_caches()
-    t = threading.Thread(target=_bg_update_mistake, args=(rest, session_id, kind, counts.copy()))
+    def _bg_update():
+        try:
+            rest.update("listening_sessions", match={"id": session_id}, patch={
+                "duration_seconds": int(duration_seconds),
+                "time_exceeded": bool(time_exceeded),
+            })
+            clear_all_read_caches()
+        except Exception:
+            pass
+    t = threading.Thread(target=_bg_update)
     t.daemon = True
     t.start()
 
 
-def _bg_update_mistake(rest: SupabaseRest, session_id: str, kind: str, counts: Dict[str, int]) -> None:
+def increment_mistake_bg(session_id: str, kind: str, counts: Dict[str, int], duration_seconds: int = 0, time_exceeded: bool = False) -> None:
+    rest = get_rest()
+    if rest is None:
+        return
+    clear_all_read_caches()
+    t = threading.Thread(target=_bg_update_mistake, args=(rest, session_id, kind, counts.copy(), duration_seconds, time_exceeded))
+    t.daemon = True
+    t.start()
+
+
+def _bg_update_mistake(rest: SupabaseRest, session_id: str, kind: str, counts: Dict[str, int], duration_seconds: int = 0, time_exceeded: bool = False) -> None:
     global _db_supported_columns
     try:
+        if duration_seconds and int(duration_seconds) > 0:
+            try:
+                rest.update("listening_sessions", match={"id": session_id}, patch={
+                    "duration_seconds": int(duration_seconds),
+                    "time_exceeded": bool(time_exceeded),
+                })
+            except Exception:
+                pass
+
         patch = {
             "talqeen": counts["talqeen"],
             "tanbeeh": counts["tanbeeh"],
@@ -617,54 +645,137 @@ def _bg_update_mistake(rest: SupabaseRest, session_id: str, kind: str, counts: D
         logging.error(f"Background database update error: {e}")
 
 
-def insert_jadeed_rows(*, student_id: str, rows: List[Dict[str, Any]]) -> None:
+def insert_jadeed_rows(*, student_id: str, rows: List[Dict[str, Any]], no_jadeed_reasons: Optional[Dict[str, bool]] = None) -> None:
     rest = get_rest()
     if rest is None:
         raise RuntimeError("Supabase is not configured.")
-    # Delete existing entries for this student on this day first
-    rest.delete("jadeed_entries", match={"student_id": student_id, "activity_date": today_iso()})
-    
-    if rows:
-        for r in rows:
-            r["created_at"] = now_utc_iso()
-            r["student_id"] = student_id
-            r["activity_date"] = today_iso()
-            if "weak_hifz" not in r:
-                r["weak_hifz"] = False
-            if "airab_mistakes" not in r:
-                r["airab_mistakes"] = False
-        try:
-            rest.insert("jadeed_entries", rows, returning="minimal")
-        except Exception:
-            # Fallback without weak_hifz/airab_mistakes if DB table columns not added yet
-            fallback_rows = []
-            for r in rows:
-                r_copy = dict(r)
-                r_copy.pop("weak_hifz", None)
-                r_copy.pop("airab_mistakes", None)
-                fallback_rows.append(r_copy)
-            rest.insert("jadeed_entries", fallback_rows, returning="minimal")
 
-    # Mark whether this student did jadeed today
-    rest.upsert(
-        "jadeed_daily",
-        [{"student_id": student_id, "activity_date": today_iso(), "no_jadeed": not bool(rows), "updated_at": now_utc_iso()}],
-        on_conflict="student_id,activity_date",
-        returning="minimal",
-    )
+    date_today = today_iso()
+
+    # Step 1: Delete existing entries for this student on this day
+    rest.delete("jadeed_entries", match={"student_id": student_id, "activity_date": date_today})
+    
+    # Step 2: Concurrently insert new rows and upsert jadeed_daily
+    if rows:
+        insert_rows = []
+        for r in rows:
+            insert_rows.append({
+                "created_at": now_utc_iso(),
+                "student_id": student_id,
+                "activity_date": date_today,
+                "surah_id": r.get("surah_id"),
+                "page_number": int(r.get("page_number") or 1),
+                "ayah_number": int(r.get("ayah_number") or 1),
+                "volume": r.get("volume") or "Kamil",
+                "weak_hifz": bool(r.get("weak_hifz", False)),
+                "airab_mistakes": bool(r.get("airab_mistakes", False)),
+                "time_exceeded": bool(r.get("time_exceeded", False)),
+                "duration_seconds": int(r.get("duration_seconds", 0) or 0),
+                "weak_murajat": bool(r.get("weak_murajat", False)),
+                "weak_juzulhali": bool(r.get("weak_juzulhali", False)),
+            })
+
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+            try:
+                f1 = executor.submit(rest.insert, "jadeed_entries", insert_rows, returning="minimal")
+                f2 = executor.submit(
+                    rest.upsert,
+                    "jadeed_daily",
+                    [{
+                        "student_id": student_id,
+                        "activity_date": date_today,
+                        "no_jadeed": False,
+                        "weak_hifz": False,
+                        "airab_mistakes": False,
+                        "time_exceeded": False,
+                        "weak_murajat": False,
+                        "weak_juzulhali": False,
+                        "updated_at": now_utc_iso()
+                    }],
+                    on_conflict="student_id,activity_date",
+                    returning="minimal",
+                )
+                f1.result()
+                f2.result()
+            except Exception:
+                # Fallback if weak_murajat / weak_juzulhali columns are not created in DB yet
+                insert_rows_fb = []
+                for r in insert_rows:
+                    rfb = dict(r)
+                    rfb.pop("weak_murajat", None)
+                    rfb.pop("weak_juzulhali", None)
+                    insert_rows_fb.append(rfb)
+                f1 = executor.submit(rest.insert, "jadeed_entries", insert_rows_fb, returning="minimal")
+                f2 = executor.submit(
+                    rest.upsert,
+                    "jadeed_daily",
+                    [{"student_id": student_id, "activity_date": date_today, "no_jadeed": False, "updated_at": now_utc_iso()}],
+                    on_conflict="student_id,activity_date",
+                    returning="minimal",
+                )
+                f1.result()
+                f2.result()
+    else:
+        reasons = no_jadeed_reasons or {}
+        try:
+            rest.upsert(
+                "jadeed_daily",
+                [{
+                    "student_id": student_id,
+                    "activity_date": date_today,
+                    "no_jadeed": True,
+                    "weak_hifz": bool(reasons.get("weak_hifz", False)),
+                    "airab_mistakes": bool(reasons.get("airab_mistakes", False)),
+                    "time_exceeded": bool(reasons.get("time_exceeded", False)),
+                    "weak_murajat": bool(reasons.get("weak_murajat", False)),
+                    "weak_juzulhali": bool(reasons.get("weak_juzulhali", False)),
+                    "updated_at": now_utc_iso()
+                }],
+                on_conflict="student_id,activity_date",
+                returning="minimal",
+            )
+        except Exception:
+            rest.upsert(
+                "jadeed_daily",
+                [{"student_id": student_id, "activity_date": date_today, "no_jadeed": True, "updated_at": now_utc_iso()}],
+                on_conflict="student_id,activity_date",
+                returning="minimal",
+            )
     clear_all_read_caches()
 
 
-def mark_no_jadeed_today(*, student_id: str) -> None:
+def mark_no_jadeed_today(*, student_id: str, reasons: Optional[Dict[str, bool]] = None) -> None:
     rest = get_rest()
     if rest is None:
         raise RuntimeError("Supabase is not configured.")
-    rest.upsert(
-        "jadeed_daily",
-        [{"student_id": student_id, "activity_date": today_iso(), "no_jadeed": True, "updated_at": now_utc_iso()}],
-        on_conflict="student_id,activity_date",
-        returning="minimal",
-    )
+    date_today = today_iso()
+    rest.delete("jadeed_entries", match={"student_id": student_id, "activity_date": date_today})
+    r = reasons or {}
+    try:
+        rest.upsert(
+            "jadeed_daily",
+            [{
+                "student_id": student_id,
+                "activity_date": date_today,
+                "no_jadeed": True,
+                "weak_hifz": bool(r.get("weak_hifz", False)),
+                "airab_mistakes": bool(r.get("airab_mistakes", False)),
+                "time_exceeded": bool(r.get("time_exceeded", False)),
+                "weak_murajat": bool(r.get("weak_murajat", False)),
+                "weak_juzulhali": bool(r.get("weak_juzulhali", False)),
+                "updated_at": now_utc_iso()
+            }],
+            on_conflict="student_id,activity_date",
+            returning="minimal",
+        )
+    except Exception:
+        rest.upsert(
+            "jadeed_daily",
+            [{"student_id": student_id, "activity_date": date_today, "no_jadeed": True, "updated_at": now_utc_iso()}],
+            on_conflict="student_id,activity_date",
+            returning="minimal",
+        )
     clear_all_read_caches()
 
 
@@ -673,9 +784,9 @@ def list_jadeed_entries(*, student_id: str, limit: int = 200) -> List[Dict[str, 
     rest = get_rest()
     if rest is None:
         raise RuntimeError("Supabase is not configured.")
-    # Include joined surah fields and mistake flags for display
+    
+    select = "id,student_id,activity_date,surah_id,page_number,ayah_number,volume,weak_hifz,airab_mistakes,time_exceeded,duration_seconds,weak_murajat,weak_juzulhali,created_at,surahs(name_en,name_ar,number)"
     try:
-        select = "id,student_id,activity_date,surah_id,page_number,ayah_number,volume,weak_hifz,airab_mistakes,created_at,surahs(name_en,name_ar,number)"
         return rest.select(
             "jadeed_entries",
             select=select,
@@ -686,16 +797,99 @@ def list_jadeed_entries(*, student_id: str, limit: int = 200) -> List[Dict[str, 
             },
         )
     except Exception:
-        select = "id,student_id,activity_date,surah_id,page_number,ayah_number,volume,created_at,surahs(name_en,name_ar,number)"
-        return rest.select(
-            "jadeed_entries",
-            select=select,
+        select_fb = "id,student_id,activity_date,surah_id,page_number,ayah_number,volume,weak_hifz,airab_mistakes,time_exceeded,duration_seconds,created_at,surahs(name_en,name_ar,number)"
+        try:
+            return rest.select(
+                "jadeed_entries",
+                select=select_fb,
+                params={
+                    "student_id": f"eq.{student_id}",
+                    "order": "activity_date.desc,created_at.desc",
+                    "limit": str(int(limit)),
+                },
+            )
+        except Exception:
+            select_fb2 = "id,student_id,activity_date,surah_id,page_number,ayah_number,volume,weak_hifz,airab_mistakes,created_at,surahs(name_en,name_ar,number)"
+            return rest.select(
+                "jadeed_entries",
+                select=select_fb2,
+                params={
+                    "student_id": f"eq.{student_id}",
+                    "order": "activity_date.desc,created_at.desc",
+                    "limit": str(int(limit)),
+                },
+            )
+
+
+@st.cache_data(show_spinner=False)
+def list_jadeed_mistake_history(*, student_id: str, limit: int = 300) -> List[Dict[str, Any]]:
+    """
+    Returns combined Jadeed history for mistake and quality analytics, including:
+    - Recited Jadeed entries from jadeed_entries
+    - 'No Jadeed' records from jadeed_daily with reason flags
+    """
+    rest = get_rest()
+    if rest is None:
+        raise RuntimeError("Supabase is not configured.")
+
+    entries = list_jadeed_entries(student_id=student_id, limit=limit)
+    
+    daily_rows = []
+    try:
+        daily_rows = rest.select(
+            "jadeed_daily",
+            select="student_id,activity_date,no_jadeed,weak_hifz,airab_mistakes,time_exceeded,weak_murajat,weak_juzulhali,updated_at",
             params={
                 "student_id": f"eq.{student_id}",
-                "order": "activity_date.desc,created_at.desc",
+                "no_jadeed": "eq.true",
+                "order": "activity_date.desc",
                 "limit": str(int(limit)),
-            },
+            }
         )
+    except Exception:
+        try:
+            daily_rows = rest.select(
+                "jadeed_daily",
+                select="student_id,activity_date,no_jadeed,updated_at",
+                params={
+                    "student_id": f"eq.{student_id}",
+                    "no_jadeed": "eq.true",
+                    "order": "activity_date.desc",
+                    "limit": str(int(limit)),
+                }
+            )
+        except Exception:
+            daily_rows = []
+
+    # Dates already covered by jadeed_entries
+    covered_dates = {str(e.get("activity_date")) for e in entries if e.get("activity_date")}
+    
+    combined = list(entries)
+    for jd in daily_rows:
+        d = str(jd.get("activity_date"))
+        if d and d not in covered_dates and bool(jd.get("no_jadeed")):
+            combined.append({
+                "id": f"no_jad_{d}",
+                "is_no_jadeed": True,
+                "student_id": student_id,
+                "activity_date": d,
+                "surah_id": None,
+                "page_number": "-",
+                "ayah_number": "-",
+                "volume": "No Jadeed",
+                "weak_hifz": bool(jd.get("weak_hifz", False)),
+                "airab_mistakes": bool(jd.get("airab_mistakes", False)),
+                "time_exceeded": bool(jd.get("time_exceeded", False)),
+                "weak_murajat": bool(jd.get("weak_murajat", False)),
+                "weak_juzulhali": bool(jd.get("weak_juzulhali", False)),
+                "duration_seconds": 0,
+                "created_at": jd.get("updated_at") or "",
+                "surahs": {"name_en": "No Jadeed", "name_ar": "لا جديد", "number": "-"},
+            })
+
+    # Sort combined history by activity_date desc
+    combined.sort(key=lambda x: str(x.get("activity_date", "")), reverse=True)
+    return combined[:limit]
 
 
 def upsert_takhteet_today(*, student_id: str, murajat_text_raw: str, juzulhali_text_raw: str, jadeed_text_raw: str) -> None:
@@ -791,7 +985,7 @@ def fetch_monthly_report(*, student_id: str, year: int, month: int) -> List[Dict
         future_sessions = executor.submit(
             rest.select,
             "listening_sessions",
-            select="id,activity_date,mode,surah_id,page_number,created_at,surahs(number,name_en,name_ar),mistake_counts(*)",
+            select="id,activity_date,mode,surah_id,page_number,duration_seconds,time_exceeded,created_at,surahs(number,name_en,name_ar),mistake_counts(*)",
             params={
                 "student_id": f"eq.{student_id}",
                 "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
@@ -802,7 +996,7 @@ def fetch_monthly_report(*, student_id: str, year: int, month: int) -> List[Dict
         future_jadeed = executor.submit(
             rest.select,
             "jadeed_entries",
-            select="id,activity_date,surah_id,page_number,ayah_number,volume,weak_hifz,airab_mistakes,created_at,surahs(number,name_en,name_ar)",
+            select="id,activity_date,surah_id,page_number,ayah_number,volume,weak_hifz,airab_mistakes,time_exceeded,duration_seconds,weak_murajat,weak_juzulhali,created_at,surahs(number,name_en,name_ar)",
             params={
                 "student_id": f"eq.{student_id}",
                 "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
@@ -832,19 +1026,19 @@ def fetch_monthly_report(*, student_id: str, year: int, month: int) -> List[Dict
             }
         )
         
-        session_rows = future_sessions.result()
         try:
-            jadeed_rows = future_jadeed.result()
+            session_rows = future_sessions.result()
         except Exception:
-            jadeed_rows = rest.select(
-                "jadeed_entries",
-                select="id,activity_date,surah_id,page_number,ayah_number,volume,created_at,surahs(number,name_en,name_ar)",
+            session_rows = rest.select(
+                "listening_sessions",
+                select="id,activity_date,mode,surah_id,page_number,created_at,surahs(number,name_en,name_ar),mistake_counts(*)",
                 params={
                     "student_id": f"eq.{student_id}",
                     "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
                     "order": "activity_date.asc,created_at.asc",
                 }
             )
+        jadeed_rows = future_jadeed.result()
         jadeed_daily_rows = future_daily.result()
         takhteet_rows = future_takhteet.result()
 
@@ -857,7 +1051,11 @@ def fetch_monthly_report(*, student_id: str, year: int, month: int) -> List[Dict
             "juzulhali": [],
             "jadeed": [],
             "no_jadeed": False,
-            "takhteet": {"murajat": "", "juzulhali": "", "jadeed": ""},
+            "takhteet": {
+                "murajat_text": "",
+                "juzulhali_text": "",
+                "jadeed_text": "",
+            },
         }
 
     for s in session_rows:
@@ -882,12 +1080,15 @@ def fetch_monthly_report(*, student_id: str, year: int, month: int) -> List[Dict
             if marks < 0:
                 marks = 0.0
         row = {
+            "id": s.get("id"),
             "talqeen": talqeen,
             "tanbeeh": tanbeeh,
             "repeat_mistake": repeat_mistake,
             "mutashabehat": mutashabehat,
             "irab": irab,
             "marks": marks,
+            "duration_seconds": int(s.get("duration_seconds", 0) or 0),
+            "time_exceeded": bool(s.get("time_exceeded", False)),
             # Ahkam
             "ikhfa": int(counts.get("ikhfa", 0) or 0),
             "izhaar": int(counts.get("izhaar", 0) or 0),
@@ -904,16 +1105,22 @@ def fetch_monthly_report(*, student_id: str, year: int, month: int) -> List[Dict
         }
         for col in MAKHARIJ_COLS:
             row[col] = int(counts.get(col, 0) or 0)
-        if s.get("mode") == "murajat":
+        mode = s.get("mode")
+        if mode == "murajat":
             surah = s.get("surahs") or {}
             if isinstance(surah, list):
                 surah = surah[0] if surah else {}
-            row["surat"] = f"{surah.get('number', '')} - {surah.get('name_en', '')}".strip(" -")
-            row["surah_name_ar"] = surah.get("name_ar", "")
-            row["surah_number"] = surah.get("number", "")
+            if surah.get("number"):
+                row["surat"] = f"{surah.get('number', '')} - {surah.get('name_en', '')}".strip(" -")
+                row["surah_name_ar"] = surah.get("name_ar", "")
+                row["surah_number"] = surah.get("number", "")
+            else:
+                row["surat"] = ""
+                row["surah_name_ar"] = ""
+                row["surah_number"] = ""
             row["page_number"] = int(s.get("page_number") or 0)
             by_date[d]["murajat"].append(row)
-        elif s.get("mode") == "juzulhali":
+        elif mode == "juzulhali":
             surah = s.get("surahs") or {}
             if isinstance(surah, list):
                 surah = surah[0] if surah else {}
@@ -935,18 +1142,22 @@ def fetch_monthly_report(*, student_id: str, year: int, month: int) -> List[Dict
         surah = j.get("surahs") or {}
         if isinstance(surah, list):
             surah = surah[0] if surah else {}
-        by_date[d]["jadeed"].append(
-            {
-                "surat": f"{surah.get('number', '')} - {surah.get('name_en', '')}".strip(" -"),
-                "surah_name_ar": surah.get("name_ar", ""),
-                "surah_number": surah.get("number", ""),
-                "page_number": int(j.get("page_number") or 0),
-                "ayah_number": int(j.get("ayah_number") or 0),
-                "volume": j.get("volume") or "",
-                "weak_hifz": bool(j.get("weak_hifz", False)),
-                "airab_mistakes": bool(j.get("airab_mistakes", False)),
-            }
-        )
+        entry_item = {
+            "surah_id": j.get("surah_id") or (surah.get("number") if surah else 0),
+            "surat": f"{surah.get('number', '')} - {surah.get('name_en', '')}".strip(" -"),
+            "surah_name_ar": surah.get("name_ar", ""),
+            "surah_number": surah.get("number", ""),
+            "page_number": int(j.get("page_number") or 0),
+            "ayah_number": int(j.get("ayah_number") or 0),
+            "volume": j.get("volume") or "",
+            "weak_hifz": bool(j.get("weak_hifz", False)),
+            "airab_mistakes": bool(j.get("airab_mistakes", False)),
+            "time_exceeded": bool(j.get("time_exceeded", False)),
+            "duration_seconds": int(j.get("duration_seconds", 0) or 0),
+            "weak_murajat": bool(j.get("weak_murajat", False)),
+            "weak_juzulhali": bool(j.get("weak_juzulhali", False)),
+        }
+        by_date[d]["jadeed"].append(entry_item)
 
     for jd in jadeed_daily_rows:
         d = str(jd.get("activity_date"))
@@ -1005,20 +1216,32 @@ def get_student_daily_summary(*, student_id: str, date_str: str) -> Dict[str, An
     if not student:
         return {}
 
-    sessions = rest.select(
-        "listening_sessions",
-        select="id,mode,surah_id,page_number,created_at,surahs(number,name_en,name_ar),mistake_counts(*)",
-        params={
-            "student_id": f"eq.{student_id}",
-            "activity_date": f"eq.{date_str}",
-            "order": "created_at.asc",
-        },
-    )
+    try:
+        sessions = rest.select(
+            "listening_sessions",
+            select="id,mode,surah_id,page_number,duration_seconds,time_exceeded,created_at,surahs(number,name_en,name_ar),mistake_counts(*)",
+            params={
+                "student_id": f"eq.{student_id}",
+                "activity_date": f"eq.{date_str}",
+                "order": "created_at.asc",
+            },
+        )
+    except Exception:
+        sessions = rest.select(
+            "listening_sessions",
+            select="id,mode,surah_id,page_number,created_at,surahs(number,name_en,name_ar),mistake_counts(*)",
+            params={
+                "student_id": f"eq.{student_id}",
+                "activity_date": f"eq.{date_str}",
+                "order": "created_at.asc",
+            },
+        )
 
+    jadeed_select = "id,surah_id,page_number,ayah_number,volume,weak_hifz,airab_mistakes,time_exceeded,duration_seconds,weak_murajat,weak_juzulhali,created_at,surahs(number,name_en,name_ar)"
     try:
         jadeed_rows = rest.select(
             "jadeed_entries",
-            select="id,surah_id,page_number,ayah_number,volume,weak_hifz,airab_mistakes,created_at,surahs(number,name_en,name_ar)",
+            select=jadeed_select,
             params={
                 "student_id": f"eq.{student_id}",
                 "activity_date": f"eq.{date_str}",
@@ -1028,7 +1251,7 @@ def get_student_daily_summary(*, student_id: str, date_str: str) -> Dict[str, An
     except Exception:
         jadeed_rows = rest.select(
             "jadeed_entries",
-            select="id,surah_id,page_number,ayah_number,volume,created_at,surahs(number,name_en,name_ar)",
+            select="id,surah_id,page_number,ayah_number,volume,weak_hifz,airab_mistakes,time_exceeded,duration_seconds,created_at,surahs(number,name_en,name_ar)",
             params={
                 "student_id": f"eq.{student_id}",
                 "activity_date": f"eq.{date_str}",
@@ -1091,10 +1314,11 @@ def get_today_jadeed_state(*, student_id: str, date_str: str) -> Dict[str, Any]:
     if rest is None:
         return {"jadeed": [], "no_jadeed": False}
 
+    jadeed_select = "id,surah_id,page_number,ayah_number,volume,weak_hifz,airab_mistakes,time_exceeded,duration_seconds,weak_murajat,weak_juzulhali,created_at,surahs(number,name_en,name_ar)"
     try:
         jadeed_rows = rest.select(
             "jadeed_entries",
-            select="id,surah_id,page_number,ayah_number,volume,weak_hifz,airab_mistakes,created_at,surahs(number,name_en,name_ar)",
+            select=jadeed_select,
             params={
                 "student_id": f"eq.{student_id}",
                 "activity_date": f"eq.{date_str}",
@@ -1104,7 +1328,7 @@ def get_today_jadeed_state(*, student_id: str, date_str: str) -> Dict[str, Any]:
     except Exception:
         jadeed_rows = rest.select(
             "jadeed_entries",
-            select="id,surah_id,page_number,ayah_number,volume,created_at,surahs(number,name_en,name_ar)",
+            select="id,surah_id,page_number,ayah_number,volume,weak_hifz,airab_mistakes,time_exceeded,duration_seconds,created_at,surahs(number,name_en,name_ar)",
             params={
                 "student_id": f"eq.{student_id}",
                 "activity_date": f"eq.{date_str}",
@@ -1116,18 +1340,29 @@ def get_today_jadeed_state(*, student_id: str, date_str: str) -> Dict[str, Any]:
     try:
         jadeed_daily_row = rest.select_single(
             "jadeed_daily",
-            select="no_jadeed",
+            select="no_jadeed,weak_hifz,airab_mistakes,time_exceeded,weak_murajat,weak_juzulhali",
             params={
                 "student_id": f"eq.{student_id}",
                 "activity_date": f"eq.{date_str}",
             },
         )
     except Exception:
-        pass
+        try:
+            jadeed_daily_row = rest.select_single(
+                "jadeed_daily",
+                select="no_jadeed",
+                params={
+                    "student_id": f"eq.{student_id}",
+                    "activity_date": f"eq.{date_str}",
+                },
+            )
+        except Exception:
+            pass
 
     return {
         "jadeed": jadeed_rows,
         "no_jadeed": bool(jadeed_daily_row.get("no_jadeed")) if jadeed_daily_row else False,
+        "no_jadeed_details": jadeed_daily_row if (jadeed_daily_row and jadeed_daily_row.get("no_jadeed")) else None,
     }
 
 

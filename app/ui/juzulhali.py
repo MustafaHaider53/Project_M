@@ -108,6 +108,15 @@ def render_juzulhali() -> None:
         render_header_with_homework("Juzulhali", student_id)
 
         current_student_badge()
+
+        # 15-Minute Juzulhali Recitation Timer
+        from app.ui.timer import render_recitation_timer
+        timer_elapsed, is_timer_running, is_timer_overtime = render_recitation_timer(
+            module_name="juzulhali",
+            target_minutes=15,
+            student_id=student_id,
+            auto_start=bool(surah_id is not None)
+        )
         
         col_s, col_p, col_prev, col_next = st.columns([2, 1, 1, 1])
         with col_s:
@@ -170,6 +179,9 @@ def render_juzulhali() -> None:
 
         session_id = st.session_state.get("juzulhali_session_id")
         if session_id:
+            if timer_elapsed > 0:
+                from app.db import update_session_duration
+                update_session_duration(session_id, timer_elapsed, is_timer_overtime)
             if "juzulhali_counts" not in st.session_state or st.session_state.get("juzulhali_counts_session_id") != session_id:
                 st.session_state.juzulhali_counts = get_session_counts(session_id)
                 st.session_state.juzulhali_counts_session_id = session_id
@@ -328,7 +340,7 @@ def render_juzulhali() -> None:
             local_counts[kind] = 1 if local_counts.get(kind, 0) == 0 else 0
             
         from app.db import increment_mistake_bg
-        increment_mistake_bg(sid, kind, local_counts)
+        increment_mistake_bg(sid, kind, local_counts, duration_seconds=timer_elapsed, time_exceeded=is_timer_overtime)
         st.session_state.play_sound = True
 
     student_name = st.session_state.get("student_name", "Student")
@@ -394,6 +406,9 @@ def render_juzulhali() -> None:
     st.divider()
     # Show session controls when active
     if st.button("New session (same page)", width="stretch"):
+        from app.db import update_session_duration
+        if session_id and timer_elapsed > 0:
+            update_session_duration(session_id, timer_elapsed, is_timer_overtime)
         session = create_listening_session(student_id=student_id, mode="juzulhali", surah_id=None, page_number=int(page_number), force_new=True)
         st.session_state.juzulhali_session_id = session["id"]
         ensure_today_sessions(student_id)
