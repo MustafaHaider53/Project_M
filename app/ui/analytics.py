@@ -5,7 +5,7 @@ import pandas as pd
 import altair as alt
 from typing import Any, Dict, List
 
-from app.db import get_student_sessions_with_counts, list_jadeed_entries
+from app.db import get_student_sessions_with_counts, list_jadeed_entries, list_jadeed_mistake_history
 
 
 def render_student_analytics(student_id: str, student_name: str, skip_kpi_dashboard: bool = False) -> None:
@@ -438,7 +438,7 @@ def render_student_analytics(student_id: str, student_name: str, skip_kpi_dashbo
     # 8. Jadeed Lesson Quality & Mistake Insights
     st.markdown("#### 📖 Jadeed Lesson Quality & Retention Analytics")
     try:
-        jadeed_history = list_jadeed_entries(student_id=student_id, limit=300)
+        jadeed_history = list_jadeed_mistake_history(student_id=student_id, limit=300)
     except Exception:
         jadeed_history = []
 
@@ -448,70 +448,121 @@ def render_student_analytics(student_id: str, student_name: str, skip_kpi_dashbo
         total_j = len(jadeed_history)
         weak_hifz_cnt = 0
         airab_cnt = 0
-        both_cnt = 0
+        time_exceeded_cnt = 0
+        weak_murajat_cnt = 0
+        weak_juzulhali_cnt = 0
         strong_cnt = 0
         flagged_lessons = []
 
         for entry in jadeed_history:
             is_w = bool(entry.get("weak_hifz", False))
             is_a = bool(entry.get("airab_mistakes", False))
-            
-            if is_w and is_a:
-                both_cnt += 1
+            dur_sec = int(entry.get("duration_seconds", 0) or 0)
+            is_t = bool(entry.get("time_exceeded", False) or dur_sec > 300)
+            is_wm = bool(entry.get("weak_murajat", False))
+            is_wj = bool(entry.get("weak_juzulhali", False))
+
+            issues = []
+            if is_w:
                 weak_hifz_cnt += 1
+                issues.append("Weak Hifz")
+            if is_a:
                 airab_cnt += 1
-                flagged_lessons.append((entry, "Both (Weak Hifz + Airab)"))
-            elif is_w:
-                weak_hifz_cnt += 1
-                flagged_lessons.append((entry, "Weak Hifz"))
-            elif is_a:
-                airab_cnt += 1
-                flagged_lessons.append((entry, "Airab Mistakes"))
+                issues.append("Airab Mistakes")
+            if is_t:
+                time_exceeded_cnt += 1
+                dur_txt = f"{dur_sec // 60}m {dur_sec % 60:02d}s" if dur_sec > 0 else ">5m"
+                issues.append(f"Time Exceeded ({dur_txt})")
+            if is_wm:
+                weak_murajat_cnt += 1
+                issues.append("Weak Murajat")
+            if is_wj:
+                weak_juzulhali_cnt += 1
+                issues.append("Weak Juz'ul Hali")
+
+            if issues:
+                flagged_lessons.append((entry, issues, dur_sec))
             else:
                 strong_cnt += 1
 
         pct_strong = (strong_cnt / total_j * 100) if total_j > 0 else 0
         pct_weak = (weak_hifz_cnt / total_j * 100) if total_j > 0 else 0
         pct_airab = (airab_cnt / total_j * 100) if total_j > 0 else 0
+        pct_time = (time_exceeded_cnt / total_j * 100) if total_j > 0 else 0
+        pct_wm = (weak_murajat_cnt / total_j * 100) if total_j > 0 else 0
+        pct_wj = (weak_juzulhali_cnt / total_j * 100) if total_j > 0 else 0
 
-        # Jadeed KPI Dashboard Cards
-        kpi_j1, kpi_j2, kpi_j3, kpi_j4 = st.columns(4)
-        with kpi_j1:
+        # Jadeed KPI Dashboard Cards (Row 1: 4 Cards, Row 2: 3 Cards)
+        kpi_r1_1, kpi_r1_2, kpi_r1_3, kpi_r1_4 = st.columns(4)
+        with kpi_r1_1:
             st.markdown(
                 f"""
-                <div style='background-color: var(--card); border: 1.5px solid var(--border); padding: 14px; border-radius: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.03);'>
-                    <div style='font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;'>Total Lessons</div>
-                    <div style='font-size: 22px; font-weight: bold; color: var(--emerald); margin-top: 4px;'>{total_j}</div>
+                <div style='background-color: var(--card); border: 1.5px solid var(--border); padding: 12px 8px; border-radius: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.03);'>
+                    <div style='font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;'>Total Lessons</div>
+                    <div style='font-size: 20px; font-weight: bold; color: var(--emerald); margin-top: 4px;'>{total_j}</div>
                 </div>
                 """,
                 unsafe_allow_html=True
             )
-        with kpi_j2:
+        with kpi_r1_2:
             st.markdown(
                 f"""
-                <div style='background-color: var(--card); border: 1.5px solid var(--border); padding: 14px; border-radius: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.03);'>
-                    <div style='font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;'>⭐ Strong / Flawless</div>
-                    <div style='font-size: 22px; font-weight: bold; color: #0E6B50; margin-top: 4px;'>{strong_cnt} <span style='font-size: 13px; font-weight: normal; opacity: 0.8;'>({pct_strong:.1f}%)</span></div>
+                <div style='background-color: var(--card); border: 1.5px solid var(--border); padding: 12px 8px; border-radius: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.03);'>
+                    <div style='font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;'>⭐ Strong / Flawless</div>
+                    <div style='font-size: 20px; font-weight: bold; color: #0E6B50; margin-top: 4px;'>{strong_cnt} <span style='font-size: 12px; font-weight: normal; opacity: 0.8;'>({pct_strong:.1f}%)</span></div>
                 </div>
                 """,
                 unsafe_allow_html=True
             )
-        with kpi_j3:
+        with kpi_r1_3:
             st.markdown(
                 f"""
-                <div style='background-color: var(--card); border: 1.5px solid var(--border); padding: 14px; border-radius: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.03);'>
-                    <div style='font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;'>⚠️ Weak Hifz</div>
-                    <div style='font-size: 22px; font-weight: bold; color: #D97706; margin-top: 4px;'>{weak_hifz_cnt} <span style='font-size: 13px; font-weight: normal; opacity: 0.8;'>({pct_weak:.1f}%)</span></div>
+                <div style='background-color: var(--card); border: 1.5px solid var(--border); padding: 12px 8px; border-radius: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.03);'>
+                    <div style='font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;'>⚠️ Weak Hifz</div>
+                    <div style='font-size: 20px; font-weight: bold; color: #D97706; margin-top: 4px;'>{weak_hifz_cnt} <span style='font-size: 12px; font-weight: normal; opacity: 0.8;'>({pct_weak:.1f}%)</span></div>
                 </div>
                 """,
                 unsafe_allow_html=True
             )
-        with kpi_j4:
+        with kpi_r1_4:
             st.markdown(
                 f"""
-                <div style='background-color: var(--card); border: 1.5px solid var(--border); padding: 14px; border-radius: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.03);'>
-                    <div style='font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;'>🔤 Airab Mistakes</div>
-                    <div style='font-size: 22px; font-weight: bold; color: #DC2626; margin-top: 4px;'>{airab_cnt} <span style='font-size: 13px; font-weight: normal; opacity: 0.8;'>({pct_airab:.1f}%)</span></div>
+                <div style='background-color: var(--card); border: 1.5px solid var(--border); padding: 12px 8px; border-radius: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.03);'>
+                    <div style='font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;'>🔤 Airab Mistakes</div>
+                    <div style='font-size: 20px; font-weight: bold; color: #DC2626; margin-top: 4px;'>{airab_cnt} <span style='font-size: 12px; font-weight: normal; opacity: 0.8;'>({pct_airab:.1f}%)</span></div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+        st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
+        kpi_r2_1, kpi_r2_2, kpi_r2_3 = st.columns(3)
+        with kpi_r2_1:
+            st.markdown(
+                f"""
+                <div style='background-color: var(--card); border: 1.5px solid var(--border); padding: 12px 8px; border-radius: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.03);'>
+                    <div style='font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;'>⏱️ Time Exceeded</div>
+                    <div style='font-size: 20px; font-weight: bold; color: #EA580C; margin-top: 4px;'>{time_exceeded_cnt} <span style='font-size: 12px; font-weight: normal; opacity: 0.8;'>({pct_time:.1f}%)</span></div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+        with kpi_r2_2:
+            st.markdown(
+                f"""
+                <div style='background-color: var(--card); border: 1.5px solid var(--border); padding: 12px 8px; border-radius: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.03);'>
+                    <div style='font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;'>📖 Weak Murajat</div>
+                    <div style='font-size: 20px; font-weight: bold; color: #1E40AF; margin-top: 4px;'>{weak_murajat_cnt} <span style='font-size: 12px; font-weight: normal; opacity: 0.8;'>({pct_wm:.1f}%)</span></div>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+        with kpi_r2_3:
+            st.markdown(
+                f"""
+                <div style='background-color: var(--card); border: 1.5px solid var(--border); padding: 12px 8px; border-radius: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.03);'>
+                    <div style='font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.7;'>📖 Weak Juz'ul Hali</div>
+                    <div style='font-size: 20px; font-weight: bold; color: #7C3AED; margin-top: 4px;'>{weak_juzulhali_cnt} <span style='font-size: 12px; font-weight: normal; opacity: 0.8;'>({pct_wj:.1f}%)</span></div>
                 </div>
                 """,
                 unsafe_allow_html=True
@@ -526,16 +577,22 @@ def render_student_analytics(student_id: str, student_name: str, skip_kpi_dashbo
             # Distribution Data
             dist_data = [
                 {"Category": "Strong & Flawless", "Count": strong_cnt, "Color": "#0E6B50"},
-                {"Category": "Weak Hifz Only", "Count": weak_hifz_cnt - both_cnt, "Color": "#D97706"},
-                {"Category": "Airab Mistakes Only", "Count": airab_cnt - both_cnt, "Color": "#DC2626"},
-                {"Category": "Both Weak Hifz + Airab", "Count": both_cnt, "Color": "#7F1D1D"},
+                {"Category": "Weak Hifz", "Count": weak_hifz_cnt, "Color": "#D97706"},
+                {"Category": "Airab Mistakes", "Count": airab_cnt, "Color": "#DC2626"},
+                {"Category": "Time Exceeded (>5m)", "Count": time_exceeded_cnt, "Color": "#EA580C"},
+                {"Category": "Weak Murajat", "Count": weak_murajat_cnt, "Color": "#1E40AF"},
+                {"Category": "Weak Juz'ul Hali", "Count": weak_juzulhali_cnt, "Color": "#7C3AED"},
             ]
             dist_data = [d for d in dist_data if d["Count"] > 0]
             
             if dist_data:
                 df_dist = pd.DataFrame(dist_data)
                 j_chart = alt.Chart(df_dist).mark_bar().encode(
-                    y=alt.Y("Category:N", sort=["Strong & Flawless", "Weak Hifz Only", "Airab Mistakes Only", "Both Weak Hifz + Airab"], title="Quality Category"),
+                    y=alt.Y(
+                        "Category:N",
+                        sort=["Strong & Flawless", "Weak Hifz", "Airab Mistakes", "Time Exceeded (>5m)", "Weak Murajat", "Weak Juz'ul Hali"],
+                        title="Quality Category"
+                    ),
                     x=alt.X("Count:Q", title="Lessons Count", axis=alt.Axis(tickMinStep=1)),
                     color=alt.Color(
                         "Category:N",
@@ -548,7 +605,7 @@ def render_student_analytics(student_id: str, student_name: str, skip_kpi_dashbo
                     tooltip=["Category", "Count"]
                 ).properties(
                     title="Jadeed Quality & Issue Distribution",
-                    height=200
+                    height=240
                 )
                 st.altair_chart(j_chart, width="stretch")
             else:
@@ -557,10 +614,10 @@ def render_student_analytics(student_id: str, student_name: str, skip_kpi_dashbo
         with col_j_table:
             st.markdown("<div style='font-size: 0.9rem; font-weight: bold; color: var(--ink); margin-bottom: 8px;'>🎯 Focus / Revision Attention List</div>", unsafe_allow_html=True)
             if not flagged_lessons:
-                st.success("✅ All recorded Jadeed lessons have strong retention and flawless I'rab!")
+                st.success("✅ All recorded Jadeed lessons have strong retention, sharp pace, and flawless I'rab!")
             else:
                 table_rows = []
-                for entry, issue_tag in flagged_lessons[:6]:
+                for entry, issues, dur_sec in flagged_lessons[:6]:
                     surah = entry.get("surahs") or {}
                     s_name = surah.get("name_en", "Surah")
                     s_num = surah.get("number", "")
@@ -568,18 +625,29 @@ def render_student_analytics(student_id: str, student_name: str, skip_kpi_dashbo
                     a_num = entry.get("ayah_number", "-")
                     d_str = str(entry.get("activity_date", ""))
                     
-                    if "Both" in issue_tag:
-                        badge = "<span style='background:#fee2e2; color:#991b1b; padding:2px 6px; border-radius:8px; font-size:11px; font-weight:bold;'>⚠️ Weak + 🔤 Airab</span>"
-                    elif "Weak" in issue_tag:
-                        badge = "<span style='background:#fef3c7; color:#92400e; padding:2px 6px; border-radius:8px; font-size:11px; font-weight:bold;'>⚠️ Weak Hifz</span>"
+                    badges_html = []
+                    for issue in issues:
+                        if issue == "Weak Hifz":
+                            badges_html.append("<span style='background:#fef3c7; color:#92400e; padding:2px 5px; border-radius:6px; font-size:10px; font-weight:bold; margin-right:2px;'>⚠️ Weak Hifz</span>")
+                        elif issue == "Airab Mistakes":
+                            badges_html.append("<span style='background:#fee2e2; color:#991b1b; padding:2px 5px; border-radius:6px; font-size:10px; font-weight:bold; margin-right:2px;'>🔤 Airab</span>")
+                        elif "Time Exceeded" in issue:
+                            badges_html.append(f"<span style='background:#ffedd5; color:#9a3412; padding:2px 5px; border-radius:6px; font-size:10px; font-weight:bold; margin-right:2px;'>⏱️ {issue}</span>")
+                        elif issue == "Weak Murajat":
+                            badges_html.append("<span style='background:#dbeafe; color:#1e40af; padding:2px 5px; border-radius:6px; font-size:10px; font-weight:bold; margin-right:2px;'>📖 Weak Murajat</span>")
+                        elif issue == "Weak Juz'ul Hali":
+                            badges_html.append("<span style='background:#f3e8ff; color:#6b21a8; padding:2px 5px; border-radius:6px; font-size:10px; font-weight:bold; margin-right:2px;'>📖 Weak Juz'ul Hali</span>")
+                    
+                    if entry.get("is_no_jadeed"):
+                        lesson_text = "<span style='color: #854d0e; font-weight: 600;'>🌙 No Jadeed Marked</span>"
                     else:
-                        badge = "<span style='background:#fee2e2; color:#991b1b; padding:2px 6px; border-radius:8px; font-size:11px; font-weight:bold;'>🔤 Airab Mistakes</span>"
+                        lesson_text = f"Surah {s_num} ({s_name}) p.{p_num} : v.{a_num}"
                     
                     table_rows.append(
                         f"<tr style='border-bottom: 1px solid var(--border);'>"
                         f"<td style='padding: 6px 8px; font-size: 12px; font-weight: 500;'>{d_str}</td>"
-                        f"<td style='padding: 6px 8px; font-size: 12px;'>Surah {s_num} ({s_name}) p.{p_num} : v.{a_num}</td>"
-                        f"<td style='padding: 6px 8px; text-align: right;'>{badge}</td>"
+                        f"<td style='padding: 6px 8px; font-size: 12px;'>{lesson_text}</td>"
+                        f"<td style='padding: 6px 8px; text-align: right;'>{''.join(badges_html)}</td>"
                         f"</tr>"
                     )
                 

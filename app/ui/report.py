@@ -185,54 +185,36 @@ def render_report() -> None:
         selected_month_name = st.selectbox("Month", options=months, index=now.month - 1)
         selected_month_num = months.index(selected_month_name) + 1
 
-    # Clear monthly cache key if student, year, or month changes to optimize speed
-    month_cache_key = f"{student_id}_{selected_year}_{selected_month_num}"
-    if st.session_state.get("monthly_report_cache_key") != month_cache_key:
-        st.session_state.monthly_report_cache_key = month_cache_key
-        st.session_state.monthly_report_rows = None
-        st.session_state.attendance_report_cache = None
-
     def get_monthly_rows():
-        if st.session_state.get("monthly_report_rows") is None:
-            with st.spinner("Fetching monthly report data..."):
-                st.session_state.monthly_report_rows = fetch_monthly_report(
-                    student_id=student_id, 
-                    year=selected_year, 
-                    month=selected_month_num
-                )
-        return st.session_state.monthly_report_rows
+        with st.spinner("Fetching monthly report data..."):
+            return fetch_monthly_report(
+                student_id=student_id, 
+                year=selected_year, 
+                month=selected_month_num
+            )
 
     def get_cached_current_jadeed():
-        cache_key = f"current_jadeed_{student_id}"
-        if cache_key not in st.session_state:
-            with st.spinner("Fetching current jadeed progress..."):
-                curr_ent = get_student_current_jadeed(student_id=student_id)
-                all_stud = get_all_students_current_jadeed()
-                st.session_state[cache_key] = (curr_ent, all_stud)
-        return st.session_state[cache_key]
+        with st.spinner("Fetching current jadeed progress..."):
+            curr_ent = get_student_current_jadeed(student_id=student_id)
+            all_stud = get_all_students_current_jadeed()
+            return curr_ent, all_stud
 
     def get_cached_attendance_report():
-        if st.session_state.get("attendance_report_cache") is None:
-            with st.spinner("Fetching class attendance data..."):
-                try:
-                    data = fetch_collective_attendance_report(year=selected_year, month=selected_month_num)
-                except Exception as e:
-                    st.error(f"Error fetching class attendance: {e}")
-                    data = None
-                st.session_state.attendance_report_cache = data
-        return st.session_state.attendance_report_cache
+        with st.spinner("Fetching class attendance data..."):
+            try:
+                return fetch_collective_attendance_report(year=selected_year, month=selected_month_num)
+            except Exception as e:
+                st.error(f"Error fetching class attendance: {e}")
+                return None
 
     def get_cached_ummul_banin_report():
-        if st.session_state.get("ummul_banin_report_cache") is None:
-            with st.spinner("Fetching Ummul Banin report data..."):
-                try:
-                    from app.db import fetch_ummul_banin_report_data
-                    data = fetch_ummul_banin_report_data()
-                except Exception as e:
-                    st.error(f"Error fetching Ummul Banin report: {e}")
-                    data = None
-                st.session_state.ummul_banin_report_cache = data
-        return st.session_state.ummul_banin_report_cache
+        with st.spinner("Fetching Ummul Banin report data..."):
+            try:
+                from app.db import fetch_ummul_banin_report_data
+                return fetch_ummul_banin_report_data()
+            except Exception as e:
+                st.error(f"Error fetching Ummul Banin report: {e}")
+                return None
 
     st.markdown("### Report Category Select")
     categories = [

@@ -107,6 +107,15 @@ def render_murajat() -> None:
         render_header_with_homework("Murajat", student_id)
             
         current_student_badge()
+
+        # 10-Minute Murajat Recitation Timer
+        from app.ui.timer import render_recitation_timer
+        timer_elapsed, is_timer_running, is_timer_overtime = render_recitation_timer(
+            module_name="murajat",
+            target_minutes=10,
+            student_id=student_id,
+            auto_start=bool(surah_id is not None)
+        )
         
         col_s, col_p, col_prev, col_next = st.columns([2, 1, 1, 1])
         with col_s:
@@ -171,6 +180,9 @@ def render_murajat() -> None:
         session_id = st.session_state.get("murajat_session_id")
 
         if session_id:
+            if timer_elapsed > 0:
+                from app.db import update_session_duration
+                update_session_duration(session_id, timer_elapsed, is_timer_overtime)
             if "murajat_counts" not in st.session_state or st.session_state.get("murajat_counts_session_id") != session_id:
                 st.session_state.murajat_counts = get_session_counts(session_id)
                 st.session_state.murajat_counts_session_id = session_id
@@ -329,7 +341,7 @@ def render_murajat() -> None:
             local_counts[kind] = 1 if local_counts.get(kind, 0) == 0 else 0
             
         from app.db import increment_mistake_bg
-        increment_mistake_bg(sid, kind, local_counts)
+        increment_mistake_bg(sid, kind, local_counts, duration_seconds=timer_elapsed, time_exceeded=is_timer_overtime)
         st.session_state.play_sound = True
 
     student_name = st.session_state.get("student_name", "Student")
@@ -397,6 +409,9 @@ def render_murajat() -> None:
     c1, _, c2 = st.columns([2, 5, 2])
     with c1:
         if st.button("New session (Same Surah)", width="stretch"):
+            from app.db import update_session_duration
+            if session_id and timer_elapsed > 0:
+                update_session_duration(session_id, timer_elapsed, is_timer_overtime)
             session = create_listening_session(student_id=student_id, mode="murajat", surah_id=surah_id, page_number=page_number, force_new=True)
             st.session_state.murajat_session_id = session["id"]
             ensure_today_sessions(student_id)
@@ -407,6 +422,9 @@ def render_murajat() -> None:
             st.rerun()
     with c2:
         if st.button("Change Surah", width="stretch"):
+            from app.db import update_session_duration
+            if session_id and timer_elapsed > 0:
+                update_session_duration(session_id, timer_elapsed, is_timer_overtime)
             st.session_state.pop("murajat_session_id", None)
             st.session_state.pop("murajat_surah_id", None)
             st.session_state.pop("murajat_surah", None)
