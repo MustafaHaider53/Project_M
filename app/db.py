@@ -1018,7 +1018,7 @@ def fetch_monthly_report(*, student_id: str, year: int, month: int) -> List[Dict
         future_takhteet = executor.submit(
             rest.select,
             "takhteet_daily",
-            select="student_id,activity_date,murajat_text_clean,juzulhali_text_clean,jadeed_text_clean,updated_at",
+            select="student_id,activity_date,murajat_text_clean,juzulhali_text_clean,jadeed_text_clean,murajat_text_raw,juzulhali_text_raw,jadeed_text_raw,updated_at",
             params={
                 "student_id": f"eq.{student_id}",
                 "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
@@ -1052,9 +1052,18 @@ def fetch_monthly_report(*, student_id: str, year: int, month: int) -> List[Dict
             "jadeed": [],
             "no_jadeed": False,
             "takhteet": {
+                "murajat": "",
+                "juzulhali": "",
+                "jadeed": "",
                 "murajat_text": "",
                 "juzulhali_text": "",
                 "jadeed_text": "",
+                "murajat_text_clean": "",
+                "juzulhali_text_clean": "",
+                "jadeed_text_clean": "",
+                "murajat_text_raw": "",
+                "juzulhali_text_raw": "",
+                "jadeed_text_raw": "",
             },
         }
 
@@ -1167,10 +1176,30 @@ def fetch_monthly_report(*, student_id: str, year: int, month: int) -> List[Dict
     for t in takhteet_rows:
         d = str(t.get("activity_date"))
         if d in by_date:
+            m_raw = (t.get("murajat_text_raw") or "").strip()
+            j_raw = (t.get("juzulhali_text_raw") or "").strip()
+            jd_raw = (t.get("jadeed_text_raw") or "").strip()
+            m_clean = (t.get("murajat_text_clean") or "").strip()
+            j_clean = (t.get("juzulhali_text_clean") or "").strip()
+            jd_clean = (t.get("jadeed_text_clean") or "").strip()
+
+            m_val = m_raw or m_clean
+            j_val = j_raw or j_clean
+            jd_val = jd_raw or jd_clean
+
             by_date[d]["takhteet"] = {
-                "murajat_text": t.get("murajat_text_clean") or "",
-                "juzulhali_text": t.get("juzulhali_text_clean") or "",
-                "jadeed_text": t.get("jadeed_text_clean") or "",
+                "murajat": m_val,
+                "juzulhali": j_val,
+                "jadeed": jd_val,
+                "murajat_text": m_val,
+                "juzulhali_text": j_val,
+                "jadeed_text": jd_val,
+                "murajat_text_clean": m_clean,
+                "juzulhali_text_clean": j_clean,
+                "jadeed_text_clean": jd_clean,
+                "murajat_text_raw": m_raw,
+                "juzulhali_text_raw": j_raw,
+                "jadeed_text_raw": jd_raw,
             }
 
     # Format result list

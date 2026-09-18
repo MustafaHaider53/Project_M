@@ -129,11 +129,11 @@ def mistake_buttons(*, session_id: str, counts: Dict[str, int], on_click) -> Non
     tb_ico = "➖" if sub_mode else "🟡"
     prefix = "➖ " if sub_mode else ""
     
-    col_hifz, col_ahkam, col_makharij = st.columns([1, 1.15, 1.65])
+    col_hifz, col_ahkam, col_makharij = st.columns([1, 1.25, 1.6])
     
     with col_hifz:
         with st.container(border=True):
-            st.markdown("<div style='text-align: center; font-weight: bold; margin-bottom: 5px; color: var(--emerald);'>Hifz Mistakes</div>", unsafe_allow_html=True)
+            st.markdown("<div class='hifz-card-anchor' style='display: none;'></div><div style='text-align: center; font-weight: bold; margin-bottom: 5px; color: var(--emerald);'>Hifz Mistakes</div>", unsafe_allow_html=True)
             
             # Row 1: Talqeen & Tanbeeh
             r1_c1, r1_c2 = st.columns(2)
@@ -202,22 +202,19 @@ def mistake_buttons(*, session_id: str, counts: Dict[str, int], on_click) -> Non
                 
     with col_ahkam:
         with st.container(border=True):
-            st.markdown("<div style='text-align: center; font-weight: bold; margin-bottom: 5px; color: var(--emerald);'>Ahkam Mistakes</div>", unsafe_allow_html=True)
+            st.markdown("<div class='ahkam-card-anchor' style='display: none;'></div><div style='text-align: center; font-weight: bold; margin-bottom: 5px; color: var(--emerald);'>Ahkam Mistakes</div>", unsafe_allow_html=True)
             
             ahkam_buttons_layout = [
-                [("ikhfa", "Ikhfa"), ("izhaar", "Izhaar")],
-                [("qalqalah", "Qalqalah"), ("ism_jalalah", "Ism Jalal")],
-                [("tahreek_sakin", "Tahreek"), ("gunnah", "Gunnah")],
-                [("idgham", "Idgham"), ("madd_lazim", "M. Lazim")],
-                [("madd_muttasil", "M. Mutta."), ("mad_tabaiee", "M. Tabai.")],
-                [("ikhfa_shafawi", "Ikh. Shaf."), ("iqlab", "Iqlab")],
+                [("ikhfa", "Ikhfa"), ("izhaar", "Izhaar"), ("iqlab", "Iqlab")],
+                [("idgham", "Idgham"), ("gunnah", "Gunnah"), ("qalqalah", "Qalqalah")],
+                [("madd_lazim", "M. Lazim"), ("madd_muttasil", "M. Mutta."), ("mad_tabaiee", "M. Tabai.")],
+                [("ism_jalalah", "Ism Jalal"), ("tahreek_sakin", "Tahreek"), ("ikhfa_shafawi", "Ikh. Shaf.")],
             ]
 
             for row in ahkam_buttons_layout:
-                ar_c1, ar_c2 = st.columns(2)
+                ar_cols = st.columns(3)
                 for col_idx, (kind, label) in enumerate(row):
-                    target_col = ar_c1 if col_idx == 0 else ar_c2
-                    with target_col:
+                    with ar_cols[col_idx]:
                         is_active = counts.get(kind, 0) == 1
                         active_class = "ahkam-active" if is_active else "ahkam-inactive"
                         st.markdown(f"<span class='{active_class}' style='display: none;'>active</span>", unsafe_allow_html=True)
