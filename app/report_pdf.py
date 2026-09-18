@@ -97,6 +97,15 @@ def _format_grade_badge(marks: float) -> str:
         return f'<span class="grade-badge grade-warning">{marks:.1f}/10</span>'
 
 
+def _get_takhteet_values(t: Optional[Dict[str, Any]]) -> Tuple[str, str, str]:
+    if not t or not isinstance(t, dict):
+        return "", "", ""
+    m = t.get("murajat") or t.get("murajat_text") or t.get("murajat_text_raw") or t.get("murajat_text_clean") or ""
+    j = t.get("juzulhali") or t.get("juzulhali_text") or t.get("juzulhali_text_raw") or t.get("juzulhali_text_clean") or ""
+    jd = t.get("jadeed") or t.get("jadeed_text") or t.get("jadeed_text_raw") or t.get("jadeed_text_clean") or ""
+    return str(m), str(j), str(jd)
+
+
 def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type: str = "murajat") -> str:
     report_type = report_type.lower()
     
@@ -161,11 +170,12 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type
         is_weekend = wd in (5, 6)
         
         # Check presence
+        t_m, t_j, t_jd = _get_takhteet_values(r.get("takhteet"))
         is_present = bool(murajat or juzulhali or jadeed or not (
             r.get("no_jadeed", True)
-            and not (r.get("takhteet") or {}).get("murajat", "").strip()
-            and not (r.get("takhteet") or {}).get("juzulhali", "").strip()
-            and not (r.get("takhteet") or {}).get("jadeed", "").strip()
+            and not t_m.strip()
+            and not t_j.strip()
+            and not t_jd.strip()
         ))
         
         if report_type == "murajat" and murajat:
@@ -199,8 +209,7 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type
                 pass
                 
         elif report_type == "takhteet":
-            t = r.get("takhteet") or {}
-            if t.get("murajat", "").strip() or t.get("juzulhali", "").strip() or t.get("jadeed", "").strip():
+            if t_m.strip() or t_j.strip() or t_jd.strip():
                 total_active_days += 1
 
     # Render Stats Cards HTML
@@ -287,6 +296,7 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type
         jadeed = r.get("jadeed", [])
         
         today_str = date.today().isoformat()
+        t_m, t_j, t_jd = _get_takhteet_values(r.get("takhteet"))
         is_absent = (
             not is_weekend
             and activity_date <= today_str
@@ -294,9 +304,9 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type
             and not juzulhali 
             and not jadeed 
             and not r.get("no_jadeed") 
-            and not str((r.get("takhteet") or {}).get("murajat") or "").strip()
-            and not str((r.get("takhteet") or {}).get("juzulhali") or "").strip()
-            and not str((r.get("takhteet") or {}).get("jadeed") or "").strip()
+            and not t_m.strip()
+            and not t_j.strip()
+            and not t_jd.strip()
         )
         
         is_weekend_empty = (
@@ -305,9 +315,9 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type
             and not juzulhali 
             and not jadeed 
             and not r.get("no_jadeed") 
-            and not str((r.get("takhteet") or {}).get("murajat") or "").strip()
-            and not str((r.get("takhteet") or {}).get("juzulhali") or "").strip()
-            and not str((r.get("takhteet") or {}).get("jadeed") or "").strip()
+            and not t_m.strip()
+            and not t_j.strip()
+            and not t_jd.strip()
         )
         
         # 1. Render Absent Row
@@ -552,10 +562,7 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type
                 f'</td>'
             )
             
-            t = r.get("takhteet") or {}
-            m_hw = t.get("murajat") or ""
-            j_hw = t.get("juzulhali") or ""
-            jd_hw = t.get("jadeed") or ""
+            m_hw, j_hw, jd_hw = _get_takhteet_values(r.get("takhteet"))
             
             cells.append(f'<td class="text-left" style="font-size: 8.5pt;">{escape(m_hw) if m_hw.strip() else "-"}</td>')
             cells.append(f'<td class="text-left" style="font-size: 8.5pt;">{escape(j_hw) if j_hw.strip() else "-"}</td>')
@@ -2781,14 +2788,14 @@ def build_unified_3in1_report_html(student_name: str, rows: List[Dict[str, Any]]
         murajat = r.get("murajat", [])
         juzulhali = r.get("juzulhali", [])
         jadeed = r.get("jadeed", [])
-        t = r.get("takhteet") or {}
+        t_m, t_j, t_jd = _get_takhteet_values(r.get("takhteet"))
 
         has_activity = bool(
             murajat or juzulhali or jadeed or not (
                 r.get("no_jadeed", True)
-                and not str(t.get("murajat") or "").strip()
-                and not str(t.get("juzulhali") or "").strip()
-                and not str(t.get("jadeed") or "").strip()
+                and not t_m.strip()
+                and not t_j.strip()
+                and not t_jd.strip()
             )
         )
         if has_activity and not is_weekend:
@@ -2837,6 +2844,7 @@ def build_unified_3in1_report_html(student_name: str, rows: List[Dict[str, Any]]
         murajat = r.get("murajat", [])
         juzulhali = r.get("juzulhali", [])
         jadeed = r.get("jadeed", [])
+        t_m, t_j, t_jd = _get_takhteet_values(r.get("takhteet"))
 
         is_absent = (
             not is_weekend
@@ -2845,9 +2853,9 @@ def build_unified_3in1_report_html(student_name: str, rows: List[Dict[str, Any]]
             and not juzulhali
             and not jadeed
             and not r.get("no_jadeed")
-            and not str((r.get("takhteet") or {}).get("murajat") or "").strip()
-            and not str((r.get("takhteet") or {}).get("juzulhali") or "").strip()
-            and not str((r.get("takhteet") or {}).get("jadeed") or "").strip()
+            and not t_m.strip()
+            and not t_j.strip()
+            and not t_jd.strip()
         )
 
         is_weekend_empty = (
@@ -2856,9 +2864,9 @@ def build_unified_3in1_report_html(student_name: str, rows: List[Dict[str, Any]]
             and not juzulhali
             and not jadeed
             and not r.get("no_jadeed")
-            and not str((r.get("takhteet") or {}).get("murajat") or "").strip()
-            and not str((r.get("takhteet") or {}).get("juzulhali") or "").strip()
-            and not str((r.get("takhteet") or {}).get("jadeed") or "").strip()
+            and not t_m.strip()
+            and not t_j.strip()
+            and not t_jd.strip()
         )
 
         # 1. Render Absent Row

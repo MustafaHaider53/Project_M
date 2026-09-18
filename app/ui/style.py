@@ -242,8 +242,8 @@ def apply_islamic_theme() -> None:
             height: auto !important;
           }
 
-          /* Target 3-column rows (button + label + button) on desktop to align them symmetrically */
-          div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) {
+          /* Target 3-column rows (button + label + button) inside Hifz card on desktop to align them symmetrically */
+          div[data-testid="stVerticalBlockBorderWrapper"]:has(.hifz-card-anchor) div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) {
             display: flex !important;
             flex-direction: row !important;
             flex-wrap: nowrap !important;
@@ -252,24 +252,41 @@ def apply_islamic_theme() -> None:
             gap: 4px !important;
             width: 100% !important;
           }
-          div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(1),
-          div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(3) {
+          div[data-testid="stVerticalBlockBorderWrapper"]:has(.hifz-card-anchor) div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(1),
+          div[data-testid="stVerticalBlockBorderWrapper"]:has(.hifz-card-anchor) div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(3) {
             flex: 0 0 26px !important;
             width: 26px !important;
             max-width: 26px !important;
             min-width: 26px !important;
           }
-          div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(2) {
+          div[data-testid="stVerticalBlockBorderWrapper"]:has(.hifz-card-anchor) div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(2) {
             flex: 1 1 0% !important;
             min-width: 0 !important;
           }
-          div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) .stButton > button {
+          div[data-testid="stVerticalBlockBorderWrapper"]:has(.hifz-card-anchor) div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) .stButton > button {
             width: 26px !important;
             max-width: 26px !important;
             height: 26px !important;
             min-height: 26px !important;
             padding: 0 !important;
             font-size: 13px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+          }
+
+          /* Compact sizing for Ahkam Tajweed buttons to match Hifz & Makharij card height */
+          div[data-testid="stVerticalBlockBorderWrapper"]:has(.ahkam-card-anchor) .stButton > button {
+            padding: 0.2rem 0.15rem !important;
+            font-size: 0.78rem !important;
+            font-weight: 600 !important;
+            border-radius: 6px !important;
+            line-height: 1.15 !important;
+            min-height: 26px !important;
+            height: 26px !important;
+            overflow: hidden !important;
+            white-space: nowrap !important;
+            text-overflow: ellipsis !important;
             display: flex !important;
             align-items: center !important;
             justify-content: center !important;
