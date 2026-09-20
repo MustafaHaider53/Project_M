@@ -95,6 +95,43 @@ def _format_musaid_email(counts: Dict[str, Any]) -> str:
     return "".join(badges)
 
 
+def _format_jadeed_reasons_email(item_or_list: Any) -> str:
+    reasons = []
+    if isinstance(item_or_list, list):
+        reasons = [str(r) for r in item_or_list if r]
+    elif isinstance(item_or_list, dict):
+        if item_or_list.get("weak_hifz"):
+            reasons.append("Weak Hifz")
+        if item_or_list.get("airab_mistakes"):
+            reasons.append("Airab Mistakes")
+        if item_or_list.get("time_exceeded"):
+            reasons.append("Time Exceeded")
+        if item_or_list.get("weak_murajat"):
+            reasons.append("Weak Murajat")
+        if item_or_list.get("weak_juzulhali"):
+            reasons.append("Weak Juz'ul Hali")
+
+    if not reasons:
+        return ""
+
+    badges = []
+    for r in reasons:
+        lbl = r
+        if not any(lbl.startswith(e) for e in ["⚠️", "🔤", "⏱️", "📖"]):
+            if "hifz" in lbl.lower():
+                lbl = f"⚠️ {lbl}"
+            elif "airab" in lbl.lower() or "irab" in lbl.lower():
+                lbl = f"🔤 {lbl}"
+            elif "time" in lbl.lower() or "overtime" in lbl.lower():
+                lbl = f"⏱️ {lbl}"
+            elif "murajat" in lbl.lower() or "juz" in lbl.lower():
+                lbl = f"📖 {lbl}"
+        badges.append(
+            f'<span style="display: inline-block; padding: 2px 7px; font-size: 11px; font-weight: bold; border-radius: 12px; margin: 2px; white-space: nowrap; background-color: #fff7ed; color: #c2410c; border: 1px solid #ffedd5;">{lbl}</span>'
+        )
+    return "".join(badges)
+
+
 def _format_takhteet_for_email(label: str, text: str) -> str:
     """Formats homework text with clean line breaks and bullet points for HTML emails."""
     if not text or not str(text).strip():
@@ -311,9 +348,16 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
     # 3. Jadeed Section
     jadeed_html = ""
     if summary.get("no_jadeed"):
-        jadeed_html = """
+        reasons_list = summary.get("no_jadeed_reasons") or []
+        details = summary.get("no_jadeed_details") or {}
+        reason_badges = _format_jadeed_reasons_email(reasons_list if reasons_list else details)
+        reasons_html = ""
+        if reason_badges:
+            reasons_html = f'<div style="margin-top: 8px; font-size: 12px;"><strong style="color: #c2410c;">Reason:</strong> {reason_badges}</div>'
+        jadeed_html = f"""
         <h3 style="color: #1b4d3e; border-bottom: 2px solid #c5a880; padding-bottom: 4px; margin-top: 25px;">3. Jadeed </h3>
-        <p style="font-size: 13px; color: #666; font-style: italic;">No Jadeed lesson recorded for today.</p>
+        <p style="font-size: 13px; color: #666; font-style: italic; margin-bottom: 4px;">No Jadeed lesson recorded for today.</p>
+        {reasons_html}
         """
     elif summary.get("jadeed"):
         jadeed_rows = ""
@@ -325,9 +369,17 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
             ayah = jd.get("ayah_number") or "-"
             volume = jd.get("volume") or "-"
             
+            flag_badges = _format_jadeed_reasons_email(jd)
+            detail_flags = ""
+            if flag_badges:
+                detail_flags = f'<div style="margin-top: 4px; padding-top: 3px; border-top: 1px dotted #e0dcd5; text-align: left;">{flag_badges}</div>'
+
             jadeed_rows += f"""
             <tr>
-                <td style="border: 1px solid #e0dcd5; padding: 8px; font-weight: bold; color: #1b4d3e;">{surah_name} <span style="font-size: 11px; color: #888;">({surah_ar})</span></td>
+                <td style="border: 1px solid #e0dcd5; padding: 8px; font-weight: bold; color: #1b4d3e;">
+                    {surah_name} <span style="font-size: 11px; color: #888;">({surah_ar})</span>
+                    {detail_flags}
+                </td>
                 <td style="border: 1px solid #e0dcd5; padding: 8px; text-align: center;">Page {page}</td>
                 <td style="border: 1px solid #e0dcd5; padding: 8px; text-align: center;">Ayah {ayah}</td>
                 <td style="border: 1px solid #e0dcd5; padding: 8px; text-align: center; font-weight: 500;">{volume}</td>
