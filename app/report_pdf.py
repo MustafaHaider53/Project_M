@@ -489,7 +489,19 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type
                     f'  <div class="day-subtitle">{day_name_en} {date_sub}</div>'
                     f'</td>'
                 )
-                cells.append(f'<td colspan="4" style="font-style: italic; color: #7f8c8d; font-size: 8.5pt; text-align: center;">No Jadeed Lesson / لا جديد اليوم</td>')
+                reasons = r.get("no_jadeed_reasons") or []
+                if not reasons and r.get("no_jadeed_details"):
+                    jd_det = r.get("no_jadeed_details")
+                    if jd_det.get("weak_hifz"): reasons.append("Weak Hifz")
+                    if jd_det.get("airab_mistakes"): reasons.append("Airab Mistakes")
+                    if jd_det.get("time_exceeded"): reasons.append("Time Exceeded")
+                    if jd_det.get("weak_murajat"): reasons.append("Weak Murajat")
+                    if jd_det.get("weak_juzulhali"): reasons.append("Weak Juz'ul Hali")
+                if reasons:
+                    badge_spans = " ".join([f'<span style="display:inline-block; font-size:7pt; font-weight:600; color:#9a3412; background:#ffedd5; border:1px solid #fed7aa; border-radius:3px; padding:1px 4px; margin:1px;">{escape(rs)}</span>' for rs in reasons])
+                    cells.append(f'<td colspan="4" style="color: #7f8c8d; font-size: 8.5pt; text-align: center;"><em>No Jadeed Lesson / لا جديد اليوم</em><div style="margin-top:2px;">{badge_spans}</div></td>')
+                else:
+                    cells.append(f'<td colspan="4" style="font-style: italic; color: #7f8c8d; font-size: 8.5pt; text-align: center;">No Jadeed Lesson / لا جديد اليوم</td>')
                 row_class = ' class="day-separator week-end-separator"' if wd == 6 else ' class="day-separator"'
                 table_rows.append(f"<tr{row_class}>{''.join(cells)}</tr>")
             else:
@@ -2999,11 +3011,37 @@ def build_unified_3in1_report_html(student_name: str, rows: List[Dict[str, Any]]
                 elif jd.get("time_exceeded"):
                     dur_badge = '<div style="font-size: 7pt; font-weight: bold; color: #dc2626; background: #fee2e2; border-radius: 4px; padding: 1px 4px; margin-top: 2px;">⏱️ Overtime</div>'
 
-                cells.append(f'<td class="text-left border-left-jadeed" style="font-weight: 600; font-size: 8.5pt;">{escape(str(s_name))}</td>')
+                jd_flags = []
+                if jd.get("weak_hifz"):
+                    jd_flags.append("Weak Hifz")
+                if jd.get("airab_mistakes"):
+                    jd_flags.append("Airab")
+                if jd.get("weak_murajat"):
+                    jd_flags.append("Weak Mur")
+                if jd.get("weak_juzulhali"):
+                    jd_flags.append("Weak JH")
+
+                flag_spans = ""
+                if jd_flags:
+                    flag_spans = '<div style="margin-top: 2px;">' + " ".join([f'<span style="display:inline-block; font-size:6.5pt; font-weight:600; color:#c2410c; background:#fff7ed; border:1px solid #ffedd5; border-radius:3px; padding:0 3px;">{escape(f)}</span>' for f in jd_flags]) + '</div>'
+
+                cells.append(f'<td class="text-left border-left-jadeed" style="font-weight: 600; font-size: 8.5pt;">{escape(str(s_name))}{flag_spans}</td>')
                 cells.append(f'<td style="text-align: center; font-weight: 500;">{p_val}</td>')
                 cells.append(f'<td style="text-align: center; font-weight: 500;">{a_val}{dur_badge}</td>')
             elif r.get("no_jadeed") and sub_idx == 0:
-                cells.append('<td colspan="3" class="border-left-jadeed" style="text-align: center; color: #854d0e; background: #fef9c3; font-style: italic; font-size: 8pt; padding: 4px;">No Jadeed</td>')
+                reasons = r.get("no_jadeed_reasons") or []
+                if not reasons and r.get("no_jadeed_details"):
+                    jd_det = r.get("no_jadeed_details")
+                    if jd_det.get("weak_hifz"): reasons.append("Weak Hifz")
+                    if jd_det.get("airab_mistakes"): reasons.append("Airab Mistakes")
+                    if jd_det.get("time_exceeded"): reasons.append("Time Exceeded")
+                    if jd_det.get("weak_murajat"): reasons.append("Weak Murajat")
+                    if jd_det.get("weak_juzulhali"): reasons.append("Weak Juz'ul Hali")
+                if reasons:
+                    badge_spans = " ".join([f'<span style="display:inline-block; font-size:7pt; font-weight:600; color:#9a3412; background:#ffedd5; border:1px solid #fed7aa; border-radius:3px; padding:1px 4px; margin:1px;">{escape(rs)}</span>' for rs in reasons])
+                    cells.append(f'<td colspan="3" class="border-left-jadeed" style="text-align: center; color: #854d0e; background: #fef9c3; font-size: 8pt; padding: 3px;"><div><em>No Jadeed</em></div><div style="margin-top:2px;">{badge_spans}</div></td>')
+                else:
+                    cells.append('<td colspan="3" class="border-left-jadeed" style="text-align: center; color: #854d0e; background: #fef9c3; font-style: italic; font-size: 8pt; padding: 4px;">No Jadeed</td>')
             elif len(jadeed) == 0 and sub_idx == 0:
                 cells.append('<td class="border-left-jadeed" style="text-align: center; color: #9ca3af; font-size: 8pt;">-</td>')
                 cells.append('<td style="text-align: center; color: #9ca3af; font-size: 8pt;">-</td>')

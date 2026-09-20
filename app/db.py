@@ -1204,7 +1204,7 @@ def fetch_monthly_report(*, student_id: str, year: int, month: int) -> List[Dict
         future_daily = executor.submit(
             rest.select,
             "jadeed_daily",
-            select="student_id,activity_date,no_jadeed,updated_at",
+            select="student_id,activity_date,no_jadeed,weak_hifz,airab_mistakes,time_exceeded,weak_murajat,weak_juzulhali,updated_at",
             params={
                 "student_id": f"eq.{student_id}",
                 "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})",
@@ -1368,7 +1368,22 @@ def fetch_monthly_report(*, student_id: str, year: int, month: int) -> List[Dict
     for jd in jadeed_daily_rows:
         d = str(jd.get("activity_date"))
         if d in by_date:
-            by_date[d]["no_jadeed"] = bool(jd.get("no_jadeed"))
+            is_no = bool(jd.get("no_jadeed"))
+            by_date[d]["no_jadeed"] = is_no
+            reasons = []
+            if is_no:
+                if jd.get("weak_hifz"):
+                    reasons.append("Weak Hifz")
+                if jd.get("airab_mistakes"):
+                    reasons.append("Airab Mistakes")
+                if jd.get("time_exceeded"):
+                    reasons.append("Time Exceeded")
+                if jd.get("weak_murajat"):
+                    reasons.append("Weak Murajat")
+                if jd.get("weak_juzulhali"):
+                    reasons.append("Weak Juz'ul Hali")
+            by_date[d]["no_jadeed_reasons"] = reasons
+            by_date[d]["no_jadeed_details"] = jd if is_no else None
 
     for t in takhteet_rows:
         d = str(t.get("activity_date"))
@@ -1409,6 +1424,8 @@ def fetch_monthly_report(*, student_id: str, year: int, month: int) -> List[Dict
                 "juzulhali": data["juzulhali"],
                 "jadeed": data["jadeed"],
                 "no_jadeed": data["no_jadeed"],
+                "no_jadeed_reasons": data.get("no_jadeed_reasons", []),
+                "no_jadeed_details": data.get("no_jadeed_details"),
                 "takhteet": data["takhteet"],
             }
         )
@@ -1489,14 +1506,24 @@ def get_student_daily_summary(*, student_id: str, date_str: str) -> Dict[str, An
     try:
         jadeed_daily_row = rest.select_single(
             "jadeed_daily",
-            select="no_jadeed",
+            select="no_jadeed,weak_hifz,airab_mistakes,time_exceeded,weak_murajat,weak_juzulhali",
             params={
                 "student_id": f"eq.{student_id}",
                 "activity_date": f"eq.{date_str}",
             },
         )
     except Exception:
-        pass
+        try:
+            jadeed_daily_row = rest.select_single(
+                "jadeed_daily",
+                select="no_jadeed",
+                params={
+                    "student_id": f"eq.{student_id}",
+                    "activity_date": f"eq.{date_str}",
+                },
+            )
+        except Exception:
+            pass
 
     takhteet_row = None
     try:
@@ -1522,6 +1549,20 @@ def get_student_daily_summary(*, student_id: str, date_str: str) -> Dict[str, An
     murajat_sessions = [s for s in valid_sessions if s.get("mode") == "murajat"]
     juzulhali_sessions = [s for s in valid_sessions if s.get("mode") == "juzulhali"]
 
+    is_no = bool(jadeed_daily_row.get("no_jadeed")) if jadeed_daily_row else False
+    reasons = []
+    if is_no and jadeed_daily_row:
+        if jadeed_daily_row.get("weak_hifz"):
+            reasons.append("Weak Hifz")
+        if jadeed_daily_row.get("airab_mistakes"):
+            reasons.append("Airab Mistakes")
+        if jadeed_daily_row.get("time_exceeded"):
+            reasons.append("Time Exceeded")
+        if jadeed_daily_row.get("weak_murajat"):
+            reasons.append("Weak Murajat")
+        if jadeed_daily_row.get("weak_juzulhali"):
+            reasons.append("Weak Juz'ul Hali")
+
     return {
         "student_name": student.get("full_name"),
         "student_email": student.get("email"),
@@ -1529,7 +1570,9 @@ def get_student_daily_summary(*, student_id: str, date_str: str) -> Dict[str, An
         "murajat": murajat_sessions,
         "juzulhali": juzulhali_sessions,
         "jadeed": jadeed_rows,
-        "no_jadeed": bool(jadeed_daily_row.get("no_jadeed")) if jadeed_daily_row else False,
+        "no_jadeed": is_no,
+        "no_jadeed_reasons": reasons,
+        "no_jadeed_details": jadeed_daily_row if is_no else None,
         "takhteet": takhteet_row or {},
     }
 
