@@ -51,23 +51,36 @@ def render_login() -> None:
 
                 if submitted:
                     username_clean = username.strip()
-                    if username_clean == CORRECT_USERNAME and password == CORRECT_PASSWORD:
+                    from app.db import authenticate_teacher, list_students
+                    from app.ui.shared import generate_session_signature
+
+                    teacher = authenticate_teacher(username_clean, password)
+                    if teacher:
+                        role = teacher.get("role", "teacher")
+                        teacher_id = str(teacher["id"])
+                        teacher_name = teacher.get("full_name", username_clean)
+                        teacher_username = teacher.get("username", username_clean)
+
                         st.session_state.logged_in = True
-                        st.session_state.user_role = "admin"
+                        st.session_state.user_role = role
+                        st.session_state.teacher_id = teacher_id
+                        st.session_state.teacher_name = teacher_name
+                        st.session_state.teacher_username = teacher_username
                         st.session_state.student_id = None
                         st.session_state.student_name = None
-                        
-                        from app.ui.shared import generate_session_signature
-                        sig = generate_session_signature("admin", "")
+
+                        sig = generate_session_signature(role, "", teacher_id=teacher_id)
                         st.query_params["logged_in"] = "true"
-                        st.query_params["user_role"] = "admin"
+                        st.query_params["user_role"] = role
+                        st.query_params["teacher_id"] = teacher_id
+                        st.query_params["teacher_name"] = teacher_name
+                        st.query_params["teacher_username"] = teacher_username
                         st.query_params["sig"] = sig
-                        
+
                         st.session_state.login_error = None
                         st.rerun()
                     else:
                         # Attempt parent login by matching a student
-                        from app.db import list_students
                         student = None
                         if username_clean:
                             try:
@@ -87,10 +100,12 @@ def render_login() -> None:
                             st.session_state.user_role = "parent"
                             st.session_state.student_id = student["id"]
                             st.session_state.student_name = student["full_name"]
+                            st.session_state.teacher_id = None
+                            st.session_state.teacher_name = None
+                            st.session_state.teacher_username = None
                             st.session_state.page = "parent_report"
                             
-                            from app.ui.shared import generate_session_signature
-                            sig = generate_session_signature("parent", student["id"])
+                            sig = generate_session_signature("parent", student["id"], teacher_id="")
                             st.query_params["logged_in"] = "true"
                             st.query_params["user_role"] = "parent"
                             st.query_params["student_id"] = student["id"]

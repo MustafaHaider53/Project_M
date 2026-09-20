@@ -10,7 +10,8 @@ from app.db import (
     fetch_collective_attendance_report,
     get_earliest_global_activity_date,
     fetch_ikhtebar_report,
-    fetch_jadeed_pages_summary_report
+    fetch_jadeed_pages_summary_report,
+    fetch_teacher_attendance_report
 )
 from app.report_pdf import (
     build_report_html,
@@ -229,6 +230,7 @@ def render_report() -> None:
         "📅 Class Attendance",
         "📖 Ummul Banin Ben Report",
         "🎓 OPR - One Page Report",
+        "👨‍🏫 Teacher Attendance Report",
         "👪 Parent Views",
         "✉️ Email Log"
     ]
@@ -422,6 +424,9 @@ def render_report() -> None:
                     st.iframe(html_assessment, height=800)
                 else:
                     st.info("💡 Report preview is hidden to make calendar selections instant and lag-free. Check 'Show One Page Report Preview' when you are ready to view/print the report.")
+
+    elif selected_category == "👨‍🏫 Teacher Attendance Report":
+        render_teacher_attendance_dashboard()
 
     elif selected_category == "👪 Parent Views":
         render_parent_views_dashboard()
@@ -765,3 +770,185 @@ def render_email_log_dashboard() -> None:
                             st.rerun()
 
             st.markdown("<hr style='margin: 4px 0 6px 0; border: none; border-top: 1px solid rgba(184,137,23,0.15);'/>", unsafe_allow_html=True)
+
+
+@st.fragment
+def render_teacher_attendance_dashboard() -> None:
+    st.markdown("### 👨‍🏫 Teacher Attendance & Productivity Report (تقرير حضور وإنتاجية المعلمين)")
+    st.caption("Range-wise teacher attendance overview showing total present days, absent days, first tasmee starting time, and students handled.")
+
+    today = date.today()
+    if "teacher_att_from_date" not in st.session_state:
+        st.session_state.teacher_att_from_date = today
+    if "teacher_att_to_date" not in st.session_state:
+        st.session_state.teacher_att_to_date = today
+
+    # Date Range Pickers
+    col_sd, col_ed = st.columns(2)
+    with col_sd:
+        picked_start = st.date_input("Start Date", value=st.session_state.teacher_att_from_date, key="teacher_att_start_picker")
+        if picked_start != st.session_state.teacher_att_from_date:
+            st.session_state.teacher_att_from_date = picked_start
+            st.rerun(scope="fragment")
+    with col_ed:
+        picked_end = st.date_input("End Date", value=st.session_state.teacher_att_to_date, key="teacher_att_end_picker")
+        if picked_end != st.session_state.teacher_att_to_date:
+            st.session_state.teacher_att_to_date = picked_end
+            st.rerun(scope="fragment")
+
+    # Quick Preset Buttons
+    col_p1, col_p2, col_p3, col_p4, col_p5 = st.columns(5)
+    with col_p1:
+        if st.button("📅 Today", width="stretch", key="teacher_att_preset_today"):
+            st.session_state.teacher_att_from_date = today
+            st.session_state.teacher_att_to_date = today
+            st.rerun(scope="fragment")
+    with col_p2:
+        if st.button("⏪ Yesterday", width="stretch", key="teacher_att_preset_yesterday"):
+            st.session_state.teacher_att_from_date = today - timedelta(days=1)
+            st.session_state.teacher_att_to_date = today - timedelta(days=1)
+            st.rerun(scope="fragment")
+    with col_p3:
+        if st.button("📅 Current Month", width="stretch", key="teacher_att_preset_month"):
+            st.session_state.teacher_att_from_date = date(today.year, today.month, 1)
+            st.session_state.teacher_att_to_date = today
+            st.rerun(scope="fragment")
+    with col_p4:
+        if st.button("📅 Last 30 Days", width="stretch", key="teacher_att_preset_30"):
+            st.session_state.teacher_att_from_date = today - timedelta(days=30)
+            st.session_state.teacher_att_to_date = today
+            st.rerun(scope="fragment")
+    with col_p5:
+        if st.button("🔄 Refresh", width="stretch", key="teacher_att_btn_refresh"):
+            st.cache_data.clear()
+            st.rerun(scope="fragment")
+
+    from_str = st.session_state.teacher_att_from_date.strftime("%Y-%m-%d")
+    to_str = st.session_state.teacher_att_to_date.strftime("%Y-%m-%d")
+
+    with st.spinner("Fetching teacher attendance for selected date range..."):
+        report_data = fetch_teacher_attendance_report(from_date=from_str, to_date=to_str)
+
+    if not report_data:
+        st.info(f"No active teachers found in the system for range {from_str} to {to_str}.")
+        return
+
+    # Search / Filters
+    col_st, col_ss = st.columns(2)
+    with col_st:
+        search_teacher = st.text_input("🔍 Search by Teacher Name", placeholder="Type teacher name to filter...", key="filter_teacher_name").strip().lower()
+    with col_ss:
+        search_student = st.text_input("🔍 Search by Student Handled", placeholder="Type student name to filter...", key="filter_student_name").strip().lower()
+
+    # Filter data
+    filtered_data = []
+    for t in report_data:
+        t_name = (t.get("teacher_name") or "").lower()
+        t_user = (t.get("teacher_username") or "").lower()
+        students = [s for s in t.get("students_handled", [])]
+
+        if search_teacher and (search_teacher not in t_name and search_teacher not in t_user):
+            continue
+        if search_student and not any(search_student in s.lower() for s in students):
+            continue
+        filtered_data.append(t)
+
+    # Aggregate top metrics
+    total_teachers = len(report_data)
+    is_multi_day = from_str != to_str
+    total_working_days = report_data[0].get("total_working_days", 1) if report_data else 1
+    
+    total_present_days_sum = sum(r.get("present_days", 0) for r in report_data)
+    total_absent_days_sum = sum(r.get("absent_days", 0) for r in report_data)
+    present_teachers_count = sum(1 for r in report_data if r.get("is_present"))
+    
+    all_students_handled = set()
+    for r in report_data:
+        for s in r.get("students_handled", []):
+            all_students_handled.add(s)
+
+    m1, m2, m3, m4 = st.columns(4)
+    with m1:
+        st.metric("Total Teachers", f"{total_teachers}")
+    with m2:
+        if is_multi_day:
+            st.metric("Total Present Days", f"{total_present_days_sum} d", delta=f"{total_working_days} working days in range", delta_color="normal")
+        else:
+            st.metric("Present Today", f"{present_teachers_count}", delta=f"{present_teachers_count}/{total_teachers}", delta_color="normal")
+    with m3:
+        if is_multi_day:
+            st.metric("Total Absent Days", f"{total_absent_days_sum} d", delta=f"-{total_absent_days_sum}" if total_absent_days_sum > 0 else "0", delta_color="inverse")
+        else:
+            absent_today = total_teachers - present_teachers_count
+            st.metric("Absent Today", f"{absent_today}", delta=f"-{absent_today}" if absent_today > 0 else "0", delta_color="inverse")
+    with m4:
+        st.metric("Total Students Handled", f"{len(all_students_handled)}")
+
+    st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
+
+    if not filtered_data:
+        st.warning("No teachers matched your search criteria.")
+        return
+
+    # Table Header
+    st.markdown(
+        """
+        <div style="background-color: var(--card); border: 1px solid var(--border); border-radius: 8px 8px 0 0; padding: 10px 14px; font-weight: bold; font-size: 0.88rem; color: var(--emerald);">
+            <div style="display: flex; gap: 12px; align-items: center;">
+                <div style="flex: 2.3; min-width: 140px;">👨‍🏫 Teacher Name</div>
+                <div style="flex: 1.8; text-align: center;">Status (Present / Absent)</div>
+                <div style="flex: 1.4; text-align: center;">First Tasmee Time</div>
+                <div style="flex: 4.5;">Students Handled</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # Render Teacher Rows
+    for t in filtered_data:
+        t_name = t.get("teacher_name", "Unknown")
+        t_user = t.get("teacher_username", "")
+        is_pres = t.get("is_present", False)
+        pres_days = t.get("present_days", 0)
+        abs_days = t.get("absent_days", 0)
+        first_time = t.get("first_tasmee_at", "-")
+        students = sorted(t.get("students_handled", []))
+
+        with st.container():
+            c_name, c_status, c_time, c_stud = st.columns([2.3, 1.8, 1.4, 4.5])
+            
+            with c_name:
+                st.markdown(f"<div style='padding-top: 6px; font-weight: 600; font-size: 0.92rem;'>{t_name} <span style='font-size: 0.78rem; opacity: 0.7; font-weight: normal;'>({t_user})</span></div>", unsafe_allow_html=True)
+                
+            with c_status:
+                if not is_multi_day:
+                    if is_pres:
+                        st.markdown("<div style='text-align: center; padding-top: 6px;'><span style='background-color: rgba(16, 185, 129, 0.15); color: #10b981; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold;'>🟢 Present</span></div>", unsafe_allow_html=True)
+                    else:
+                        st.markdown("<div style='text-align: center; padding-top: 6px;'><span style='background-color: rgba(239, 68, 68, 0.15); color: #ef4444; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold;'>🔴 Absent</span></div>", unsafe_allow_html=True)
+                else:
+                    st.markdown(
+                        f"""
+                        <div style='text-align: center; padding-top: 5px; display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;'>
+                            <span style='background-color: rgba(16, 185, 129, 0.15); color: #10b981; padding: 3px 8px; border-radius: 8px; font-size: 11px; font-weight: bold;'>🟢 {pres_days} Pres.</span>
+                            <span style='background-color: rgba(239, 68, 68, 0.15); color: #ef4444; padding: 3px 8px; border-radius: 8px; font-size: 11px; font-weight: bold;'>🔴 {abs_days} Abs.</span>
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+                    
+            with c_time:
+                time_color = "#0E6B50" if is_pres and first_time != "-" else "gray"
+                st.markdown(f"<div style='text-align: center; padding-top: 6px; font-size: 0.88rem; font-weight: 600; color: {time_color};'>{first_time}</div>", unsafe_allow_html=True)
+                
+            with c_stud:
+                if students:
+                    count_badge = f"<span style='font-weight: bold; color: var(--emerald); font-size: 0.82rem; margin-right: 6px;'>({len(students)}):</span>"
+                    badges = "".join([f"<span style='background: rgba(14, 107, 80, 0.08); border: 1px solid rgba(14, 107, 80, 0.25); color: #0E6B50; padding: 3px 9px; border-radius: 6px; font-size: 0.84rem; font-weight: 600; margin-right: 6px; margin-bottom: 4px; display: inline-block;'>{s}</span>" for s in students])
+                    st.markdown(f"<div style='padding-top: 4px; display: flex; align-items: center; flex-wrap: wrap;'>{count_badge} {badges}</div>", unsafe_allow_html=True)
+                else:
+                    st.markdown("<div style='padding-top: 6px; font-size: 0.84rem; color: gray; font-style: italic;'>None</div>", unsafe_allow_html=True)
+
+            st.markdown("<hr style='margin: 6px 0 8px 0; border: none; border-top: 1px solid rgba(184,137,23,0.15);'/>", unsafe_allow_html=True)
+

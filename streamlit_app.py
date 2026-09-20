@@ -18,11 +18,18 @@ def main() -> None:
         if st.query_params.get("logged_in") == "true":
             user_role = st.query_params.get("user_role") or "admin"
             student_id = st.query_params.get("student_id") or ""
+            teacher_id = st.query_params.get("teacher_id") or ""
+            teacher_name = st.query_params.get("teacher_name") or ""
+            teacher_username = st.query_params.get("teacher_username") or ""
             sig = st.query_params.get("sig") or ""
             
-            if verify_session_signature(user_role, student_id, sig):
+            if verify_session_signature(user_role, student_id, sig, teacher_id=teacher_id):
                 st.session_state.logged_in = True
                 st.session_state.user_role = user_role
+                if teacher_id:
+                    st.session_state.teacher_id = teacher_id
+                    st.session_state.teacher_name = teacher_name
+                    st.session_state.teacher_username = teacher_username
             else:
                 # Invalid signature! Wipe all parameters immediately to prevent bypass
                 st.query_params.clear()
@@ -30,19 +37,26 @@ def main() -> None:
                 st.session_state.user_role = None
                 st.session_state.student_id = None
                 st.session_state.student_name = None
+                st.session_state.teacher_id = None
+                st.session_state.teacher_name = None
+                st.session_state.teacher_username = None
 
     # Extra security validation: if logged in but query params have a signature, make sure it matches
     if st.session_state.get("logged_in"):
         user_role = st.session_state.get("user_role") or "admin"
         student_id = st.session_state.get("student_id") or ""
+        teacher_id = st.session_state.get("teacher_id") or ""
         sig = st.query_params.get("sig") or ""
-        if sig and not verify_session_signature(user_role, student_id, sig):
+        if sig and not verify_session_signature(user_role, student_id, sig, teacher_id=teacher_id):
             # Signature mismatch! Force logout
             st.query_params.clear()
             st.session_state.logged_in = False
             st.session_state.user_role = None
             st.session_state.student_id = None
             st.session_state.student_name = None
+            st.session_state.teacher_id = None
+            st.session_state.teacher_name = None
+            st.session_state.teacher_username = None
             st.rerun()
 
     # Restore student and page from query parameters if logged in and not already set in session state
@@ -54,15 +68,22 @@ def main() -> None:
                 st.session_state.page = st.query_params.get("page")
         if not st.session_state.get("user_role") and st.query_params.get("user_role"):
             st.session_state.user_role = st.query_params.get("user_role")
+        if not st.session_state.get("teacher_id") and st.query_params.get("teacher_id"):
+            st.session_state.teacher_id = st.query_params.get("teacher_id")
+            st.session_state.teacher_name = st.query_params.get("teacher_name")
+            st.session_state.teacher_username = st.query_params.get("teacher_username")
 
     is_logged_in = "true" if st.session_state.get("logged_in") else "false"
     is_manual_logout = "true" if st.session_state.pop("manual_logout", False) else "false"
     user_role_val = st.session_state.get("user_role") or "admin"
     student_id_val = st.session_state.get("student_id") or ""
     student_name_val = st.session_state.get("student_name") or ""
+    teacher_id_val = st.session_state.get("teacher_id") or ""
+    teacher_name_val = st.session_state.get("teacher_name") or ""
+    teacher_username_val = st.session_state.get("teacher_username") or ""
     sig_val = st.query_params.get("sig") or ""
     if st.session_state.get("logged_in") and not sig_val:
-        sig_val = generate_session_signature(user_role_val, student_id_val)
+        sig_val = generate_session_signature(user_role_val, student_id_val, teacher_id=teacher_id_val)
 
     iframe_js = """
         <script>
@@ -76,6 +97,9 @@ def main() -> None:
                 const userRole = "{user_role}";
                 const studentId = "{student_id}";
                 const studentName = "{student_name}";
+                const teacherId = "{teacher_id}";
+                const teacherName = "{teacher_name}";
+                const teacherUsername = "{teacher_username}";
                 const sig = "{sig}";
                 
                 if (isManualLogout) {
@@ -83,6 +107,9 @@ def main() -> None:
                     parentWin.localStorage.removeItem('mukhayyam_user_role');
                     parentWin.localStorage.removeItem('mukhayyam_student_id');
                     parentWin.localStorage.removeItem('mukhayyam_student_name');
+                    parentWin.localStorage.removeItem('mukhayyam_teacher_id');
+                    parentWin.localStorage.removeItem('mukhayyam_teacher_name');
+                    parentWin.localStorage.removeItem('mukhayyam_teacher_username');
                     parentWin.localStorage.removeItem('mukhayyam_sig');
                     
                     const url = new URL(parentWin.location.href);
@@ -90,6 +117,9 @@ def main() -> None:
                     url.searchParams.delete('user_role');
                     url.searchParams.delete('student_id');
                     url.searchParams.delete('student_name');
+                    url.searchParams.delete('teacher_id');
+                    url.searchParams.delete('teacher_name');
+                    url.searchParams.delete('teacher_username');
                     url.searchParams.delete('page');
                     url.searchParams.delete('sig');
                     parentWin.history.replaceState({}, '', url.toString());
@@ -103,6 +133,15 @@ def main() -> None:
                     } else {
                         parentWin.localStorage.removeItem('mukhayyam_student_id');
                         parentWin.localStorage.removeItem('mukhayyam_student_name');
+                    }
+                    if (teacherId) {
+                        parentWin.localStorage.setItem('mukhayyam_teacher_id', teacherId);
+                        parentWin.localStorage.setItem('mukhayyam_teacher_name', teacherName);
+                        parentWin.localStorage.setItem('mukhayyam_teacher_username', teacherUsername);
+                    } else {
+                        parentWin.localStorage.removeItem('mukhayyam_teacher_id');
+                        parentWin.localStorage.removeItem('mukhayyam_teacher_name');
+                        parentWin.localStorage.removeItem('mukhayyam_teacher_username');
                     }
                     
                     const url = new URL(parentWin.location.href);
@@ -125,6 +164,12 @@ def main() -> None:
                         url.searchParams.set('student_name', studentName);
                         urlChanged = true;
                     }
+                    if (teacherId && url.searchParams.get('teacher_id') !== teacherId) {
+                        url.searchParams.set('teacher_id', teacherId);
+                        url.searchParams.set('teacher_name', teacherName);
+                        url.searchParams.set('teacher_username', teacherUsername);
+                        urlChanged = true;
+                    }
                     
                     if (urlChanged) {
                         parentWin.history.replaceState({}, '', url.toString());
@@ -135,6 +180,9 @@ def main() -> None:
                         const storedRole = parentWin.localStorage.getItem('mukhayyam_user_role') || 'admin';
                         const storedStudentId = parentWin.localStorage.getItem('mukhayyam_student_id') || '';
                         const storedStudentName = parentWin.localStorage.getItem('mukhayyam_student_name') || '';
+                        const storedTeacherId = parentWin.localStorage.getItem('mukhayyam_teacher_id') || '';
+                        const storedTeacherName = parentWin.localStorage.getItem('mukhayyam_teacher_name') || '';
+                        const storedTeacherUsername = parentWin.localStorage.getItem('mukhayyam_teacher_username') || '';
                         const storedSig = parentWin.localStorage.getItem('mukhayyam_sig') || '';
                         
                         let urlChanged = false;
@@ -153,6 +201,12 @@ def main() -> None:
                         if (storedStudentId && url.searchParams.get('student_id') !== storedStudentId) {
                             url.searchParams.set('student_id', storedStudentId);
                             url.searchParams.set('student_name', storedStudentName);
+                            urlChanged = true;
+                        }
+                        if (storedTeacherId && url.searchParams.get('teacher_id') !== storedTeacherId) {
+                            url.searchParams.set('teacher_id', storedTeacherId);
+                            url.searchParams.set('teacher_name', storedTeacherName);
+                            url.searchParams.set('teacher_username', storedTeacherUsername);
                             urlChanged = true;
                         }
                         
@@ -280,6 +334,9 @@ def main() -> None:
         .replace("{user_role}", user_role_val)
         .replace("{student_id}", student_id_val)
         .replace("{student_name}", student_name_val)
+        .replace("{teacher_id}", teacher_id_val)
+        .replace("{teacher_name}", teacher_name_val)
+        .replace("{teacher_username}", teacher_username_val)
         .replace("{sig}", sig_val),
         height=1
     )
@@ -298,6 +355,8 @@ def main() -> None:
 
     # Render header when logged in
     user_role = st.session_state.get("user_role", "admin")
+    teacher_display_name = st.session_state.get("teacher_name") or ""
+    
     if user_role == "parent":
         header_cols = st.columns([7, 1.5, 1.5])
         with header_cols[0]:
@@ -309,6 +368,9 @@ def main() -> None:
                 st.session_state.logged_in = False
                 st.session_state.student_id = None
                 st.session_state.student_name = None
+                st.session_state.teacher_id = None
+                st.session_state.teacher_name = None
+                st.session_state.teacher_username = None
                 st.session_state.page = "home"
                 st.session_state.user_role = "admin"
                 st.query_params.clear()
@@ -320,10 +382,11 @@ def main() -> None:
         render_parent_report()
         return
 
-    # Render admin header when logged in
-    header_cols = st.columns([7, 1.5, 1.5])
+    # Render admin / teacher header when logged in
+    header_cols = st.columns([6.5, 1.8, 1.7])
     with header_cols[0]:
-        st.markdown("<h2 style='font-size: 1.15rem; margin: 0; padding: 2px 0; color: var(--emerald); font-weight: bold; font-family: sans-serif;'>Al Madrasa-tus-Saifiyah-tul-Burhaniyah</h2>", unsafe_allow_html=True)
+        teacher_badge = f"<span style='background: rgba(14, 107, 80, 0.12); color: var(--emerald); font-size: 0.8rem; padding: 2px 8px; border-radius: 6px; margin-left: 10px; font-weight: 600; vertical-align: middle;'>👨‍🏫 {teacher_display_name}</span>" if teacher_display_name else ""
+        st.markdown(f"<div style='display: flex; align-items: center;'><h2 style='font-size: 1.15rem; margin: 0; padding: 2px 0; color: var(--emerald); font-weight: bold; font-family: sans-serif;'>Al Madrasa-tus-Saifiyah-tul-Burhaniyah</h2>{teacher_badge}</div>", unsafe_allow_html=True)
     with header_cols[1]:
         st.markdown('<button id="fullscreen-toggle-btn" style="width: 100%; background: linear-gradient(180deg, var(--emerald), #0a4d3a); color: white; border: none; border-radius: 8px; padding: 2px 4px; font-weight: bold; cursor: pointer; font-size: 10px; height: 26px; min-height: 26px; line-height: 1.2; display: flex; align-items: center; justify-content: center; gap: 4px; font-family: sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.12);">📱 Fullscreen</button>', unsafe_allow_html=True)
     with header_cols[2]:
@@ -331,6 +394,9 @@ def main() -> None:
             st.session_state.logged_in = False
             st.session_state.student_id = None
             st.session_state.student_name = None
+            st.session_state.teacher_id = None
+            st.session_state.teacher_name = None
+            st.session_state.teacher_username = None
             st.session_state.page = "home"
             st.query_params.clear()
             st.session_state.manual_logout = True

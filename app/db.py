@@ -206,6 +206,138 @@ def create_student(*, full_name: str) -> Dict[str, Any]:
     return existing
 
 
+def authenticate_teacher(username: str, password: str) -> Optional[Dict[str, Any]]:
+    """
+    Authenticates a teacher against the teachers table.
+    Falls back to hardcoded Mushaf / Mushaf@53 common credential.
+    """
+    u_clean = (username or "").strip()
+    p_clean = (password or "").strip()
+    if not u_clean or not p_clean:
+        return None
+
+    # Check database teachers table
+    rest = get_rest()
+    if rest is not None:
+        try:
+            rows = rest.select(
+                "teachers",
+                select="id,username,full_name,password,role,is_active",
+                params={"username": f"ilike.{u_clean}", "is_active": "eq.true", "limit": "1"}
+            )
+            if rows:
+                teacher = rows[0]
+                if teacher.get("password") == p_clean:
+                    return {
+                        "id": str(teacher["id"]),
+                        "username": teacher.get("username", u_clean),
+                        "full_name": teacher.get("full_name", u_clean),
+                        "role": teacher.get("role", "teacher"),
+                    }
+        except Exception as e:
+            print(f"Teacher authentication DB error: {e}")
+
+    # Fallback to common Mushaf credential
+    if u_clean.lower() == "mushaf" and p_clean == "Mushaf@53":
+        return {
+            "id": "00000000-0000-0000-0000-000000000001",
+            "username": "mushaf",
+            "full_name": "Mushaf",
+            "role": "admin",
+        }
+
+    return None
+
+
+@st.cache_data(show_spinner=False, ttl=60)
+def list_active_teachers() -> List[Dict[str, Any]]:
+    """
+    Returns list of all active teachers.
+    """
+    rest = get_rest()
+    if rest is None:
+        return [{"id": "00000000-0000-0000-0000-000000000001", "username": "mushaf", "full_name": "Mushaf", "role": "admin"}]
+    try:
+        teachers = rest.select(
+            "teachers",
+            select="id,username,full_name,role,is_active,created_at",
+            params={"is_active": "eq.true", "order": "full_name.asc"}
+        )
+        if not teachers:
+            return [{"id": "00000000-0000-0000-0000-000000000001", "username": "mushaf", "full_name": "Mushaf", "role": "admin"}]
+        return teachers
+    except Exception as e:
+        print(f"Failed to list teachers: {e}")
+        return [{"id": "00000000-0000-0000-0000-000000000001", "username": "mushaf", "full_name": "Mushaf", "role": "admin"}]
+
+
+def log_teacher_tasmee_activity(*, teacher_id: Optional[str] = None, teacher_name: Optional[str] = None, activity_date: Optional[str] = None) -> None:
+    """
+    Records the first tasmee start timestamp and session count for a teacher on a specific date.
+    Uses atomic upsert to prevent 409 conflict errors across concurrent threads.
+    """
+    rest = get_rest()
+    if rest is None:
+        return
+
+    t_name = teacher_name or st.session_state.get("teacher_name", "Mushaf")
+    t_id = teacher_id or st.session_state.get("teacher_id", "00000000-0000-0000-0000-000000000001")
+    act_date = activity_date or today_iso()
+
+    def _bg_log():
+        try:
+            # Check existing attendance log for today
+            existing = rest.select(
+                "teacher_attendance_logs",
+                select="id,sessions_count",
+                params={"teacher_id": f"eq.{t_id}", "activity_date": f"eq.{act_date}"}
+            )
+            if existing:
+                row_id = existing[0]["id"]
+                curr_count = int(existing[0].get("sessions_count") or 1)
+                rest.update(
+                    "teacher_attendance_logs",
+                    match={"id": row_id},
+                    patch={"sessions_count": curr_count + 1, "updated_at": now_utc_iso()}
+                )
+            else:
+                try:
+                    rest.upsert(
+                        "teacher_attendance_logs",
+                        [{
+                            "teacher_id": t_id,
+                            "teacher_name": t_name,
+                            "activity_date": act_date,
+                            "first_tasmee_at": now_utc_iso(),
+                            "sessions_count": 1,
+                            "created_at": now_utc_iso(),
+                            "updated_at": now_utc_iso()
+                        }],
+                        on_conflict="teacher_id,activity_date",
+                        returning="minimal"
+                    )
+                except Exception:
+                    # Fallback on concurrent conflict: update existing record
+                    existing_retry = rest.select(
+                        "teacher_attendance_logs",
+                        select="id,sessions_count",
+                        params={"teacher_id": f"eq.{t_id}", "activity_date": f"eq.{act_date}"}
+                    )
+                    if existing_retry:
+                        row_id = existing_retry[0]["id"]
+                        curr_count = int(existing_retry[0].get("sessions_count") or 1)
+                        rest.update(
+                            "teacher_attendance_logs",
+                            match={"id": row_id},
+                            patch={"sessions_count": curr_count + 1, "updated_at": now_utc_iso()}
+                        )
+        except Exception:
+            pass
+
+    t = threading.Thread(target=_bg_log, daemon=True)
+    t.start()
+
+
 def create_listening_session(
     *,
     student_id: str,
@@ -213,10 +345,15 @@ def create_listening_session(
     surah_id: Optional[int],
     page_number: Optional[int],
     force_new: bool = False,
+    teacher_id: Optional[str] = None,
+    teacher_name: Optional[str] = None,
 ) -> Dict[str, Any]:
     rest = get_rest()
     if rest is None:
         raise RuntimeError("Supabase is not configured. Set SUPABASE_URL and SUPABASE_KEY in Streamlit secrets.")
+
+    t_id = teacher_id or st.session_state.get("teacher_id") or "00000000-0000-0000-0000-000000000001"
+    t_name = teacher_name or st.session_state.get("teacher_name") or "Mushaf"
 
     if not force_new:
         params = {
@@ -237,8 +374,10 @@ def create_listening_session(
         params["order"] = "created_at.desc"
         params["limit"] = "1"
         
-        existing = rest.select("listening_sessions", select="id,mode,surah_id,page_number,created_at", params=params)
+        existing = rest.select("listening_sessions", select="id,mode,surah_id,page_number,teacher_id,teacher_name,created_at", params=params)
         if existing:
+            # Log attendance activity for the active teacher
+            log_teacher_tasmee_activity(teacher_id=t_id, teacher_name=t_name, activity_date=today_iso())
             return existing[0]
 
     payload: Dict[str, Any] = {
@@ -247,9 +386,20 @@ def create_listening_session(
         "mode": mode,
         "surah_id": surah_id,
         "page_number": page_number,
+        "teacher_id": t_id,
+        "teacher_name": t_name,
         "created_at": now_utc_iso(),
     }
-    res = rest.insert("listening_sessions", [payload])
+    try:
+        res = rest.insert("listening_sessions", [payload])
+    except Exception:
+        # Fallback if teacher_id/teacher_name columns not created in DB yet
+        payload_fb = dict(payload)
+        payload_fb.pop("teacher_id", None)
+        payload_fb.pop("teacher_name", None)
+        res = rest.insert("listening_sessions", [payload_fb])
+
+    log_teacher_tasmee_activity(teacher_id=t_id, teacher_name=t_name, activity_date=today_iso())
     clear_all_read_caches()
     return res[0]
 
@@ -645,12 +795,21 @@ def _bg_update_mistake(rest: SupabaseRest, session_id: str, kind: str, counts: D
         logging.error(f"Background database update error: {e}")
 
 
-def insert_jadeed_rows(*, student_id: str, rows: List[Dict[str, Any]], no_jadeed_reasons: Optional[Dict[str, bool]] = None) -> None:
+def insert_jadeed_rows(
+    *,
+    student_id: str,
+    rows: List[Dict[str, Any]],
+    no_jadeed_reasons: Optional[Dict[str, bool]] = None,
+    teacher_id: Optional[str] = None,
+    teacher_name: Optional[str] = None,
+) -> None:
     rest = get_rest()
     if rest is None:
         raise RuntimeError("Supabase is not configured.")
 
     date_today = today_iso()
+    t_id = teacher_id or st.session_state.get("teacher_id") or "00000000-0000-0000-0000-000000000001"
+    t_name = teacher_name or st.session_state.get("teacher_name") or "Mushaf"
 
     # Step 1: Delete existing entries for this student on this day
     rest.delete("jadeed_entries", match={"student_id": student_id, "activity_date": date_today})
@@ -673,6 +832,8 @@ def insert_jadeed_rows(*, student_id: str, rows: List[Dict[str, Any]], no_jadeed
                 "duration_seconds": int(r.get("duration_seconds", 0) or 0),
                 "weak_murajat": bool(r.get("weak_murajat", False)),
                 "weak_juzulhali": bool(r.get("weak_juzulhali", False)),
+                "teacher_id": t_id,
+                "teacher_name": t_name,
             })
 
         import concurrent.futures
@@ -699,12 +860,14 @@ def insert_jadeed_rows(*, student_id: str, rows: List[Dict[str, Any]], no_jadeed
                 f1.result()
                 f2.result()
             except Exception:
-                # Fallback if weak_murajat / weak_juzulhali columns are not created in DB yet
+                # Fallback if weak flags or teacher columns are not created in DB yet
                 insert_rows_fb = []
                 for r in insert_rows:
                     rfb = dict(r)
                     rfb.pop("weak_murajat", None)
                     rfb.pop("weak_juzulhali", None)
+                    rfb.pop("teacher_id", None)
+                    rfb.pop("teacher_name", None)
                     insert_rows_fb.append(rfb)
                 f1 = executor.submit(rest.insert, "jadeed_entries", insert_rows_fb, returning="minimal")
                 f2 = executor.submit(
@@ -742,14 +905,25 @@ def insert_jadeed_rows(*, student_id: str, rows: List[Dict[str, Any]], no_jadeed
                 on_conflict="student_id,activity_date",
                 returning="minimal",
             )
+
+    log_teacher_tasmee_activity(teacher_id=t_id, teacher_name=t_name, activity_date=date_today)
     clear_all_read_caches()
 
 
-def mark_no_jadeed_today(*, student_id: str, reasons: Optional[Dict[str, bool]] = None) -> None:
+def mark_no_jadeed_today(
+    *,
+    student_id: str,
+    reasons: Optional[Dict[str, bool]] = None,
+    teacher_id: Optional[str] = None,
+    teacher_name: Optional[str] = None,
+) -> None:
     rest = get_rest()
     if rest is None:
         raise RuntimeError("Supabase is not configured.")
     date_today = today_iso()
+    t_id = teacher_id or st.session_state.get("teacher_id") or "00000000-0000-0000-0000-000000000001"
+    t_name = teacher_name or st.session_state.get("teacher_name") or "Mushaf"
+
     rest.delete("jadeed_entries", match={"student_id": student_id, "activity_date": date_today})
     r = reasons or {}
     try:
@@ -776,6 +950,8 @@ def mark_no_jadeed_today(*, student_id: str, reasons: Optional[Dict[str, bool]] 
             on_conflict="student_id,activity_date",
             returning="minimal",
         )
+
+    log_teacher_tasmee_activity(teacher_id=t_id, teacher_name=t_name, activity_date=date_today)
     clear_all_read_caches()
 
 
@@ -892,10 +1068,21 @@ def list_jadeed_mistake_history(*, student_id: str, limit: int = 300) -> List[Di
     return combined[:limit]
 
 
-def upsert_takhteet_today(*, student_id: str, murajat_text_raw: str, juzulhali_text_raw: str, jadeed_text_raw: str) -> None:
+def upsert_takhteet_today(
+    *,
+    student_id: str,
+    murajat_text_raw: str,
+    juzulhali_text_raw: str,
+    jadeed_text_raw: str,
+    teacher_id: Optional[str] = None,
+    teacher_name: Optional[str] = None,
+) -> None:
     rest = get_rest()
     if rest is None:
         raise RuntimeError("Supabase is not configured.")
+
+    t_id = teacher_id or st.session_state.get("teacher_id") or "00000000-0000-0000-0000-000000000001"
+    t_name = teacher_name or st.session_state.get("teacher_name") or "Mushaf"
 
     row = {
         "student_id": student_id,
@@ -906,9 +1093,19 @@ def upsert_takhteet_today(*, student_id: str, murajat_text_raw: str, juzulhali_t
         "murajat_text_clean": normalize_text(murajat_text_raw),
         "juzulhali_text_clean": normalize_text(juzulhali_text_raw),
         "jadeed_text_clean": normalize_text(jadeed_text_raw),
+        "teacher_id": t_id,
+        "teacher_name": t_name,
         "updated_at": now_utc_iso(),
     }
-    rest.upsert("takhteet_daily", [row], on_conflict="student_id,activity_date", returning="minimal")
+    try:
+        rest.upsert("takhteet_daily", [row], on_conflict="student_id,activity_date", returning="minimal")
+    except Exception:
+        row_fb = dict(row)
+        row_fb.pop("teacher_id", None)
+        row_fb.pop("teacher_name", None)
+        rest.upsert("takhteet_daily", [row_fb], on_conflict="student_id,activity_date", returning="minimal")
+
+    log_teacher_tasmee_activity(teacher_id=t_id, teacher_name=t_name, activity_date=today_iso())
     clear_all_read_caches()
 
 
@@ -2664,6 +2861,270 @@ def get_student_page_listening_history(
         })
 
     return history
+
+
+@st.cache_data(show_spinner=False, ttl=30)
+def fetch_teacher_attendance_report(
+    *,
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None,
+    target_date: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """
+    Fetches teacher attendance and tasmee productivity data for a single date or date range.
+    Returns list of dicts with present_days, absent_days, total_working_days, first_tasmee_at, students_handled.
+    """
+    rest = get_rest()
+    if rest is None:
+        return []
+
+    # Normalize dates
+    if target_date and not from_date:
+        from_date = target_date
+        to_date = target_date
+    elif from_date and not to_date:
+        to_date = from_date
+    elif not from_date:
+        from_date = today_iso()
+        to_date = today_iso()
+
+    # Calculate total working days in range (excluding Sundays if multi-day range)
+    try:
+        from datetime import datetime, date, timedelta, timezone
+        d_start = datetime.strptime(from_date, "%Y-%m-%d").date()
+        d_end = datetime.strptime(to_date, "%Y-%m-%d").date()
+        if d_start > d_end:
+            d_start, d_end = d_end, d_start
+            from_date, to_date = to_date, from_date
+        days_diff = (d_end - d_start).days + 1
+        if days_diff > 1:
+            working_days = [d_start + timedelta(days=i) for i in range(days_diff) if (d_start + timedelta(days=i)).weekday() != 6]
+            total_working_days = len(working_days)
+        else:
+            total_working_days = 1
+    except Exception:
+        total_working_days = 1
+
+    teachers = list_active_teachers()
+    
+    # Query parameters
+    if from_date == to_date:
+        q_params = {"activity_date": f"eq.{from_date}"}
+    else:
+        q_params = {"and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})"}
+
+    # Concurrently fetch attendance logs and sessions for the date range
+    import concurrent.futures
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
+        fut_logs = executor.submit(
+            rest.select,
+            "teacher_attendance_logs",
+            select="teacher_id,teacher_name,activity_date,first_tasmee_at,sessions_count",
+            params=q_params
+        )
+        fut_sessions = executor.submit(
+            rest.select,
+            "listening_sessions",
+            select="id,teacher_id,teacher_name,activity_date,mode,page_number,created_at,student_id,students(full_name)",
+            params=q_params
+        )
+        fut_jadeed = executor.submit(
+            rest.select,
+            "jadeed_entries",
+            select="id,teacher_id,teacher_name,activity_date,page_number,created_at,student_id,students(full_name)",
+            params=q_params
+        )
+        fut_takhteet = executor.submit(
+            rest.select,
+            "takhteet_daily",
+            select="student_id,teacher_id,teacher_name,activity_date,updated_at,students(full_name)",
+            params=q_params
+        )
+
+        try:
+            att_logs = fut_logs.result()
+        except Exception:
+            att_logs = []
+        try:
+            session_rows = fut_sessions.result()
+        except Exception:
+            session_rows = []
+        try:
+            jadeed_rows = fut_jadeed.result()
+        except Exception:
+            jadeed_rows = []
+        try:
+            takhteet_rows = fut_takhteet.result()
+        except Exception:
+            takhteet_rows = []
+
+    # Map logs by teacher_id and teacher_name (lower)
+    log_map_name = {str(l.get("teacher_name", "")).strip().lower(): l for l in att_logs if l.get("teacher_name")}
+
+    # Build per-teacher stats
+    stats: Dict[str, Dict[str, Any]] = {}
+    for t in teachers:
+        t_id = str(t.get("id"))
+        t_name = t.get("full_name", t.get("username", "Teacher"))
+        stats[t_id] = {
+            "teacher_id": t_id,
+            "teacher_name": t_name,
+            "teacher_username": t.get("username", ""),
+            "present_dates": set(),
+            "is_present": False,
+            "first_tasmee_at": "-",
+            "first_tasmee_raw": None,
+            "total_sessions": 0,
+            "murajat_count": 0,
+            "juzulhali_count": 0,
+            "jadeed_count": 0,
+            "takhteet_count": 0,
+            "students_handled": set(),
+        }
+
+    # Process attendance logs
+    for l in att_logs:
+        t_id = str(l.get("teacher_id"))
+        t_name = str(l.get("teacher_name", ""))
+        first_at = l.get("first_tasmee_at")
+        act_d = str(l.get("activity_date") or from_date)
+        
+        target = stats.get(t_id)
+        if not target and t_name.strip().lower() in log_map_name:
+            for s_item in stats.values():
+                if s_item["teacher_name"].strip().lower() == t_name.strip().lower():
+                    target = s_item
+                    break
+        if target:
+            target["is_present"] = True
+            target["present_dates"].add(act_d)
+            if first_at and (not target["first_tasmee_raw"] or first_at < target["first_tasmee_raw"]):
+                target["first_tasmee_raw"] = first_at
+
+    # Process listening sessions
+    for s in session_rows:
+        t_id = str(s.get("teacher_id") or "")
+        t_name = str(s.get("teacher_name") or "Mushaf")
+        created_at = s.get("created_at")
+        act_d = str(s.get("activity_date") or from_date)
+        mode = s.get("mode")
+        
+        stud = s.get("students") or {}
+        if isinstance(stud, list): stud = stud[0] if stud else {}
+        s_name = stud.get("full_name")
+
+        target = stats.get(t_id)
+        if not target:
+            for s_item in stats.values():
+                if s_item["teacher_name"].strip().lower() == t_name.strip().lower():
+                    target = s_item
+                    break
+        if target:
+            target["is_present"] = True
+            target["present_dates"].add(act_d)
+            target["total_sessions"] += 1
+            if mode == "murajat":
+                target["murajat_count"] += 1
+            elif mode == "juzulhali":
+                target["juzulhali_count"] += 1
+            if s_name:
+                target["students_handled"].add(s_name)
+            if created_at and (not target["first_tasmee_raw"] or created_at < target["first_tasmee_raw"]):
+                target["first_tasmee_raw"] = created_at
+
+    # Process jadeed entries
+    for j in jadeed_rows:
+        t_id = str(j.get("teacher_id") or "")
+        t_name = str(j.get("teacher_name") or "Mushaf")
+        created_at = j.get("created_at")
+        act_d = str(j.get("activity_date") or from_date)
+
+        stud = j.get("students") or {}
+        if isinstance(stud, list): stud = stud[0] if stud else {}
+        s_name = stud.get("full_name")
+
+        target = stats.get(t_id)
+        if not target:
+            for s_item in stats.values():
+                if s_item["teacher_name"].strip().lower() == t_name.strip().lower():
+                    target = s_item
+                    break
+        if target:
+            target["is_present"] = True
+            target["present_dates"].add(act_d)
+            target["total_sessions"] += 1
+            target["jadeed_count"] += 1
+            if s_name:
+                target["students_handled"].add(s_name)
+            if created_at and (not target["first_tasmee_raw"] or created_at < target["first_tasmee_raw"]):
+                target["first_tasmee_raw"] = created_at
+
+    # Process takhteet entries
+    for tk in takhteet_rows:
+        t_id = str(tk.get("teacher_id") or "")
+        t_name = str(tk.get("teacher_name") or "Mushaf")
+        updated_at = tk.get("updated_at")
+        act_d = str(tk.get("activity_date") or from_date)
+
+        stud = tk.get("students") or {}
+        if isinstance(stud, list): stud = stud[0] if stud else {}
+        s_name = stud.get("full_name")
+
+        target = stats.get(t_id)
+        if not target:
+            for s_item in stats.values():
+                if s_item["teacher_name"].strip().lower() == t_name.strip().lower():
+                    target = s_item
+                    break
+        if target:
+            target["is_present"] = True
+            target["present_dates"].add(act_d)
+            target["takhteet_count"] += 1
+            if s_name:
+                target["students_handled"].add(s_name)
+            if updated_at and (not target["first_tasmee_raw"] or updated_at < target["first_tasmee_raw"]):
+                target["first_tasmee_raw"] = updated_at
+
+    # Format result
+    result = []
+    for item in stats.values():
+        raw_ts = item["first_tasmee_raw"]
+        time_str = "-"
+        if raw_ts:
+            try:
+                from datetime import datetime, timezone
+                cleaned = raw_ts.replace("Z", "+00:00")
+                dt = datetime.fromisoformat(cleaned)
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                local_dt = dt.astimezone()
+                time_str = local_dt.strftime("%I:%M %p").lstrip("0")
+            except Exception:
+                time_str = str(raw_ts)[:16]
+        
+        present_cnt = len(item["present_dates"])
+        absent_cnt = max(0, total_working_days - present_cnt)
+
+        result.append({
+            "teacher_id": item["teacher_id"],
+            "teacher_name": item["teacher_name"],
+            "teacher_username": item["teacher_username"],
+            "is_present": present_cnt > 0,
+            "present_days": present_cnt,
+            "absent_days": absent_cnt,
+            "total_working_days": total_working_days,
+            "first_tasmee_at": time_str,
+            "first_tasmee_raw": raw_ts,
+            "total_sessions": item["total_sessions"],
+            "murajat_count": item["murajat_count"],
+            "juzulhali_count": item["juzulhali_count"],
+            "jadeed_count": item["jadeed_count"],
+            "takhteet_count": item["takhteet_count"],
+            "students_handled": sorted(list(item["students_handled"])),
+        })
+
+    result.sort(key=lambda x: (-x["present_days"], x["teacher_name"]))
+    return result
 
 
 
