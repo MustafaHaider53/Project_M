@@ -3,8 +3,8 @@ import streamlit as st
 
 def render_login() -> None:
     # Try to get credentials from st.secrets first, fallback to hardcoded values
-    CORRECT_USERNAME = "Mushaf"
-    CORRECT_PASSWORD = "Mushaf@53"
+    CORRECT_USERNAME = "Burooj"
+    CORRECT_PASSWORD = "Burooj@53"
 
     if "credentials" in st.secrets:
         CORRECT_USERNAME = st.secrets.credentials.get("username", CORRECT_USERNAME)

@@ -237,12 +237,12 @@ def authenticate_teacher(username: str, password: str) -> Optional[Dict[str, Any
         except Exception as e:
             print(f"Teacher authentication DB error: {e}")
 
-    # Fallback to common Mushaf credential
-    if u_clean.lower() == "mushaf" and p_clean == "Mushaf@53":
+    # Fallback to common Burooj credential
+    if u_clean.lower() == "burooj" and p_clean == "Burooj@53":
         return {
             "id": "00000000-0000-0000-0000-000000000001",
-            "username": "mushaf",
-            "full_name": "Mushaf",
+            "username": "burooj",
+            "full_name": "Burooj",
             "role": "admin",
         }
 
