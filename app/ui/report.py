@@ -549,25 +549,29 @@ def render_parent_views_dashboard() -> None:
 
 
 def render_email_log_dashboard() -> None:
-    from app.db import get_daily_email_status
-    
-    st.markdown("### ✉️ Daily Email Dispatch Status")
-    st.caption("Track which students have received their daily recitation progress or absence emails today.")
+    from app.db import get_daily_email_status, send_single_student_daily_email
 
-    # Select Date
-    col_date, _ = st.columns([2, 2])
+    st.markdown("### ✉️ Daily Email Dispatch Status & Actions")
+    st.caption("Track daily recitation entries (Murajat, Juzulhali, Jadeed, Takhteet) and dispatch progress or absence emails directly.")
+
+    # Select Date & Refresh
+    col_date, col_btn = st.columns([2, 2])
     with col_date:
         selected_date = st.date_input(
             "Select Date:",
             value=date.today(),
             key="email_log_date_input"
         )
-        
+    with col_btn:
+        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+        if st.button("🔄 Refresh Status", key="refresh_email_log_btn"):
+            st.rerun()
+
     date_str = selected_date.isoformat()
-    
-    with st.spinner("Fetching email status..."):
+
+    with st.spinner("Fetching email status & activity records..."):
         logs = get_daily_email_status(date_str)
-        
+
     if not logs:
         st.info("No students found in the database.")
         return
@@ -576,16 +580,16 @@ def render_email_log_dashboard() -> None:
     total = len(logs)
     sent_count = sum(1 for l in logs if l["sent"])
     not_sent_count = total - sent_count
-    
-    # Render premium summary cards
+
+    # Render summary cards
     st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
     col_stats = st.columns(3)
     with col_stats[0]:
         st.markdown(
             f"""
-            <div style='background-color: var(--card); border: 1.5px solid var(--border); padding: 15px; border-radius: 8px; text-align: center;'>
-                <div style='font-size: 0.85rem; color: var(--ink); opacity: 0.7; font-weight: 500;'>Total Students</div>
-                <div style='font-size: 1.8rem; font-weight: bold; color: var(--ink); margin-top: 5px;'>{total}</div>
+            <div style='background-color: var(--card); border: 1.5px solid var(--border); padding: 14px; border-radius: 8px; text-align: center;'>
+                <div style='font-size: 0.82rem; color: var(--ink); opacity: 0.7; font-weight: 500;'>Total Students</div>
+                <div style='font-size: 1.7rem; font-weight: bold; color: var(--ink); margin-top: 4px;'>{total}</div>
             </div>
             """.replace("\n", " "),
             unsafe_allow_html=True
@@ -593,9 +597,9 @@ def render_email_log_dashboard() -> None:
     with col_stats[1]:
         st.markdown(
             f"""
-            <div style='background-color: rgba(16, 185, 129, 0.08); border: 1.5px solid #10b981; padding: 15px; border-radius: 8px; text-align: center;'>
-                <div style='font-size: 0.85rem; color: #0f766e; font-weight: 500;'>Sent Successfully</div>
-                <div style='font-size: 1.8rem; font-weight: bold; color: #0f766e; margin-top: 5px;'>🟢 {sent_count}</div>
+            <div style='background-color: rgba(16, 185, 129, 0.08); border: 1.5px solid #10b981; padding: 14px; border-radius: 8px; text-align: center;'>
+                <div style='font-size: 0.82rem; color: #0f766e; font-weight: 500;'>Sent Successfully</div>
+                <div style='font-size: 1.7rem; font-weight: bold; color: #0f766e; margin-top: 4px;'>🟢 {sent_count}</div>
             </div>
             """.replace("\n", " "),
             unsafe_allow_html=True
@@ -603,73 +607,161 @@ def render_email_log_dashboard() -> None:
     with col_stats[2]:
         st.markdown(
             f"""
-            <div style='background-color: rgba(239, 68, 68, 0.08); border: 1.5px solid #ef4444; padding: 15px; border-radius: 8px; text-align: center;'>
-                <div style='font-size: 0.85rem; color: #b91c1c; font-weight: 500;'>Not Sent</div>
-                <div style='font-size: 1.8rem; font-weight: bold; color: #b91c1c; margin-top: 5px;'>🔴 {not_sent_count}</div>
+            <div style='background-color: rgba(239, 68, 68, 0.08); border: 1.5px solid #ef4444; padding: 14px; border-radius: 8px; text-align: center;'>
+                <div style='font-size: 0.82rem; color: #b91c1c; font-weight: 500;'>Not Sent</div>
+                <div style='font-size: 1.7rem; font-weight: bold; color: #b91c1c; margin-top: 4px;'>🔴 {not_sent_count}</div>
             </div>
             """.replace("\n", " "),
             unsafe_allow_html=True
         )
 
     st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
-    
-    # Search / filter
-    search_query = st.text_input("🔍 Search Student:", value="", key="email_log_search")
-    
+
+    # Filter & Bulk Actions Bar
+    col_filter, col_bulk = st.columns([3, 2])
+    with col_filter:
+        status_filter = st.pills(
+            "Filter by Status:",
+            options=[f"All ({total})", f"🔴 Unsent ({not_sent_count})", f"🟢 Sent ({sent_count})"],
+            default=f"All ({total})",
+            key="email_log_status_pills"
+        )
+    with col_bulk:
+        unsent_with_email = [l for l in logs if not l["sent"] and l["has_email"]]
+        if unsent_with_email:
+            st.markdown("<div style='height: 25px;'></div>", unsafe_allow_html=True)
+            if st.button(f"⚡ Send to All Unsent ({len(unsent_with_email)})", type="primary", width="stretch", key="btn_bulk_send_all"):
+                progress_bar = st.progress(0, text="Starting bulk email dispatch...")
+                success_count = 0
+                fail_count = 0
+                for idx, item in enumerate(unsent_with_email):
+                    progress_bar.progress(
+                        (idx + 1) / len(unsent_with_email),
+                        text=f"Sending email ({idx+1}/{len(unsent_with_email)}): {item['student_name']}..."
+                    )
+                    ok, _ = send_single_student_daily_email(student_id=item["student_id"], date_str=date_str)
+                    if ok:
+                        success_count += 1
+                    else:
+                        fail_count += 1
+                progress_bar.empty()
+                if fail_count == 0:
+                    st.success(f"🎉 Successfully dispatched {success_count} emails!")
+                else:
+                    st.warning(f"Dispatched {success_count} emails successfully, {fail_count} failed.")
+                st.rerun()
+
+    # Search bar
+    search_query = st.text_input("🔍 Search Student:", value="", key="email_log_search", placeholder="Type student name...")
+
+    # Filter list
     filtered_logs = logs
+    if status_filter == f"🔴 Unsent ({not_sent_count})":
+        filtered_logs = [l for l in filtered_logs if not l["sent"]]
+    elif status_filter == f"🟢 Sent ({sent_count})":
+        filtered_logs = [l for l in filtered_logs if l["sent"]]
+
     if search_query.strip():
         q = search_query.strip().lower()
-        filtered_logs = [l for l in logs if q in l["student_name"].lower()]
+        filtered_logs = [l for l in filtered_logs if q in l["student_name"].lower()]
 
-    # Construct HTML Table
-    header_html = """
-    <th style="padding: 12px; font-weight: bold; text-align: left; background-color: #F7EFD8; border-bottom: 2px solid var(--border);">👤 Student Name</th>
-    <th style="padding: 12px; font-weight: bold; text-align: left; background-color: #F7EFD8; border-bottom: 2px solid var(--border);">✉️ Email Address</th>
-    <th style="padding: 12px; font-weight: bold; text-align: center; background-color: #F7EFD8; border-bottom: 2px solid var(--border);">🚦 Status</th>
-    """
-    
-    rows_html = ""
-    for l in filtered_logs:
-        name = l["student_name"]
-        email = l["student_email"]
-        sent = l["sent"]
-        
-        # Format status indicator
-        if sent:
-            status_html = '<span style="background-color: rgba(16, 185, 129, 0.15); color: #10b981; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold;">🟢 Sent</span>'
-        else:
-            status_html = '<span style="background-color: rgba(239, 68, 68, 0.15); color: #ef4444; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold;">🔴 Not Sent</span>'
-            
-        rows_html += f"""
-        <tr style="border-bottom: 1px solid var(--border); font-size: 0.88rem;">
-            <td style="padding: 12px; font-weight: 600;">{name}</td>
-            <td style="padding: 12px; opacity: 0.85;">{email}</td>
-            <td style="padding: 12px; text-align: center;">{status_html}</td>
-        </tr>
-        """
-        
+    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
+
     if not filtered_logs:
-        rows_html = f"""
-        <tr>
-            <td colspan="3" style="padding: 20px; text-align: center; font-style: italic; color: var(--ink); opacity: 0.6;">
-                No students found matching your search.
-            </td>
-        </tr>
+        st.info("No students found matching the selected filters.")
+        return
+
+    # Table Header
+    st.markdown(
         """
-        
-    table_html = f"""
-    <div style="overflow: auto; border: 1px solid var(--border); border-radius: 8px; background-color: var(--card);">
-      <table style="width: 100%; border-collapse: collapse; text-align: left; font-family: system-ui, -apple-system, sans-serif; line-height: 1.4;">
-        <thead>
-          <tr style="background-color: var(--card);">
-            {header_html}
-          </tr>
-        </thead>
-        <tbody>
-          {rows_html}
-        </tbody>
-      </table>
-    </div>
-    """
-    
-    st.markdown(table_html.replace("\n", " "), unsafe_allow_html=True)
+        <div style="background-color: #F7EFD8; border: 1px solid var(--border); border-radius: 8px 8px 0 0; padding: 10px 14px; margin-bottom: 4px;">
+            <div style="display: flex; align-items: center; font-size: 0.85rem; font-weight: bold; color: var(--ink);">
+                <div style="flex: 2.6; min-width: 140px;">👤 Student Name</div>
+                <div style="flex: 2.2; min-width: 130px;">✉️ Email Address</div>
+                <div style="flex: 0.8; text-align: center;">Murajat</div>
+                <div style="flex: 0.8; text-align: center;">Juzulhali</div>
+                <div style="flex: 0.8; text-align: center;">Jadeed</div>
+                <div style="flex: 0.8; text-align: center;">Takhteet</div>
+                <div style="flex: 1.1; text-align: center;">Status</div>
+                <div style="flex: 1.2; text-align: center;">Action</div>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # Render Student Rows
+    for l in filtered_logs:
+        s_id = l["student_id"]
+        s_name = l["student_name"]
+        s_email = l["student_email"]
+        has_email = l["has_email"]
+        sent = l["sent"]
+        is_absent = l["is_absent"]
+
+        with st.container():
+            c_name, c_email, c_m, c_jh, c_jd, c_t, c_status, c_act = st.columns([2.6, 2.2, 0.8, 0.8, 0.8, 0.8, 1.1, 1.2])
+            
+            with c_name:
+                absent_badge = '<span style="background-color: rgba(239, 68, 68, 0.12); color: #dc2626; font-size: 10px; font-weight: bold; padding: 1px 5px; border-radius: 4px; margin-left: 4px;">Absent</span>' if is_absent else ''
+                st.markdown(f"<div style='padding-top: 6px; font-weight: 600; font-size: 0.88rem;'>{s_name} {absent_badge}</div>", unsafe_allow_html=True)
+                
+            with c_email:
+                if has_email:
+                    st.markdown(f"<div style='padding-top: 6px; font-size: 0.82rem; opacity: 0.85; word-break: break-all;'>{s_email}</div>", unsafe_allow_html=True)
+                else:
+                    st.markdown("<div style='padding-top: 6px; font-size: 0.80rem; color: #ef4444; font-weight: 500;'>⚠️ No Email</div>", unsafe_allow_html=True)
+                    
+            with c_m:
+                icon_m = "🟢" if l["has_murajat"] else "⚪"
+                label_m = "Yes" if l["has_murajat"] else "No"
+                color_m = "#10b981" if l["has_murajat"] else "gray"
+                st.markdown(f"<div style='text-align: center; padding-top: 6px; font-size: 0.82rem; color: {color_m};'>{icon_m} {label_m}</div>", unsafe_allow_html=True)
+                
+            with c_jh:
+                icon_jh = "🟢" if l["has_juzulhali"] else "⚪"
+                label_jh = "Yes" if l["has_juzulhali"] else "No"
+                color_jh = "#10b981" if l["has_juzulhali"] else "gray"
+                st.markdown(f"<div style='text-align: center; padding-top: 6px; font-size: 0.82rem; color: {color_jh};'>{icon_jh} {label_jh}</div>", unsafe_allow_html=True)
+                
+            with c_jd:
+                icon_jd = "🟢" if l["has_jadeed"] else "⚪"
+                label_jd = "Yes" if l["has_jadeed"] else "No"
+                color_jd = "#10b981" if l["has_jadeed"] else "gray"
+                st.markdown(f"<div style='text-align: center; padding-top: 6px; font-size: 0.82rem; color: {color_jd};'>{icon_jd} {label_jd}</div>", unsafe_allow_html=True)
+                
+            with c_t:
+                icon_t = "🟢" if l["has_takhteet"] else "⚪"
+                label_t = "Yes" if l["has_takhteet"] else "No"
+                color_t = "#10b981" if l["has_takhteet"] else "gray"
+                st.markdown(f"<div style='text-align: center; padding-top: 6px; font-size: 0.82rem; color: {color_t};'>{icon_t} {label_t}</div>", unsafe_allow_html=True)
+                
+            with c_status:
+                if sent:
+                    st.markdown("<div style='text-align: center; padding-top: 6px;'><span style='background-color: rgba(16, 185, 129, 0.15); color: #10b981; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;'>🟢 Sent</span></div>", unsafe_allow_html=True)
+                else:
+                    st.markdown("<div style='text-align: center; padding-top: 6px;'><span style='background-color: rgba(239, 68, 68, 0.15); color: #ef4444; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: bold;'>🔴 Unsent</span></div>", unsafe_allow_html=True)
+                    
+            with c_act:
+                if not has_email:
+                    st.button("No Email", disabled=True, key=f"btn_no_email_{s_id}", width="stretch")
+                elif not sent:
+                    if st.button("✉️ Send", type="primary", key=f"btn_send_{s_id}", width="stretch"):
+                        with st.spinner(f"Sending to {s_name}..."):
+                            ok, msg = send_single_student_daily_email(student_id=s_id, date_str=date_str)
+                            if ok:
+                                st.toast(f"✅ Email sent to {s_name}!", icon="✉️")
+                            else:
+                                st.error(f"❌ Failed to send email to {s_name}: {msg}")
+                            st.rerun()
+                else:
+                    if st.button("🔄 Resend", type="secondary", key=f"btn_resend_{s_id}", width="stretch"):
+                        with st.spinner(f"Resending to {s_name}..."):
+                            ok, msg = send_single_student_daily_email(student_id=s_id, date_str=date_str)
+                            if ok:
+                                st.toast(f"✅ Email resent to {s_name}!", icon="🔄")
+                            else:
+                                st.error(f"❌ Failed to resend email to {s_name}: {msg}")
+                            st.rerun()
+
+            st.markdown("<hr style='margin: 4px 0 6px 0; border: none; border-top: 1px solid rgba(184,137,23,0.15);'/>", unsafe_allow_html=True)

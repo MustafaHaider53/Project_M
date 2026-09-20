@@ -2227,23 +2227,76 @@ def get_daily_email_status(date_str: str) -> List[Dict[str, Any]]:
     if not client:
         return []
     try:
-        # Get all students
-        students = client.select("students", select="id,full_name,email")
-        # Get email logs for the specific date
-        logs = client.select("email_logs", select="student_id,sent", params={"activity_date": f"eq.{date_str}"})
-        
+        import concurrent.futures
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
+            fut_students = executor.submit(client.select, "students", select="id,full_name,email")
+            fut_logs = executor.submit(
+                client.select, "email_logs", select="student_id,sent", params={"activity_date": f"eq.{date_str}"}
+            )
+            fut_sessions = executor.submit(
+                client.select, "listening_sessions", select="student_id,mode", params={"activity_date": f"eq.{date_str}"}
+            )
+            fut_jadeed = executor.submit(
+                client.select, "jadeed_entries", select="student_id", params={"activity_date": f"eq.{date_str}"}
+            )
+            fut_daily = executor.submit(
+                client.select, "jadeed_daily", select="student_id,no_jadeed", params={"activity_date": f"eq.{date_str}"}
+            )
+            fut_takhteet = executor.submit(
+                client.select,
+                "takhteet_daily",
+                select="student_id,murajat_text_raw,juzulhali_text_raw,jadeed_text_raw,murajat_text_clean,juzulhali_text_clean,jadeed_text_clean",
+                params={"activity_date": f"eq.{date_str}"},
+            )
+
+            students = fut_students.result()
+            logs = fut_logs.result()
+            sessions = fut_sessions.result()
+            jadeed_entries = fut_jadeed.result()
+            jadeed_daily = fut_daily.result()
+            takhteet_rows = fut_takhteet.result()
+
         log_map = {l["student_id"]: l["sent"] for l in logs}
-        
+
+        murajat_students = {s["student_id"] for s in sessions if s.get("mode") == "murajat"}
+        juzulhali_students = {s["student_id"] for s in sessions if s.get("mode") == "juzulhali"}
+        jadeed_entry_students = {j["student_id"] for j in jadeed_entries}
+        no_jadeed_students = {jd["student_id"] for jd in jadeed_daily if jd.get("no_jadeed")}
+        jadeed_students = jadeed_entry_students | no_jadeed_students
+
+        takhteet_students = set()
+        for t in takhteet_rows:
+            m = str(t.get("murajat_text_raw") or t.get("murajat_text_clean") or "").strip()
+            j = str(t.get("juzulhali_text_raw") or t.get("juzulhali_text_clean") or "").strip()
+            jd = str(t.get("jadeed_text_raw") or t.get("jadeed_text_clean") or "").strip()
+            if m or j or jd:
+                takhteet_students.add(t.get("student_id"))
+
         result = []
         for s in students:
             # Exclude test students
             if "test" in s["full_name"].lower():
                 continue
-            is_sent = log_map.get(s["id"], False)
+            s_id = s["id"]
+            has_m = s_id in murajat_students
+            has_jh = s_id in juzulhali_students
+            has_jd = s_id in jadeed_students
+            has_t = s_id in takhteet_students
+            is_absent = not (has_m or has_jh or has_jd or has_t)
+            is_sent = log_map.get(s_id, False)
+
+            raw_email = (s.get("email") or "").strip()
             result.append({
-                "student_id": s["id"],
+                "student_id": s_id,
                 "student_name": s["full_name"],
-                "student_email": s["email"] or "No Email Registered",
+                "student_email": raw_email if raw_email else "No Email Registered",
+                "has_email": bool(raw_email),
+                "has_murajat": has_m,
+                "has_juzulhali": has_jh,
+                "has_jadeed": has_jd,
+                "has_takhteet": has_t,
+                "is_absent": is_absent,
                 "sent": is_sent,
             })
         # Sort by student name
@@ -2252,6 +2305,39 @@ def get_daily_email_status(date_str: str) -> List[Dict[str, Any]]:
     except Exception as e:
         print(f"Failed to get daily email status: {e}")
         return []
+
+
+def send_single_student_daily_email(*, student_id: str, date_str: str) -> Tuple[bool, str]:
+    """
+    Sends the daily recitation progress or absence email for a student on a specific date,
+    and records the result in email_logs.
+    """
+    from app.email_utils import send_daily_report_email
+
+    summary = get_student_daily_summary(student_id=student_id, date_str=date_str)
+    if not summary:
+        return False, "Could not load student summary."
+
+    t = summary.get("takhteet") or {}
+    t_has_hw = bool(
+        str(t.get("murajat_text_raw", "") or t.get("murajat_text_clean", "") or t.get("murajat", "") or "").strip()
+        or str(t.get("juzulhali_text_raw", "") or t.get("juzulhali_text_clean", "") or t.get("juzulhali", "") or "").strip()
+        or str(t.get("jadeed_text_raw", "") or t.get("jadeed_text_clean", "") or t.get("jadeed", "") or "").strip()
+    )
+
+    has_murajat = bool(summary.get("murajat"))
+    has_juzulhali = bool(summary.get("juzulhali"))
+    has_jadeed = bool(summary.get("jadeed") or summary.get("no_jadeed"))
+    has_records = bool(has_murajat or has_juzulhali or has_jadeed or t_has_hw)
+    is_absent = not has_records
+
+    success, msg = send_daily_report_email(summary=summary, is_absent=is_absent)
+    try:
+        log_email_status(student_id=student_id, activity_date=date_str, sent=success)
+    except Exception as ex:
+        print(f"Error logging email status: {ex}")
+
+    return success, msg
 
 
 def volume_to_page_weight(vol: Optional[str]) -> float:
