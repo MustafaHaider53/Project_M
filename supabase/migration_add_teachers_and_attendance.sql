@@ -21,10 +21,10 @@ begin
   end if;
 end $$;
 
--- 2. Insert Default 'mushaf' Admin and Teachers if not exists
+-- 2. Insert Default 'burooj' Admin and Teachers if not exists
 insert into public.teachers (username, full_name, password, role)
 values 
-  ('mushaf', 'Mushaf', 'Mushaf@53', 'admin'),
+  ('burooj', 'Burooj', 'Burooj@53', 'admin'),
   ('zahra', 'Zahra Mulla Mufaddal Ratlamwala', 'Zahra@53', 'teacher'),
   ('zahabiyah', 'Zahabiyah Saifuddin Anjarwala', 'Zahabiyah@53', 'teacher'),
   ('aliasgar', 'Aliasgar Mohammed Darussalamwala', 'Aliasgar@53', 'teacher'),
