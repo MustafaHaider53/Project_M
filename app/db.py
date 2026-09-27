@@ -164,6 +164,7 @@ def clear_all_read_caches() -> None:
         get_student_position_before_month.clear()
         get_student_monthly_actuals.clear()
         get_student_email.clear()
+        list_active_teachers.clear()
     except Exception:
         pass
 
@@ -206,17 +207,55 @@ def create_student(*, full_name: str) -> Dict[str, Any]:
     return existing
 
 
+@st.cache_data(show_spinner=False, ttl=300)
+def list_active_teachers() -> List[Dict[str, Any]]:
+    """
+    Returns list of all active teachers cached in memory.
+    """
+    rest = get_rest()
+    if rest is None:
+        return [{"id": "00000000-0000-0000-0000-000000000001", "username": "burooj", "full_name": "Burooj", "password": "Burooj@53", "role": "admin"}]
+    try:
+        teachers = rest.select(
+            "teachers",
+            select="id,username,full_name,password,role,is_active,created_at",
+            params={"is_active": "eq.true", "order": "full_name.asc"}
+        )
+        if not teachers:
+            return [{"id": "00000000-0000-0000-0000-000000000001", "username": "burooj", "full_name": "Burooj", "password": "Burooj@53", "role": "admin"}]
+        return teachers
+    except Exception as e:
+        print(f"Failed to list teachers: {e}")
+        return [{"id": "00000000-0000-0000-0000-000000000001", "username": "burooj", "full_name": "Burooj", "password": "Burooj@53", "role": "admin"}]
+
+
 def authenticate_teacher(username: str, password: str) -> Optional[Dict[str, Any]]:
     """
-    Authenticates a teacher against the teachers table.
-    Falls back to hardcoded Mushaf / Mushaf@53 common credential.
+    Authenticates a teacher against cached active teachers table in memory.
+    Falls back to direct DB lookup and hardcoded Burooj / Burooj@53 credential.
     """
     u_clean = (username or "").strip()
     p_clean = (password or "").strip()
     if not u_clean or not p_clean:
         return None
 
-    # Check database teachers table
+    u_lower = u_clean.lower()
+
+    # 1. Fast in-memory cached check
+    try:
+        cached_teachers = list_active_teachers()
+        for t in cached_teachers:
+            if t.get("username", "").strip().lower() == u_lower and t.get("password") == p_clean:
+                return {
+                    "id": str(t["id"]),
+                    "username": t.get("username", u_clean),
+                    "full_name": t.get("full_name", u_clean),
+                    "role": t.get("role", "teacher"),
+                }
+    except Exception:
+        pass
+
+    # 2. Fallback to direct DB query if not in cache
     rest = get_rest()
     if rest is not None:
         try:
@@ -237,8 +276,8 @@ def authenticate_teacher(username: str, password: str) -> Optional[Dict[str, Any
         except Exception as e:
             print(f"Teacher authentication DB error: {e}")
 
-    # Fallback to common Burooj credential
-    if u_clean.lower() == "burooj" and p_clean == "Burooj@53":
+    # 3. Fallback to common Burooj credential
+    if u_lower == "burooj" and p_clean == "Burooj@53":
         return {
             "id": "00000000-0000-0000-0000-000000000001",
             "username": "burooj",
@@ -247,28 +286,6 @@ def authenticate_teacher(username: str, password: str) -> Optional[Dict[str, Any
         }
 
     return None
-
-
-@st.cache_data(show_spinner=False, ttl=60)
-def list_active_teachers() -> List[Dict[str, Any]]:
-    """
-    Returns list of all active teachers.
-    """
-    rest = get_rest()
-    if rest is None:
-        return [{"id": "00000000-0000-0000-0000-000000000001", "username": "mushaf", "full_name": "Mushaf", "role": "admin"}]
-    try:
-        teachers = rest.select(
-            "teachers",
-            select="id,username,full_name,role,is_active,created_at",
-            params={"is_active": "eq.true", "order": "full_name.asc"}
-        )
-        if not teachers:
-            return [{"id": "00000000-0000-0000-0000-000000000001", "username": "mushaf", "full_name": "Mushaf", "role": "admin"}]
-        return teachers
-    except Exception as e:
-        print(f"Failed to list teachers: {e}")
-        return [{"id": "00000000-0000-0000-0000-000000000001", "username": "mushaf", "full_name": "Mushaf", "role": "admin"}]
 
 
 def log_teacher_tasmee_activity(*, teacher_id: Optional[str] = None, teacher_name: Optional[str] = None, activity_date: Optional[str] = None) -> None:
