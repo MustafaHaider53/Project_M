@@ -73,19 +73,7 @@ def main() -> None:
             st.session_state.teacher_name = st.query_params.get("teacher_name")
             st.session_state.teacher_username = st.query_params.get("teacher_username")
 
-    # 0. Check if user is logged in
-    if not st.session_state.get("logged_in"):
-        header_cols = st.columns([8.5, 1.5])
-        with header_cols[0]:
-            st.markdown("<h2 style='font-size: 1.15rem; margin: 0; padding: 2px 0; color: var(--emerald); font-weight: bold; font-family: sans-serif;'>Al Madrasa-tus-Saifiyah-tul-Burhaniyah</h2>", unsafe_allow_html=True)
-        with header_cols[1]:
-            st.markdown('<button id="fullscreen-toggle-btn" style="width: 100%; background: linear-gradient(180deg, var(--emerald), #0a4d3a); color: white; border: none; border-radius: 8px; padding: 2px 4px; font-weight: bold; cursor: pointer; font-size: 10px; height: 26px; min-height: 26px; line-height: 1.2; display: flex; align-items: center; justify-content: center; gap: 4px; font-family: sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.12);">📱 Fullscreen</button>', unsafe_allow_html=True)
-            
-        from app.ui.login import render_login
-        render_login()
-        return
-
-    is_logged_in = "true"
+    is_logged_in = "true" if st.session_state.get("logged_in") else "false"
     is_manual_logout = "true" if st.session_state.pop("manual_logout", False) else "false"
     user_role_val = st.session_state.get("user_role") or "admin"
     student_id_val = st.session_state.get("student_id") or ""
@@ -94,7 +82,7 @@ def main() -> None:
     teacher_name_val = st.session_state.get("teacher_name") or ""
     teacher_username_val = st.session_state.get("teacher_username") or ""
     sig_val = st.query_params.get("sig") or ""
-    if not sig_val:
+    if st.session_state.get("logged_in") and not sig_val:
         sig_val = generate_session_signature(user_role_val, student_id_val, teacher_id=teacher_id_val)
 
     iframe_js = """
@@ -104,6 +92,8 @@ def main() -> None:
                 const parentWin = window.parent;
                 
                 // Session Persistence Logic
+                const isLoggedIn = {is_logged_in};
+                const isManualLogout = {is_manual_logout};
                 const userRole = "{user_role}";
                 const studentId = "{student_id}";
                 const studentName = "{student_name}";
@@ -112,58 +102,121 @@ def main() -> None:
                 const teacherUsername = "{teacher_username}";
                 const sig = "{sig}";
                 
-                parentWin.localStorage.setItem('mukhayyam_logged_in', 'true');
-                parentWin.localStorage.setItem('mukhayyam_user_role', userRole);
-                parentWin.localStorage.setItem('mukhayyam_sig', sig);
-                if (studentId) {
-                    parentWin.localStorage.setItem('mukhayyam_student_id', studentId);
-                    parentWin.localStorage.setItem('mukhayyam_student_name', studentName);
-                } else {
+                if (isManualLogout) {
+                    parentWin.localStorage.removeItem('mukhayyam_logged_in');
+                    parentWin.localStorage.removeItem('mukhayyam_user_role');
                     parentWin.localStorage.removeItem('mukhayyam_student_id');
                     parentWin.localStorage.removeItem('mukhayyam_student_name');
-                }
-                if (teacherId) {
-                    parentWin.localStorage.setItem('mukhayyam_teacher_id', teacherId);
-                    parentWin.localStorage.setItem('mukhayyam_teacher_name', teacherName);
-                    parentWin.localStorage.setItem('mukhayyam_teacher_username', teacherUsername);
-                } else {
                     parentWin.localStorage.removeItem('mukhayyam_teacher_id');
                     parentWin.localStorage.removeItem('mukhayyam_teacher_name');
                     parentWin.localStorage.removeItem('mukhayyam_teacher_username');
-                }
-                
-                const url = new URL(parentWin.location.href);
-                let urlChanged = false;
-                
-                if (url.searchParams.get('logged_in') !== 'true') {
-                    url.searchParams.set('logged_in', 'true');
-                    urlChanged = true;
-                }
-                if (url.searchParams.get('user_role') !== userRole) {
-                    url.searchParams.set('user_role', userRole);
-                    urlChanged = true;
-                }
-                if (url.searchParams.get('sig') !== sig) {
-                    url.searchParams.set('sig', sig);
-                    urlChanged = true;
-                }
-                if (studentId && url.searchParams.get('student_id') !== studentId) {
-                    url.searchParams.set('student_id', studentId);
-                    url.searchParams.set('student_name', studentName);
-                    urlChanged = true;
-                }
-                if (teacherId && url.searchParams.get('teacher_id') !== teacherId) {
-                    url.searchParams.set('teacher_id', teacherId);
-                    url.searchParams.set('teacher_name', teacherName);
-                    url.searchParams.set('teacher_username', teacherUsername);
-                    urlChanged = true;
-                }
-                
-                if (urlChanged) {
+                    parentWin.localStorage.removeItem('mukhayyam_sig');
+                    
+                    const url = new URL(parentWin.location.href);
+                    url.searchParams.delete('logged_in');
+                    url.searchParams.delete('user_role');
+                    url.searchParams.delete('student_id');
+                    url.searchParams.delete('student_name');
+                    url.searchParams.delete('teacher_id');
+                    url.searchParams.delete('teacher_name');
+                    url.searchParams.delete('teacher_username');
+                    url.searchParams.delete('page');
+                    url.searchParams.delete('sig');
                     parentWin.history.replaceState({}, '', url.toString());
+                } else if (isLoggedIn) {
+                    parentWin.localStorage.setItem('mukhayyam_logged_in', 'true');
+                    parentWin.localStorage.setItem('mukhayyam_user_role', userRole);
+                    parentWin.localStorage.setItem('mukhayyam_sig', sig);
+                    if (studentId) {
+                        parentWin.localStorage.setItem('mukhayyam_student_id', studentId);
+                        parentWin.localStorage.setItem('mukhayyam_student_name', studentName);
+                    } else {
+                        parentWin.localStorage.removeItem('mukhayyam_student_id');
+                        parentWin.localStorage.removeItem('mukhayyam_student_name');
+                    }
+                    if (teacherId) {
+                        parentWin.localStorage.setItem('mukhayyam_teacher_id', teacherId);
+                        parentWin.localStorage.setItem('mukhayyam_teacher_name', teacherName);
+                        parentWin.localStorage.setItem('mukhayyam_teacher_username', teacherUsername);
+                    } else {
+                        parentWin.localStorage.removeItem('mukhayyam_teacher_id');
+                        parentWin.localStorage.removeItem('mukhayyam_teacher_name');
+                        parentWin.localStorage.removeItem('mukhayyam_teacher_username');
+                    }
+                    
+                    const url = new URL(parentWin.location.href);
+                    let urlChanged = false;
+                    
+                    if (url.searchParams.get('logged_in') !== 'true') {
+                        url.searchParams.set('logged_in', 'true');
+                        urlChanged = true;
+                    }
+                    if (url.searchParams.get('user_role') !== userRole) {
+                        url.searchParams.set('user_role', userRole);
+                        urlChanged = true;
+                    }
+                    if (url.searchParams.get('sig') !== sig) {
+                        url.searchParams.set('sig', sig);
+                        urlChanged = true;
+                    }
+                    if (studentId && url.searchParams.get('student_id') !== studentId) {
+                        url.searchParams.set('student_id', studentId);
+                        url.searchParams.set('student_name', studentName);
+                        urlChanged = true;
+                    }
+                    if (teacherId && url.searchParams.get('teacher_id') !== teacherId) {
+                        url.searchParams.set('teacher_id', teacherId);
+                        url.searchParams.set('teacher_name', teacherName);
+                        url.searchParams.set('teacher_username', teacherUsername);
+                        urlChanged = true;
+                    }
+                    
+                    if (urlChanged) {
+                        parentWin.history.replaceState({}, '', url.toString());
+                    }
+                } else {
+                    if (parentWin.localStorage.getItem('mukhayyam_logged_in') === 'true') {
+                        const url = new URL(parentWin.location.href);
+                        const storedRole = parentWin.localStorage.getItem('mukhayyam_user_role') || 'admin';
+                        const storedStudentId = parentWin.localStorage.getItem('mukhayyam_student_id') || '';
+                        const storedStudentName = parentWin.localStorage.getItem('mukhayyam_student_name') || '';
+                        const storedTeacherId = parentWin.localStorage.getItem('mukhayyam_teacher_id') || '';
+                        const storedTeacherName = parentWin.localStorage.getItem('mukhayyam_teacher_name') || '';
+                        const storedTeacherUsername = parentWin.localStorage.getItem('mukhayyam_teacher_username') || '';
+                        const storedSig = parentWin.localStorage.getItem('mukhayyam_sig') || '';
+                        
+                        let urlChanged = false;
+                        if (url.searchParams.get('logged_in') !== 'true') {
+                            url.searchParams.set('logged_in', 'true');
+                            urlChanged = true;
+                        }
+                        if (url.searchParams.get('user_role') !== storedRole) {
+                            url.searchParams.set('user_role', storedRole);
+                            urlChanged = true;
+                        }
+                        if (url.searchParams.get('sig') !== storedSig) {
+                            url.searchParams.set('sig', storedSig);
+                            urlChanged = true;
+                        }
+                        if (storedStudentId && url.searchParams.get('student_id') !== storedStudentId) {
+                            url.searchParams.set('student_id', storedStudentId);
+                            url.searchParams.set('student_name', storedStudentName);
+                            urlChanged = true;
+                        }
+                        if (storedTeacherId && url.searchParams.get('teacher_id') !== storedTeacherId) {
+                            url.searchParams.set('teacher_id', storedTeacherId);
+                            url.searchParams.set('teacher_name', storedTeacherName);
+                            url.searchParams.set('teacher_username', storedTeacherUsername);
+                            urlChanged = true;
+                        }
+                        
+                        if (urlChanged) {
+                            parentWin.location.href = url.toString();
+                        }
+                    }
                 }
 
-                // Auto-blur all inputs on rerun to close mobile keyboard
+                // Auto-blur all inputs on rerun to close mobile keyboard (immediate + delayed to handle React async renders)
                 function forceBlur() {
                     try {
                         parentDoc.querySelectorAll('input, textarea, select').forEach(el => el.blur());
@@ -175,6 +228,7 @@ def main() -> None:
                 forceBlur();
                 setTimeout(forceBlur, 100);
                 setTimeout(forceBlur, 300);
+                setTimeout(forceBlur, 500);
                 
                 // Auto-scroll focused inputs into view for mobile landscape readability
                 parentDoc.addEventListener('focusin', function(e) {
@@ -275,7 +329,9 @@ def main() -> None:
         </script>
     """
     st.iframe(
-        iframe_js.replace("{user_role}", user_role_val)
+        iframe_js.replace("{is_logged_in}", is_logged_in)
+        .replace("{is_manual_logout}", is_manual_logout)
+        .replace("{user_role}", user_role_val)
         .replace("{student_id}", student_id_val)
         .replace("{student_name}", student_name_val)
         .replace("{teacher_id}", teacher_id_val)
@@ -284,6 +340,18 @@ def main() -> None:
         .replace("{sig}", sig_val),
         height=1
     )
+
+    # 0. Check if user is logged in
+    if not st.session_state.get("logged_in"):
+        header_cols = st.columns([8.5, 1.5])
+        with header_cols[0]:
+            st.markdown("<h2 style='font-size: 1.15rem; margin: 0; padding: 2px 0; color: var(--emerald); font-weight: bold; font-family: sans-serif;'>Al Madrasa-tus-Saifiyah-tul-Burhaniyah</h2>", unsafe_allow_html=True)
+        with header_cols[1]:
+            st.markdown('<button id="fullscreen-toggle-btn" style="width: 100%; background: linear-gradient(180deg, var(--emerald), #0a4d3a); color: white; border: none; border-radius: 8px; padding: 2px 4px; font-weight: bold; cursor: pointer; font-size: 10px; height: 26px; min-height: 26px; line-height: 1.2; display: flex; align-items: center; justify-content: center; gap: 4px; font-family: sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.12);">📱 Fullscreen</button>', unsafe_allow_html=True)
+            
+        from app.ui.login import render_login
+        render_login()
+        return
 
     # Render header when logged in
     user_role = st.session_state.get("user_role", "admin")
