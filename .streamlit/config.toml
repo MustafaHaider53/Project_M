@@ -4,14 +4,6 @@ gatherUsageStats = false
 [server]
 headless = true
 showEmailPrompt = false
-enableCORS = true
-enableXsrfProtection = true
-enableWebsocketCompression = true
-fileWatcherType = "none"
-
-[client]
-toolbarMode = "minimal"
-showErrorDetails = false
 
 [theme]
 base = "light"
