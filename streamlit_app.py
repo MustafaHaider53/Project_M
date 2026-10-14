@@ -88,132 +88,176 @@ def main() -> None:
     iframe_js = """
         <script>
             (function() {
-                const parentDoc = window.parent.document;
-                const parentWin = window.parent;
+                let parentDoc = null;
+                let parentWin = null;
+                try {
+                    parentDoc = window.parent.document;
+                    parentWin = window.parent;
+                } catch (e) {
+                    // Blocked cross-origin or strict WebKit iframe access
+                    return;
+                }
+                if (!parentDoc || !parentWin) return;
+
+                // Safe localStorage wrapper to prevent SecurityError / QuotaExceededError on iOS WebKit & Private Browsing
+                const safeStorage = {
+                    getItem: function(key) {
+                        try {
+                            return (parentWin.localStorage && typeof parentWin.localStorage.getItem === 'function') 
+                                ? parentWin.localStorage.getItem(key) : null;
+                        } catch (e) {
+                            return null;
+                        }
+                    },
+                    setItem: function(key, val) {
+                        try {
+                            if (parentWin.localStorage && typeof parentWin.localStorage.setItem === 'function') {
+                                parentWin.localStorage.setItem(key, val);
+                            }
+                        } catch (e) {}
+                    },
+                    removeItem: function(key) {
+                        try {
+                            if (parentWin.localStorage && typeof parentWin.localStorage.removeItem === 'function') {
+                                parentWin.localStorage.removeItem(key);
+                            }
+                        } catch (e) {}
+                    }
+                };
                 
                 // Session Persistence Logic
-                const isLoggedIn = {is_logged_in};
-                const isManualLogout = {is_manual_logout};
-                const userRole = "{user_role}";
-                const studentId = "{student_id}";
-                const studentName = "{student_name}";
-                const teacherId = "{teacher_id}";
-                const teacherName = "{teacher_name}";
-                const teacherUsername = "{teacher_username}";
-                const sig = "{sig}";
-                
-                if (isManualLogout) {
-                    parentWin.localStorage.removeItem('mukhayyam_logged_in');
-                    parentWin.localStorage.removeItem('mukhayyam_user_role');
-                    parentWin.localStorage.removeItem('mukhayyam_student_id');
-                    parentWin.localStorage.removeItem('mukhayyam_student_name');
-                    parentWin.localStorage.removeItem('mukhayyam_teacher_id');
-                    parentWin.localStorage.removeItem('mukhayyam_teacher_name');
-                    parentWin.localStorage.removeItem('mukhayyam_teacher_username');
-                    parentWin.localStorage.removeItem('mukhayyam_sig');
+                try {
+                    const isLoggedIn = {is_logged_in};
+                    const isManualLogout = {is_manual_logout};
+                    const userRole = "{user_role}";
+                    const studentId = "{student_id}";
+                    const studentName = "{student_name}";
+                    const teacherId = "{teacher_id}";
+                    const teacherName = "{teacher_name}";
+                    const teacherUsername = "{teacher_username}";
+                    const sig = "{sig}";
                     
-                    const url = new URL(parentWin.location.href);
-                    url.searchParams.delete('logged_in');
-                    url.searchParams.delete('user_role');
-                    url.searchParams.delete('student_id');
-                    url.searchParams.delete('student_name');
-                    url.searchParams.delete('teacher_id');
-                    url.searchParams.delete('teacher_name');
-                    url.searchParams.delete('teacher_username');
-                    url.searchParams.delete('page');
-                    url.searchParams.delete('sig');
-                    parentWin.history.replaceState({}, '', url.toString());
-                } else if (isLoggedIn) {
-                    parentWin.localStorage.setItem('mukhayyam_logged_in', 'true');
-                    parentWin.localStorage.setItem('mukhayyam_user_role', userRole);
-                    parentWin.localStorage.setItem('mukhayyam_sig', sig);
-                    if (studentId) {
-                        parentWin.localStorage.setItem('mukhayyam_student_id', studentId);
-                        parentWin.localStorage.setItem('mukhayyam_student_name', studentName);
-                    } else {
-                        parentWin.localStorage.removeItem('mukhayyam_student_id');
-                        parentWin.localStorage.removeItem('mukhayyam_student_name');
-                    }
-                    if (teacherId) {
-                        parentWin.localStorage.setItem('mukhayyam_teacher_id', teacherId);
-                        parentWin.localStorage.setItem('mukhayyam_teacher_name', teacherName);
-                        parentWin.localStorage.setItem('mukhayyam_teacher_username', teacherUsername);
-                    } else {
-                        parentWin.localStorage.removeItem('mukhayyam_teacher_id');
-                        parentWin.localStorage.removeItem('mukhayyam_teacher_name');
-                        parentWin.localStorage.removeItem('mukhayyam_teacher_username');
-                    }
-                    
-                    const url = new URL(parentWin.location.href);
-                    let urlChanged = false;
-                    
-                    if (url.searchParams.get('logged_in') !== 'true') {
-                        url.searchParams.set('logged_in', 'true');
-                        urlChanged = true;
-                    }
-                    if (url.searchParams.get('user_role') !== userRole) {
-                        url.searchParams.set('user_role', userRole);
-                        urlChanged = true;
-                    }
-                    if (url.searchParams.get('sig') !== sig) {
-                        url.searchParams.set('sig', sig);
-                        urlChanged = true;
-                    }
-                    if (studentId && url.searchParams.get('student_id') !== studentId) {
-                        url.searchParams.set('student_id', studentId);
-                        url.searchParams.set('student_name', studentName);
-                        urlChanged = true;
-                    }
-                    if (teacherId && url.searchParams.get('teacher_id') !== teacherId) {
-                        url.searchParams.set('teacher_id', teacherId);
-                        url.searchParams.set('teacher_name', teacherName);
-                        url.searchParams.set('teacher_username', teacherUsername);
-                        urlChanged = true;
-                    }
-                    
-                    if (urlChanged) {
-                        parentWin.history.replaceState({}, '', url.toString());
-                    }
-                } else {
-                    if (parentWin.localStorage.getItem('mukhayyam_logged_in') === 'true') {
-                        const url = new URL(parentWin.location.href);
-                        const storedRole = parentWin.localStorage.getItem('mukhayyam_user_role') || 'admin';
-                        const storedStudentId = parentWin.localStorage.getItem('mukhayyam_student_id') || '';
-                        const storedStudentName = parentWin.localStorage.getItem('mukhayyam_student_name') || '';
-                        const storedTeacherId = parentWin.localStorage.getItem('mukhayyam_teacher_id') || '';
-                        const storedTeacherName = parentWin.localStorage.getItem('mukhayyam_teacher_name') || '';
-                        const storedTeacherUsername = parentWin.localStorage.getItem('mukhayyam_teacher_username') || '';
-                        const storedSig = parentWin.localStorage.getItem('mukhayyam_sig') || '';
+                    if (isManualLogout) {
+                        safeStorage.removeItem('mukhayyam_logged_in');
+                        safeStorage.removeItem('mukhayyam_user_role');
+                        safeStorage.removeItem('mukhayyam_student_id');
+                        safeStorage.removeItem('mukhayyam_student_name');
+                        safeStorage.removeItem('mukhayyam_teacher_id');
+                        safeStorage.removeItem('mukhayyam_teacher_name');
+                        safeStorage.removeItem('mukhayyam_teacher_username');
+                        safeStorage.removeItem('mukhayyam_sig');
                         
-                        let urlChanged = false;
-                        if (url.searchParams.get('logged_in') !== 'true') {
-                            url.searchParams.set('logged_in', 'true');
-                            urlChanged = true;
+                        try {
+                            const url = new URL(parentWin.location.href);
+                            url.searchParams.delete('logged_in');
+                            url.searchParams.delete('user_role');
+                            url.searchParams.delete('student_id');
+                            url.searchParams.delete('student_name');
+                            url.searchParams.delete('teacher_id');
+                            url.searchParams.delete('teacher_name');
+                            url.searchParams.delete('teacher_username');
+                            url.searchParams.delete('page');
+                            url.searchParams.delete('sig');
+                            parentWin.history.replaceState({}, '', url.toString());
+                        } catch (err) {}
+                    } else if (isLoggedIn) {
+                        safeStorage.setItem('mukhayyam_logged_in', 'true');
+                        safeStorage.setItem('mukhayyam_user_role', userRole);
+                        safeStorage.setItem('mukhayyam_sig', sig);
+                        if (studentId) {
+                            safeStorage.setItem('mukhayyam_student_id', studentId);
+                            safeStorage.setItem('mukhayyam_student_name', studentName);
+                        } else {
+                            safeStorage.removeItem('mukhayyam_student_id');
+                            safeStorage.removeItem('mukhayyam_student_name');
                         }
-                        if (url.searchParams.get('user_role') !== storedRole) {
-                            url.searchParams.set('user_role', storedRole);
-                            urlChanged = true;
-                        }
-                        if (url.searchParams.get('sig') !== storedSig) {
-                            url.searchParams.set('sig', storedSig);
-                            urlChanged = true;
-                        }
-                        if (storedStudentId && url.searchParams.get('student_id') !== storedStudentId) {
-                            url.searchParams.set('student_id', storedStudentId);
-                            url.searchParams.set('student_name', storedStudentName);
-                            urlChanged = true;
-                        }
-                        if (storedTeacherId && url.searchParams.get('teacher_id') !== storedTeacherId) {
-                            url.searchParams.set('teacher_id', storedTeacherId);
-                            url.searchParams.set('teacher_name', storedTeacherName);
-                            url.searchParams.set('teacher_username', storedTeacherUsername);
-                            urlChanged = true;
+                        if (teacherId) {
+                            safeStorage.setItem('mukhayyam_teacher_id', teacherId);
+                            safeStorage.setItem('mukhayyam_teacher_name', teacherName);
+                            safeStorage.setItem('mukhayyam_teacher_username', teacherUsername);
+                        } else {
+                            safeStorage.removeItem('mukhayyam_teacher_id');
+                            safeStorage.removeItem('mukhayyam_teacher_name');
+                            safeStorage.removeItem('mukhayyam_teacher_username');
                         }
                         
-                        if (urlChanged) {
-                            parentWin.location.href = url.toString();
+                        try {
+                            const url = new URL(parentWin.location.href);
+                            let urlChanged = false;
+                            
+                            if (url.searchParams.get('logged_in') !== 'true') {
+                                url.searchParams.set('logged_in', 'true');
+                                urlChanged = true;
+                            }
+                            if (url.searchParams.get('user_role') !== userRole) {
+                                url.searchParams.set('user_role', userRole);
+                                urlChanged = true;
+                            }
+                            if (url.searchParams.get('sig') !== sig) {
+                                url.searchParams.set('sig', sig);
+                                urlChanged = true;
+                            }
+                            if (studentId && url.searchParams.get('student_id') !== studentId) {
+                                url.searchParams.set('student_id', studentId);
+                                url.searchParams.set('student_name', studentName);
+                                urlChanged = true;
+                            }
+                            if (teacherId && url.searchParams.get('teacher_id') !== teacherId) {
+                                url.searchParams.set('teacher_id', teacherId);
+                                url.searchParams.set('teacher_name', teacherName);
+                                url.searchParams.set('teacher_username', teacherUsername);
+                                urlChanged = true;
+                            }
+                            
+                            if (urlChanged) {
+                                parentWin.history.replaceState({}, '', url.toString());
+                            }
+                        } catch (err) {}
+                    } else {
+                        if (safeStorage.getItem('mukhayyam_logged_in') === 'true') {
+                            try {
+                                const url = new URL(parentWin.location.href);
+                                const storedRole = safeStorage.getItem('mukhayyam_user_role') || 'admin';
+                                const storedStudentId = safeStorage.getItem('mukhayyam_student_id') || '';
+                                const storedStudentName = safeStorage.getItem('mukhayyam_student_name') || '';
+                                const storedTeacherId = safeStorage.getItem('mukhayyam_teacher_id') || '';
+                                const storedTeacherName = safeStorage.getItem('mukhayyam_teacher_name') || '';
+                                const storedTeacherUsername = safeStorage.getItem('mukhayyam_teacher_username') || '';
+                                const storedSig = safeStorage.getItem('mukhayyam_sig') || '';
+                                
+                                let urlChanged = false;
+                                if (url.searchParams.get('logged_in') !== 'true') {
+                                    url.searchParams.set('logged_in', 'true');
+                                    urlChanged = true;
+                                }
+                                if (url.searchParams.get('user_role') !== storedRole) {
+                                    url.searchParams.set('user_role', storedRole);
+                                    urlChanged = true;
+                                }
+                                if (url.searchParams.get('sig') !== storedSig) {
+                                    url.searchParams.set('sig', storedSig);
+                                    urlChanged = true;
+                                }
+                                if (storedStudentId && url.searchParams.get('student_id') !== storedStudentId) {
+                                    url.searchParams.set('student_id', storedStudentId);
+                                    url.searchParams.set('student_name', storedStudentName);
+                                    urlChanged = true;
+                                }
+                                if (storedTeacherId && url.searchParams.get('teacher_id') !== storedTeacherId) {
+                                    url.searchParams.set('teacher_id', storedTeacherId);
+                                    url.searchParams.set('teacher_name', storedTeacherName);
+                                    url.searchParams.set('teacher_username', storedTeacherUsername);
+                                    urlChanged = true;
+                                }
+                                
+                                if (urlChanged) {
+                                    parentWin.location.href = url.toString();
+                                }
+                            } catch (err) {}
                         }
                     }
+                } catch (persistErr) {
+                    console.warn('Session persistence error caught safely:', persistErr);
                 }
 
                 // Auto-blur all inputs on rerun to close mobile keyboard (immediate + delayed to handle React async renders)
@@ -231,100 +275,116 @@ def main() -> None:
                 setTimeout(forceBlur, 500);
                 
                 // Auto-scroll focused inputs into view for mobile landscape readability
-                parentDoc.addEventListener('focusin', function(e) {
-                    const target = e.target;
-                    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
-                        setTimeout(() => {
-                            try {
-                                target.scrollIntoView({ block: 'center', behavior: 'smooth' });
-                            } catch (err) {}
-                        }, 250);
-                    }
-                });
+                try {
+                    parentDoc.addEventListener('focusin', function(e) {
+                        try {
+                            const target = e.target;
+                            if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+                                setTimeout(() => {
+                                    try {
+                                        target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                                    } catch (err) {}
+                                }, 250);
+                            }
+                        } catch (err) {}
+                    });
+                } catch (err) {}
                 
                 // Wake Lock API
                 let wakeLock = null;
                 async function requestWakeLock() {
                     try {
-                        if ('wakeLock' in window.parent.navigator) {
-                            wakeLock = await window.parent.navigator.wakeLock.request('screen');
+                        if (parentWin.navigator && 'wakeLock' in parentWin.navigator) {
+                            wakeLock = await parentWin.navigator.wakeLock.request('screen');
                             console.log('Screen Wake Lock acquired');
                         }
                     } catch (err) {
                         console.warn('Wake Lock request failed:', err);
                     }
                 }
-                parentDoc.addEventListener('visibilitychange', () => {
-                    if (parentDoc.visibilityState === 'visible') requestWakeLock();
-                });
-                ['click', 'touchstart', 'scroll'].forEach(e => {
-                    parentDoc.addEventListener(e, requestWakeLock, { once: true });
-                });
-                requestWakeLock();
+                try {
+                    parentDoc.addEventListener('visibilitychange', () => {
+                        try {
+                            if (parentDoc.visibilityState === 'visible') requestWakeLock();
+                        } catch (err) {}
+                    });
+                    ['click', 'touchstart', 'scroll'].forEach(e => {
+                        try {
+                            parentDoc.addEventListener(e, requestWakeLock, { once: true });
+                        } catch (err) {}
+                    });
+                    requestWakeLock();
+                } catch (err) {}
 
                 // Fullscreen Toggle
-                parentDoc.addEventListener('click', function(e) {
-                    const btn = e.target.closest('#fullscreen-toggle-btn');
-                    if (btn) {
-                        const docEl = parentDoc.documentElement;
-                        const isFull = parentDoc.fullscreenElement ? true : (parentDoc.webkitFullscreenElement ? true : false);
-                        if (!isFull) {
-                            if (docEl.requestFullscreen) {
-                                docEl.requestFullscreen().then(() => {
-                                    btn.textContent = '📱 Exit Full';
-                                    if (window.parent.screen && window.parent.screen.orientation && window.parent.screen.orientation.lock) {
-                                        window.parent.screen.orientation.lock('landscape').catch(err => {
-                                            console.warn('Orientation lock failed:', err);
+                try {
+                    parentDoc.addEventListener('click', function(e) {
+                        try {
+                            const btn = e.target.closest('#fullscreen-toggle-btn');
+                            if (btn) {
+                                const docEl = parentDoc.documentElement;
+                                const isFull = parentDoc.fullscreenElement ? true : (parentDoc.webkitFullscreenElement ? true : false);
+                                if (!isFull) {
+                                    if (docEl.requestFullscreen) {
+                                        docEl.requestFullscreen().then(() => {
+                                            btn.textContent = '📱 Exit Full';
+                                            if (parentWin.screen && parentWin.screen.orientation && parentWin.screen.orientation.lock) {
+                                                parentWin.screen.orientation.lock('landscape').catch(err => {
+                                                    console.warn('Orientation lock failed:', err);
+                                                });
+                                            }
+                                        }).catch(err => {
+                                            console.warn('Fullscreen request failed:', err);
                                         });
+                                    } else if (docEl.webkitRequestFullscreen) {
+                                        docEl.webkitRequestFullscreen();
+                                        btn.textContent = '📱 Exit Full';
+                                        if (parentWin.screen && parentWin.screen.orientation && parentWin.screen.orientation.lock) {
+                                            parentWin.screen.orientation.lock('landscape').catch(err => {
+                                                console.warn('Orientation lock failed:', err);
+                                            });
+                                        }
                                     }
-                                }).catch(err => {
-                                    console.warn('Fullscreen request failed:', err);
-                                });
-                            } else if (docEl.webkitRequestFullscreen) {
-                                docEl.webkitRequestFullscreen();
-                                btn.textContent = '📱 Exit Full';
-                                if (window.parent.screen && window.parent.screen.orientation && window.parent.screen.orientation.lock) {
-                                    window.parent.screen.orientation.lock('landscape').catch(err => {
-                                        console.warn('Orientation lock failed:', err);
-                                    });
+                                } else {
+                                    if (parentDoc.exitFullscreen) {
+                                        parentDoc.exitFullscreen().then(() => {
+                                            btn.textContent = '📱 Fullscreen';
+                                            if (parentWin.screen && parentWin.screen.orientation && parentWin.screen.orientation.unlock) {
+                                                parentWin.screen.orientation.unlock();
+                                            }
+                                        });
+                                    } else if (parentDoc.webkitExitFullscreen) {
+                                        parentDoc.webkitExitFullscreen();
+                                        btn.textContent = '📱 Fullscreen';
+                                        if (parentWin.screen && parentWin.screen.orientation && parentWin.screen.orientation.unlock) {
+                                            parentWin.screen.orientation.unlock();
+                                        }
+                                    }
                                 }
                             }
-                        } else {
-                            if (parentDoc.exitFullscreen) {
-                                parentDoc.exitFullscreen().then(() => {
+                        } catch (err) {}
+                    });
+
+                    function updateFullscreenButton() {
+                        try {
+                            const btn = parentDoc.getElementById('fullscreen-toggle-btn');
+                            if (btn) {
+                                const isFull = parentDoc.fullscreenElement ? true : (parentDoc.webkitFullscreenElement ? true : false);
+                                if (isFull) {
+                                    btn.textContent = '📱 Exit Full';
+                                } else {
                                     btn.textContent = '📱 Fullscreen';
-                                    if (window.parent.screen && window.parent.screen.orientation && window.parent.screen.orientation.unlock) {
-                                        window.parent.screen.orientation.unlock();
+                                    if (parentWin.screen && parentWin.screen.orientation && parentWin.screen.orientation.unlock) {
+                                        parentWin.screen.orientation.unlock();
                                     }
-                                });
-                            } else if (parentDoc.webkitExitFullscreen) {
-                                parentDoc.webkitExitFullscreen();
-                                btn.textContent = '📱 Fullscreen';
-                                if (window.parent.screen && window.parent.screen.orientation && window.parent.screen.orientation.unlock) {
-                                    window.parent.screen.orientation.unlock();
                                 }
                             }
-                        }
+                        } catch (err) {}
                     }
-                });
 
-                function updateFullscreenButton() {
-                    const btn = parentDoc.getElementById('fullscreen-toggle-btn');
-                    if (btn) {
-                        const isFull = parentDoc.fullscreenElement ? true : (parentDoc.webkitFullscreenElement ? true : false);
-                        if (isFull) {
-                            btn.textContent = '📱 Exit Full';
-                        } else {
-                            btn.textContent = '📱 Fullscreen';
-                            if (window.parent.screen && window.parent.screen.orientation && window.parent.screen.orientation.unlock) {
-                                window.parent.screen.orientation.unlock();
-                            }
-                        }
-                    }
-                }
-
-                parentDoc.addEventListener('fullscreenchange', updateFullscreenButton);
-                parentDoc.addEventListener('webkitfullscreenchange', updateFullscreenButton);
+                    parentDoc.addEventListener('fullscreenchange', updateFullscreenButton);
+                    parentDoc.addEventListener('webkitfullscreenchange', updateFullscreenButton);
+                } catch (err) {}
             })();
         </script>
     """
