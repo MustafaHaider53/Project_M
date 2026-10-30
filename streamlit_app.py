@@ -442,15 +442,16 @@ def main() -> None:
         render_parent_report()
         return
 
-    # Render admin / teacher header when logged in
-    header_cols = st.columns([6.5, 1.8, 1.7])
+    # Render admin / teacher header when logged in (Compact 1-row header)
+    header_cols = st.columns([6.8, 1.6, 1.6])
     with header_cols[0]:
-        teacher_badge = f"<span style='background: rgba(14, 107, 80, 0.12); color: var(--emerald); font-size: 0.8rem; padding: 2px 8px; border-radius: 6px; margin-left: 10px; font-weight: 600; vertical-align: middle;'>👨‍🏫 {teacher_display_name}</span>" if teacher_display_name else ""
-        st.markdown(f"<div style='display: flex; align-items: center;'><h2 style='font-size: 1.15rem; margin: 0; padding: 2px 0; color: var(--emerald); font-weight: bold; font-family: sans-serif;'>Al Madrasa-tus-Saifiyah-tul-Burhaniyah</h2>{teacher_badge}</div>", unsafe_allow_html=True)
+        st.markdown("<div class='header-row-anchor' style='display: none;'></div>", unsafe_allow_html=True)
+        teacher_badge = f"<span style='background: rgba(14, 107, 80, 0.12); color: var(--emerald); font-size: 0.72rem; padding: 1px 6px; border-radius: 4px; margin-left: 6px; font-weight: 600; vertical-align: middle;'>👨‍🏫 {teacher_display_name}</span>" if teacher_display_name else ""
+        st.markdown(f"<div style='display: flex; align-items: center; overflow: hidden; white-space: nowrap;'><span style='font-size: 0.88rem; margin: 0; color: var(--emerald); font-weight: bold; font-family: sans-serif; overflow: hidden; text-overflow: ellipsis;'>AMSB</span>{teacher_badge}</div>", unsafe_allow_html=True)
     with header_cols[1]:
-        st.markdown('<button id="fullscreen-toggle-btn" style="width: 100%; background: linear-gradient(180deg, var(--emerald), #0a4d3a); color: white; border: none; border-radius: 8px; padding: 2px 4px; font-weight: bold; cursor: pointer; font-size: 10px; height: 26px; min-height: 26px; line-height: 1.2; display: flex; align-items: center; justify-content: center; gap: 4px; font-family: sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.12);">📱 Fullscreen</button>', unsafe_allow_html=True)
+        st.markdown('<button id="fullscreen-toggle-btn" style="width: 100%; background: linear-gradient(180deg, var(--emerald), #0a4d3a); color: white; border: none; border-radius: 6px; padding: 1px 2px; font-weight: bold; cursor: pointer; font-size: 9px; height: 24px; min-height: 24px; line-height: 1.2; display: flex; align-items: center; justify-content: center; gap: 2px; font-family: sans-serif; box-shadow: 0 1px 3px rgba(0,0,0,0.12);">📱 Full</button>', unsafe_allow_html=True)
     with header_cols[2]:
-        if st.button("🔒 Logout", width="stretch", key="header_logout_btn"):
+        if st.button("🔒 Exit", width="stretch", key="header_logout_btn"):
             st.session_state.logged_in = False
             st.session_state.student_id = None
             st.session_state.student_name = None
@@ -465,21 +466,23 @@ def main() -> None:
     # 1. Check if student is selected
     student_id = st.session_state.get("student_id")
     
-    from app.ui.student import require_student, current_student_badge
+    from app.ui.student import require_student
     
     if not student_id:
         require_student()
         return
 
-    # 2. Show prominent student banner
-    current_student_badge(force=True)
-
-    # 3. Render Header Navigation buttons
+    # 2. Compact Student + Navigation Bar (Replaces tall stacked student banner and 8 vertical buttons)
     current_page = st.session_state.get("page", "home")
-    
-    cols = st.columns(8)
-    with cols[0]:
-        if st.button("👥 Change", width="stretch"):
+    if current_page == "home":
+        current_page = "murajat"
+        st.session_state.page = "murajat"
+
+    student_name = st.session_state.get("student_name", "Student")
+    nav_cols = st.columns([1.1, 1.9])
+    with nav_cols[0]:
+        st.markdown("<div class='nav-row-anchor' style='display: none;'></div>", unsafe_allow_html=True)
+        if st.button(f"👥 {student_name}", width="stretch", key="nav_student_change_btn", help="Click to change student"):
             st.session_state.student_id = None
             st.session_state.student_name = None
             st.session_state.page = "home"
@@ -487,48 +490,70 @@ def main() -> None:
             st.query_params.pop("student_name", None)
             st.query_params.pop("page", None)
             st.rerun()
-            
-    with cols[1]:
-        if st.button("Murajat", type="primary" if current_page == "murajat" else "secondary", width="stretch"):
-            st.session_state.page = "murajat"
-            st.query_params["page"] = "murajat"
-            st.rerun()
-            
-    with cols[2]:
-        if st.button("Juzulhali", type="primary" if current_page == "juzulhali" else "secondary", width="stretch"):
-            st.session_state.page = "juzulhali"
-            st.query_params["page"] = "juzulhali"
-            st.rerun()
-            
-    with cols[3]:
-        if st.button("Jadeed", type="primary" if current_page == "jadeed" else "secondary", width="stretch"):
-            st.session_state.page = "jadeed"
-            st.query_params["page"] = "jadeed"
-            st.rerun()
-            
-    with cols[4]:
-        if st.button("Takhteet", type="primary" if current_page == "takhteet" else "secondary", width="stretch"):
-            st.session_state.page = "takhteet"
-            st.query_params["page"] = "takhteet"
+
+    with nav_cols[1]:
+        PAGE_OPTIONS = ["Murajat", "Juzulhali", "Jadeed", "Takhteet", "Planner", "Email", "Report"]
+        current_page_cap = current_page.capitalize() if current_page else "Murajat"
+        default_idx = PAGE_OPTIONS.index(current_page_cap) if current_page_cap in PAGE_OPTIONS else 0
+        selected_page = st.selectbox(
+            "Page",
+            options=PAGE_OPTIONS,
+            index=default_idx,
+            key="header_nav_page_selectbox",
+            label_visibility="collapsed"
+        )
+        if selected_page and selected_page.lower() != current_page:
+            st.session_state.page = selected_page.lower()
+            st.query_params["page"] = selected_page.lower()
             st.rerun()
 
-    with cols[5]:
-        if st.button("Planner", type="primary" if current_page == "planner" else "secondary", width="stretch"):
-            st.session_state.page = "planner"
-            st.query_params["page"] = "planner"
-            st.rerun()
-            
-    with cols[6]:
-        if st.button("Email", type="primary" if current_page == "email" else "secondary", width="stretch"):
-            st.session_state.page = "email"
-            st.query_params["page"] = "email"
-            st.rerun()
-            
-    with cols[7]:
-        if st.button("Report", type="primary" if current_page == "report" else "secondary", width="stretch"):
-            st.session_state.page = "report"
-            st.query_params["page"] = "report"
-            st.rerun()
+    # --- ORIGINAL 8 DESKTOP BUTTONS (Preserved in code for reference) ---
+    # cols = st.columns(8)
+    # with cols[0]:
+    #     if st.button("👥 Change", width="stretch"):
+    #         st.session_state.student_id = None
+    #         st.session_state.student_name = None
+    #         st.session_state.page = "home"
+    #         st.query_params.pop("student_id", None)
+    #         st.query_params.pop("student_name", None)
+    #         st.query_params.pop("page", None)
+    #         st.rerun()
+    # with cols[1]:
+    #     if st.button("Murajat", type="primary" if current_page == "murajat" else "secondary", width="stretch"):
+    #         st.session_state.page = "murajat"
+    #         st.query_params["page"] = "murajat"
+    #         st.rerun()
+    # with cols[2]:
+    #     if st.button("Juzulhali", type="primary" if current_page == "juzulhali" else "secondary", width="stretch"):
+    #         st.session_state.page = "juzulhali"
+    #         st.query_params["page"] = "juzulhali"
+    #         st.rerun()
+    # with cols[3]:
+    #     if st.button("Jadeed", type="primary" if current_page == "jadeed" else "secondary", width="stretch"):
+    #         st.session_state.page = "jadeed"
+    #         st.query_params["page"] = "jadeed"
+    #         st.rerun()
+    # with cols[4]:
+    #     if st.button("Takhteet", type="primary" if current_page == "takhteet" else "secondary", width="stretch"):
+    #         st.session_state.page = "takhteet"
+    #         st.query_params["page"] = "takhteet"
+    #         st.rerun()
+    # with cols[5]:
+    #     if st.button("Planner", type="primary" if current_page == "planner" else "secondary", width="stretch"):
+    #         st.session_state.page = "planner"
+    #         st.query_params["page"] = "planner"
+    #         st.rerun()
+    # with cols[6]:
+    #     if st.button("Email", type="primary" if current_page == "email" else "secondary", width="stretch"):
+    #         st.session_state.page = "email"
+    #         st.query_params["page"] = "email"
+    #         st.rerun()
+    # with cols[7]:
+    #     if st.button("Report", type="primary" if current_page == "report" else "secondary", width="stretch"):
+    #         st.session_state.page = "report"
+    #         st.query_params["page"] = "report"
+    #         st.rerun()
+    # --- END ORIGINAL 8 DESKTOP BUTTONS ---
             
 
 

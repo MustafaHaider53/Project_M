@@ -3,7 +3,16 @@ from __future__ import annotations
 import streamlit as st
 
 from app.db import create_listening_session, get_session_counts, increment_mistake
-from app.ui.shared import back_home_button, mistake_buttons, show_previous_takhteet, ensure_today_sessions, render_header_with_homework
+from app.ui.shared import (
+    back_home_button,
+    mistake_buttons,
+    show_previous_takhteet,
+    ensure_today_sessions,
+    render_header_with_homework,
+    SIPARA_OPTIONS,
+    SIPARA_TO_SURAH,
+    SIPARA_NAMES,
+)
 from app.ui.student import current_student_badge
 
 
@@ -18,87 +27,12 @@ def render_juzulhali() -> None:
     # If the student changed, reset selected surah, page and active session
     if st.session_state.get("juzulhali_student_id") != student_id:
         st.session_state.pop("juzulhali_session_id", None)
+        st.session_state.pop("juzulhali_sipara", None)
         st.session_state.pop("juzulhali_surah_id", None)
         st.session_state.pop("juzulhali_page_number", None)
         st.session_state.pop("juzulhali_surah", None)
         st.session_state.pop("juzulhali_page_widget", None)
         st.session_state.juzulhali_student_id = student_id
-
-    from app.ui.jadeed import load_quran_metadata
-    from app.db import list_surahs
-    quran_metadata = load_quran_metadata()
-
-    surahs = list_surahs()
-    options = [(s["id"], f'{s["number"]:03d} — {s["name_en"]} ({s["name_ar"]})') for s in surahs]
-
-    # Current selected Surah and page helper
-    selected_option = st.session_state.get("juzulhali_surah")
-    surah_id = None
-    surah = None
-    if selected_option in options:
-        surah_id = selected_option[0]
-        surah = next((s for s in surahs if s["id"] == surah_id), None)
-
-    # Get page options for selected Surah
-    page_options = []
-    if surah:
-        s_num_str = str(surah["number"])
-        pages_dict = quran_metadata["surahs"][s_num_str]["pages"]
-        page_options = sorted(list(pages_dict.keys()), key=int)
-        
-        # Check if selected page in widget state is valid for this Surah
-        selected_page_widget = st.session_state.get("juzulhali_page_widget")
-        if selected_page_widget not in page_options:
-            selected_page_widget = page_options[0]
-            st.session_state.juzulhali_page_widget = selected_page_widget
-
-    # Define callbacks to modify widget session state before widget instantiation
-    def click_prev():
-        selected_option = st.session_state.get("juzulhali_surah")
-        if selected_option in options:
-            current_page_str = st.session_state.get("juzulhali_page_widget")
-            if current_page_str in page_options:
-                idx = page_options.index(current_page_str)
-                if idx > 0:
-                    st.session_state.juzulhali_page_widget = page_options[idx - 1]
-                else:
-                    # Go to previous Surah, last page
-                    curr_surah_idx = options.index(selected_option)
-                    if curr_surah_idx > 0:
-                        prev_option = options[curr_surah_idx - 1]
-                        st.session_state.juzulhali_surah = prev_option
-                        # Fetch page options for prev Surah
-                        prev_surah = next((s for s in surahs if s["id"] == prev_option[0]), None)
-                        prev_s_num_str = str(prev_surah["number"])
-                        prev_page_options = sorted(list(quran_metadata["surahs"][prev_s_num_str]["pages"].keys()), key=int)
-                        st.session_state.juzulhali_page_widget = prev_page_options[-1]
-
-    def click_next():
-        selected_option = st.session_state.get("juzulhali_surah")
-        if selected_option in options:
-            current_page_str = st.session_state.get("juzulhali_page_widget")
-            if current_page_str in page_options:
-                idx = page_options.index(current_page_str)
-                if idx < len(page_options) - 1:
-                    st.session_state.juzulhali_page_widget = page_options[idx + 1]
-                else:
-                    # Go to next Surah, first page
-                    curr_surah_idx = options.index(selected_option)
-                    if curr_surah_idx < len(options) - 1:
-                        next_option = options[curr_surah_idx + 1]
-                        st.session_state.juzulhali_surah = next_option
-                        # Fetch page options for next Surah
-                        next_surah = next((s for s in surahs if s["id"] == next_option[0]), None)
-                        next_s_num_str = str(next_surah["number"])
-                        next_page_options = sorted(list(quran_metadata["surahs"][next_s_num_str]["pages"].keys()), key=int)
-                        st.session_state.juzulhali_page_widget = next_page_options[0]
-
-    curr_idx = options.index(selected_option) if selected_option in options else -1
-    current_page_str = st.session_state.get("juzulhali_page_widget")
-    page_idx = page_options.index(current_page_str) if (current_page_str and current_page_str in page_options) else -1
-    
-    has_prev = (curr_idx > 0 or page_idx > 0)
-    has_next = (curr_idx < len(options) - 1 or page_idx < len(page_options) - 1)
 
     # Render the sticky container wrapping header, student badge, navigation, and mistake cards
     sticky_container = st.container()
@@ -109,54 +43,47 @@ def render_juzulhali() -> None:
 
         current_student_badge()
 
-        # 15-Minute Juzulhali Recitation Timer
-        from app.ui.timer import render_recitation_timer
-        timer_elapsed, is_timer_running, is_timer_overtime = render_recitation_timer(
-            module_name="juzulhali",
-            target_minutes=15,
-            student_id=student_id,
-            auto_start=bool(surah_id is not None)
-        )
-        
-        col_s, col_p, col_prev, col_next = st.columns([2, 1, 1, 1])
-        with col_s:
-            selected = st.selectbox(
-                "Surah",
-                options=options,
-                index=None,
-                placeholder="Select a Surah...",
-                format_func=lambda x: x[1] if x else "",
-                label_visibility="collapsed",
-                key="juzulhali_surah"
-            )
-            
-        page_number = None
-        with col_p:
-            if selected:
-                selected_page = st.selectbox(
-                    "Page",
-                    options=page_options,
-                    label_visibility="collapsed",
-                    key="juzulhali_page_widget"
-                )
-                if selected_page:
-                    page_number = int(selected_page)
-            else:
-                st.selectbox(
-                    "Page",
-                    options=[],
-                    disabled=True,
-                    placeholder="Page",
-                    label_visibility="collapsed",
-                    key="juzulhali_page_widget_disabled"
-                )
-                
-        with col_prev:
-            st.button("◀ Prev", disabled=not has_prev, width="stretch", on_click=click_prev)
-        with col_next:
-            st.button("Next ▶", disabled=not has_next, width="stretch", on_click=click_next)
+        # --- TIMER (Hidden in simple version, preserved in code) ---
+        # from app.ui.timer import render_recitation_timer
+        # timer_elapsed, is_timer_running, is_timer_overtime = render_recitation_timer(
+        #     module_name="juzulhali",
+        #     target_minutes=15,
+        #     student_id=student_id,
+        #     auto_start=bool(surah_id is not None)
+        # )
+        timer_elapsed, is_timer_running, is_timer_overtime = 0, False, False
 
-    if surah_id is not None and page_number is not None:
+        # --- SIPARA SELECTOR + SUBTRACTION TOGGLE (Compact 1-row layout) ---
+        col_sipara, col_sub = st.columns([3.3, 0.7])
+        with col_sipara:
+            st.markdown("<div class='sipara-row-anchor' style='display: none;'></div>", unsafe_allow_html=True)
+            selected_sipara = st.selectbox(
+                "Select Sipara",
+                options=SIPARA_OPTIONS,
+                index=None,
+                placeholder="Select a Sipara (1 — 30)...",
+                format_func=lambda x: x[1] if x else "",
+                key="juzulhali_sipara",
+                label_visibility="collapsed"
+            )
+        with col_sub:
+            st.toggle("Sub", value=False, key="sub_mode_toggle")
+        
+        sipara_num = selected_sipara[0] if selected_sipara else None
+        surah_id = SIPARA_TO_SURAH.get(sipara_num) if sipara_num else None
+        page_number = sipara_num
+
+        # --- ORIGINAL SURAH/PAGE & PREV/NEXT BUTTONS (Preserved in code) ---
+        # from app.ui.jadeed import load_quran_metadata
+        # from app.db import list_surahs
+        # quran_metadata = load_quran_metadata()
+        # surahs = list_surahs()
+        # options = [(s["id"], f'{s["number"]:03d} — {s["name_en"]} ({s["name_ar"]})') for s in surahs]
+        # col_s, col_p, col_prev, col_next = st.columns([2, 1, 1, 1])
+        # ...
+        # --- END ORIGINAL NAVIGATION ---
+
+    if sipara_num is not None:
         if (
             st.session_state.get("juzulhali_surah_id") != surah_id
             or st.session_state.get("juzulhali_page_number") != page_number
@@ -346,75 +273,36 @@ def render_juzulhali() -> None:
 
     student_name = st.session_state.get("student_name", "Student")
 
-    if surah_id is None or page_number is None:
-        st.info("Please select a Surah and Page to start Juzulhali recitation.")
+    if sipara_num is None:
+        st.info("Please select a Sipara to start Juzulhali recitation.")
         return
-
-    # Render Musaid buttons & Toggles under Surah/Page selectors inside sticky_container
-    with sticky_container:
-        col_toggles, col_musaid = st.columns([1.5, 3.5])
-        with col_toggles:
-            show_history = st.toggle("📈 **Page History & Progress**", value=False, key="juzulhali_page_history_toggle")
-            st.toggle("➖ **Subtraction Mode**", value=False, key="sub_mode_toggle")
-        with col_musaid:
-            st.markdown("<div style='font-size: 0.85rem; font-weight: bold; margin-bottom: 5px; color: var(--emerald); text-align: left;'>Musaid Analysis (One-time Tap)</div>", unsafe_allow_html=True)
-            st.markdown("""
-            <style>
-            div[data-testid="stElementContainer"]:has(.musaid-active) + div[data-testid="stElementContainer"] button {
-                background: linear-gradient(180deg, #15803d, #166534) !important;
-                color: #ffffff !important;
-                border-color: #14532d !important;
-            }
-            div[data-testid="stElementContainer"]:has(.musaid-active) + div[data-testid="stElementContainer"] button:hover {
-                background: linear-gradient(180deg, #166534, #14532d) !important;
-            }
-            </style>
-            """, unsafe_allow_html=True)
-            MUSAID_BUTTONS = {
-                "musaid_end_part": "🔚 End Part",
-                "musaid_beg_part": "🔝 Beginning Part",
-                "musaid_ayat_after_ayat": "🔗 Ayat Linkage",
-                "musaid_page_after_page": "📖 Page Transition",
-                "musaid_no_image": "🖼️ No Page Image",
-                "musaid_lehen": "🎵 Lehen only"
-            }
-            musaid_cols = st.columns(3)
-            for idx, (col_key, label) in enumerate(MUSAID_BUTTONS.items()):
-                col_idx = idx % 3
-                with musaid_cols[col_idx]:
-                    is_active = counts.get(col_key, 0) == 1
-                    active_class = "musaid-active" if is_active else "musaid-inactive"
-                    st.markdown(f"<span class='{active_class}' style='display: none;'>active</span>", unsafe_allow_html=True)
-                    btn_type = "primary" if is_active else "secondary"
-                    display_label = f"✓ {label}" if is_active else label
-                    if st.button(display_label, type=btn_type, key=f"btn_{col_key}", width="stretch"):
-                        _on_click(col_key)
-                        st.rerun()
-
-    if st.session_state.get("juzulhali_page_history_toggle", False) and page_number is not None:
-        from app.ui.page_comparison import render_page_comparison
-        render_page_comparison(
-            student_id=student_id,
-            student_name=student_name,
-            page_number=page_number,
-            mode="juzulhali"
-        )
 
     mistake_buttons(session_id=session_id or "", counts=counts, on_click=_on_click)
 
-
-
-    st.divider()
-    # Show session controls when active
-    if st.button("New session (same page)", width="stretch"):
-        from app.db import update_session_duration
-        if session_id and timer_elapsed > 0:
-            update_session_duration(session_id, timer_elapsed, is_timer_overtime)
-        session = create_listening_session(student_id=student_id, mode="juzulhali", surah_id=None, page_number=int(page_number), force_new=True)
-        st.session_state.juzulhali_session_id = session["id"]
-        ensure_today_sessions(student_id)
-        key = ("juzulhali", None, int(page_number))
-        st.session_state.today_sessions[key] = session["id"]
-        st.session_state.pop("juzulhali_counts", None)
-        st.session_state.pop("juzulhali_counts_session_id", None)
-        st.rerun()
+    # --- HIDDEN SESSION CONTROLS IN SIMPLE VERSION (Preserved in code) ---
+    # st.divider()
+    # c1, _, c2 = st.columns([2, 5, 2])
+    # with c1:
+    #     if st.button("New session (Same Sipara)", width="stretch"):
+    #         from app.db import update_session_duration
+    #         if session_id and timer_elapsed > 0:
+    #             update_session_duration(session_id, timer_elapsed, is_timer_overtime)
+    #         session = create_listening_session(student_id=student_id, mode="juzulhali", surah_id=surah_id, page_number=int(page_number), force_new=True)
+    #         st.session_state.juzulhali_session_id = session["id"]
+    #         ensure_today_sessions(student_id)
+    #         key = ("juzulhali", int(surah_id), int(page_number))
+    #         st.session_state.today_sessions[key] = session["id"]
+    #         st.session_state.pop("juzulhali_counts", None)
+    #         st.session_state.pop("juzulhali_counts_session_id", None)
+    #         st.rerun()
+    # with c2:
+    #     if st.button("Change Sipara", width="stretch"):
+    #         from app.db import update_session_duration
+    #         if session_id and timer_elapsed > 0:
+    #             update_session_duration(session_id, timer_elapsed, is_timer_overtime)
+    #         st.session_state.pop("juzulhali_session_id", None)
+    #         st.session_state.pop("juzulhali_surah_id", None)
+    #         st.session_state.pop("juzulhali_sipara", None)
+    #         st.session_state.pop("juzulhali_page_number", None)
+    #         st.rerun()
+    # --- END HIDDEN SESSION CONTROLS ---

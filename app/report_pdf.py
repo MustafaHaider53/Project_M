@@ -50,6 +50,23 @@ MAKHRAJ_CHARS = {
     "makhraj_yaa": "ي"
 }
 
+SIPARA_TO_SURAH = {
+    1: 1, 2: 2, 3: 2, 4: 3, 5: 4, 6: 4, 7: 5, 8: 6, 9: 7, 10: 8,
+    11: 9, 12: 11, 13: 12, 14: 15, 15: 17, 16: 18, 17: 21, 18: 23, 19: 25, 20: 27,
+    21: 29, 22: 33, 23: 36, 24: 39, 25: 41, 26: 46, 27: 51, 28: 58, 29: 67, 30: 78
+}
+
+SIPARA_NAMES = {
+    1: "Sipara 1 (الم)", 2: "Sipara 2 (سيقول)", 3: "Sipara 3 (تلك الرسل)", 4: "Sipara 4 (لن تنالوا)",
+    5: "Sipara 5 (والمحصنات)", 6: "Sipara 6 (لا يحب الله)", 7: "Sipara 7 (وإذا سمعوا)", 8: "Sipara 8 (ولو أننا)",
+    9: "Sipara 9 (قال الملأ)", 10: "Sipara 10 (واعلموا)", 11: "Sipara 11 (يعتذرون)", 12: "Sipara 12 (وما من دابة)",
+    13: "Sipara 13 (وما أبرئ)", 14: "Sipara 14 (ربما)", 15: "Sipara 15 (سبحان الذي)", 16: "Sipara 16 (قال ألم)",
+    17: "Sipara 17 (اقترب)", 18: "Sipara 18 (قد أفلح)", 19: "Sipara 19 (وقال الذين)", 20: "Sipara 20 (أمن خلق)",
+    21: "Sipara 21 (اتل ما أوحي)", 22: "Sipara 22 (ومن يقنت)", 23: "Sipara 23 (وما لي)", 24: "Sipara 24 (فمن أظلم)",
+    25: "Sipara 25 (إليه يرد)", 26: "Sipara 26 (حم)", 27: "Sipara 27 (قال فما خطبكم)", 28: "Sipara 28 (قد سمع الله)",
+    29: "Sipara 29 (تبارك الذي)", 30: "Sipara 30 (عم يتساءلون)"
+}
+
 
 def _get_month_year_str(rows: List[Dict[str, Any]]) -> str:
     if not rows:
@@ -378,7 +395,10 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type
                         page = int(page_val) if page_val is not None else 0
                     except (ValueError, TypeError):
                         page = 0
-                    if page > 0:
+                    surah_id = m.get("surah_id")
+                    if page in range(1, 31) and (surah_id == SIPARA_TO_SURAH.get(page) or not surah_name or surah_name == "Surah"):
+                        surah_display = SIPARA_NAMES.get(page, f"Sipara {page}")
+                    elif page > 0:
                         surah_display = f"{surah_name} (p. {page})"
                     else:
                         surah_display = surah_name
@@ -406,12 +426,12 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type
                     cells.append(f'<td>{talqeen}</td>')
                     cells.append(f'<td>{tanbeeh}</td>')
                     cells.append(f'<td>{irab}</td>')
-                    cells.append(f'<td>{repeat}</td>')
-                    cells.append(f'<td>{mutashabehat}</td>')
+                    # cells.append(f'<td>{repeat}</td>')
+                    # cells.append(f'<td>{mutashabehat}</td>')
                     cells.append(f'<td style="text-align: left;">{mistake_badges}</td>')
                     cells.append(f'<td>{grade_badge}</td>')
                 else:
-                    cells.extend(['<td></td>'] * 8)
+                    cells.extend(['<td></td>'] * 6)
                 
                 is_last_sub = (sub_idx == N_rows - 1)
                 row_class = ' class="day-separator week-end-separator"' if (is_last_sub and wd == 6) else (' class="day-separator"' if is_last_sub else '')
@@ -440,8 +460,11 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type
                     if surah_name and " - " in surah_name:
                         parts = surah_name.split(" - ")
                         surah_name = parts[1] if len(parts) > 1 else surah_name
-                        
-                    if surah_name:
+                    
+                    surah_id = j.get("surah_id")
+                    if page in range(1, 31) and (surah_id == SIPARA_TO_SURAH.get(page) or not surah_name or surah_name == "Surah"):
+                        page_display = SIPARA_NAMES.get(page, f"Sipara {page}")
+                    elif surah_name:
                         page_display = f"{surah_name} (p. {page})"
                     else:
                         page_display = f"Page {page}" if page > 0 else "-"
@@ -469,12 +492,12 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type
                     cells.append(f'<td>{talqeen}</td>')
                     cells.append(f'<td>{tanbeeh}</td>')
                     cells.append(f'<td>{irab}</td>')
-                    cells.append(f'<td>{repeat}</td>')
-                    cells.append(f'<td>{mutashabehat}</td>')
+                    # cells.append(f'<td>{repeat}</td>')
+                    # cells.append(f'<td>{mutashabehat}</td>')
                     cells.append(f'<td style="text-align: left;">{mistake_badges}</td>')
                     cells.append(f'<td>{grade_badge}</td>')
                 else:
-                    cells.extend(['<td></td>'] * 8)
+                    cells.extend(['<td></td>'] * 6)
                 
                 is_last_sub = (sub_idx == N_rows - 1)
                 row_class = ' class="day-separator week-end-separator"' if (is_last_sub and wd == 6) else (' class="day-separator"' if is_last_sub else '')
@@ -588,13 +611,13 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type
         thead_html = """
       <tr>
         <th style="width: 15%;">Date / Day</th>
-        <th style="width: 20%;">Surah (Page)</th>
-        <th style="width: 7%;">Talqeen</th>
-        <th style="width: 7%;">Tanbeeh</th>
-        <th style="width: 7%;">I'rab</th>
-        <th style="width: 7%;">Repeat</th>
-        <th style="width: 7%;">Mutash.</th>
-        <th style="width: 24%;">Mistake Details</th>
+        <th style="width: 25%;">Sipara / Surah</th>
+        <th style="width: 8%;">Talqeen</th>
+        <th style="width: 8%;">Tanbeeh</th>
+        <th style="width: 8%;">I'rab</th>
+        <!-- <th style="width: 7%;">Repeat</th> -->
+        <!-- <th style="width: 7%;">Mutash.</th> -->
+        <th style="width: 26%;">Mistake Details</th>
         <th style="width: 10%;">Grade</th>
       </tr>
         """
@@ -602,13 +625,13 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type
         thead_html = """
       <tr>
         <th style="width: 15%;">Date / Day</th>
-        <th style="width: 20%;">Surah / Page</th>
-        <th style="width: 7%;">Talqeen</th>
-        <th style="width: 7%;">Tanbeeh</th>
-        <th style="width: 7%;">I'rab</th>
-        <th style="width: 7%;">Repeat</th>
-        <th style="width: 7%;">Mutash.</th>
-        <th style="width: 24%;">Mistake Details</th>
+        <th style="width: 25%;">Sipara / Page</th>
+        <th style="width: 8%;">Talqeen</th>
+        <th style="width: 8%;">Tanbeeh</th>
+        <th style="width: 8%;">I'rab</th>
+        <!-- <th style="width: 7%;">Repeat</th> -->
+        <!-- <th style="width: 7%;">Mutash.</th> -->
+        <th style="width: 26%;">Mistake Details</th>
         <th style="width: 10%;">Grade</th>
       </tr>
         """
@@ -2925,6 +2948,15 @@ def build_unified_3in1_report_html(student_name: str, rows: List[Dict[str, Any]]
                     s_name = m["surahs"].get("name_en") or m["surahs"].get("name_ar") or ""
 
                 p_val = m.get("page_number") or "-"
+                try:
+                    p_num = int(p_val)
+                except (ValueError, TypeError):
+                    p_num = 0
+                surah_id = m.get("surah_id")
+                if p_num in range(1, 31) and (surah_id == SIPARA_TO_SURAH.get(p_num) or not s_name or s_name == "Surah"):
+                    s_name = SIPARA_NAMES.get(p_num, f"Sipara {p_num}")
+                    p_val = "-"
+
                 m_marks = m.get("marks", 10.0)
                 grade_html = _format_grade_badge(m_marks)
 
@@ -2961,6 +2993,15 @@ def build_unified_3in1_report_html(student_name: str, rows: List[Dict[str, Any]]
                     s_name = j["surahs"].get("name_en") or j["surahs"].get("name_ar") or ""
 
                 p_val = j.get("page_number") or "-"
+                try:
+                    p_num = int(p_val)
+                except (ValueError, TypeError):
+                    p_num = 0
+                surah_id = j.get("surah_id")
+                if p_num in range(1, 31) and (surah_id == SIPARA_TO_SURAH.get(p_num) or not s_name or s_name == "Surah"):
+                    s_name = SIPARA_NAMES.get(p_num, f"Sipara {p_num}")
+                    p_val = "-"
+
                 j_marks = j.get("marks", 10.0)
                 grade_html = _format_grade_badge(j_marks)
 
@@ -3335,11 +3376,11 @@ def build_unified_3in1_report_html(student_name: str, rows: List[Dict[str, Any]]
         </tr>
         <tr>
           <!-- Murajat -->
-          <th style="background: #f0f9ff; color: var(--murajat-color); width: 17%;">Surah</th>
+          <th style="background: #f0f9ff; color: var(--murajat-color); width: 17%;">Sipara / Surah</th>
           <th style="background: #f0f9ff; color: var(--murajat-color); width: 6%;">Page</th>
           <th style="background: #f0f9ff; color: var(--murajat-color); width: 7%;">Marks</th>
           <!-- Juzulhali -->
-          <th style="background: #fffbeb; color: var(--juzulhali-color); width: 17%;">Surah</th>
+          <th style="background: #fffbeb; color: var(--juzulhali-color); width: 17%;">Sipara / Surah</th>
           <th style="background: #fffbeb; color: var(--juzulhali-color); width: 6%;">Page</th>
           <th style="background: #fffbeb; color: var(--juzulhali-color); width: 7%;">Marks</th>
           <!-- Jadeed -->

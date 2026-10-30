@@ -341,37 +341,161 @@ def apply_islamic_theme() -> None:
               align-items: center !important;
             }
 
-            /* 2. Force nested columns inside mistake cards to shrink appropriately without overflowing */
-            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="column"] {
+            /* 1. Prevent ANY horizontal block from collapsing into a vertical column on mobile */
+            div[data-testid="stHorizontalBlock"] {
+              display: flex !important;
+              flex-direction: row !important;
+              flex-wrap: nowrap !important;
+              width: 100% !important;
+              gap: 4px !important;
+              align-items: center !important;
+            }
+            div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"],
+            div[data-testid="stHorizontalBlock"] > div[data-testid="column"],
+            [data-testid="stColumn"],
+            [data-testid="column"] {
+              width: auto !important;
               min-width: 0 !important;
               flex: 1 1 0% !important;
               padding: 0 !important;
             }
 
-            /* Allow navigation row (7 columns) to wrap on mobile so buttons do not overlap */
-            div[data-testid="stHorizontalBlock"]:not(div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]):has(div[data-testid="column"]:nth-child(7)) {
-              flex-wrap: wrap !important;
-              gap: 5px 3px !important;
+            /* Login screen on mobile */
+            div[data-testid="stHorizontalBlock"]:has(form[data-testid="stForm"]) {
+              display: flex !important;
+              flex-direction: column !important;
+              width: 100% !important;
             }
-            div[data-testid="stHorizontalBlock"]:not(div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]):has(div[data-testid="column"]:nth-child(7)) div[data-testid="column"] {
-              flex: 1 1 28% !important;
-              min-width: 80px !important;
+            div[data-testid="stHorizontalBlock"]:has(form[data-testid="stForm"]) > div[data-testid="stColumn"],
+            div[data-testid="stHorizontalBlock"]:has(form[data-testid="stForm"]) > div[data-testid="column"] {
+              width: 100% !important;
+              max-width: 100% !important;
+              flex: 1 1 100% !important;
             }
 
-            /* Symmetrical 3-column mistake rows on mobile */
-            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(1),
-            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(3) {
-              flex: 0 0 23px !important;
-              width: 23px !important;
-              max-width: 23px !important;
-              min-width: 23px !important;
+            /* 2. Top Header Bar (AMSB Title + Fullscreen + Logout) */
+            div[data-testid="stHorizontalBlock"]:has(.header-row-anchor) {
+              margin-bottom: 2px !important;
             }
-            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) div[data-testid="column"]:nth-child(2) {
-              flex: 1 1 0% !important;
+            div[data-testid="stHorizontalBlock"]:has(.header-row-anchor) > div[data-testid="stColumn"]:nth-child(1),
+            div[data-testid="stHorizontalBlock"]:has(.header-row-anchor) > div[data-testid="column"]:nth-child(1) {
+              flex: 1 1 auto !important;
+              min-width: 0 !important;
+            }
+            div[data-testid="stHorizontalBlock"]:has(.header-row-anchor) > div[data-testid="stColumn"]:nth-child(2),
+            div[data-testid="stHorizontalBlock"]:has(.header-row-anchor) > div[data-testid="column"]:nth-child(2) {
+              flex: 0 0 52px !important;
+              width: 52px !important;
+              min-width: 52px !important;
+            }
+            div[data-testid="stHorizontalBlock"]:has(.header-row-anchor) > div[data-testid="stColumn"]:nth-child(3),
+            div[data-testid="stHorizontalBlock"]:has(.header-row-anchor) > div[data-testid="column"]:nth-child(3) {
+              flex: 0 0 48px !important;
+              width: 48px !important;
+              min-width: 48px !important;
+            }
+
+            /* 3. Student + Navigation Row (Single sleek row) */
+            div[data-testid="stHorizontalBlock"]:has(.nav-row-anchor) {
+              margin-bottom: 2px !important;
+            }
+            div[data-testid="stHorizontalBlock"]:has(.nav-row-anchor) > div[data-testid="stColumn"]:nth-child(1),
+            div[data-testid="stHorizontalBlock"]:has(.nav-row-anchor) > div[data-testid="column"]:nth-child(1) {
+              flex: 1 1 45% !important;
+              min-width: 0 !important;
+            }
+            div[data-testid="stHorizontalBlock"]:has(.nav-row-anchor) > div[data-testid="stColumn"]:nth-child(2),
+            div[data-testid="stHorizontalBlock"]:has(.nav-row-anchor) > div[data-testid="column"]:nth-child(2) {
+              flex: 1 1 55% !important;
               min-width: 0 !important;
             }
 
-            /* 3. Make ALL buttons very compact and prevent overlapping via ellipsis truncation */
+            /* 4. Homework & Title Row */
+            div[data-testid="stHorizontalBlock"]:has(.hw-row-anchor) {
+              margin-bottom: 8px !important;
+              min-height: 22px !important;
+            }
+            div[data-testid="stHorizontalBlock"]:has(.hw-row-anchor) > div[data-testid="stColumn"]:nth-child(1),
+            div[data-testid="stHorizontalBlock"]:has(.hw-row-anchor) > div[data-testid="column"]:nth-child(1) {
+              flex: 0 0 auto !important;
+              min-width: 0 !important;
+            }
+            div[data-testid="stHorizontalBlock"]:has(.hw-row-anchor) > div[data-testid="stColumn"]:nth-child(2),
+            div[data-testid="stHorizontalBlock"]:has(.hw-row-anchor) > div[data-testid="column"]:nth-child(2) {
+              flex: 1 1 auto !important;
+              min-width: 0 !important;
+            }
+
+            /* 5. Sipara selector + Subtract toggle inline on mobile */
+            div[data-testid="stHorizontalBlock"]:has(.sipara-row-anchor) {
+              margin-bottom: 8px !important;
+            }
+            div[data-testid="stHorizontalBlock"]:has(.sipara-row-anchor) > div[data-testid="stColumn"]:nth-child(1),
+            div[data-testid="stHorizontalBlock"]:has(.sipara-row-anchor) > div[data-testid="column"]:nth-child(1) {
+              flex: 1 1 calc(100% - 70px) !important;
+              min-width: 0 !important;
+            }
+            div[data-testid="stHorizontalBlock"]:has(.sipara-row-anchor) > div[data-testid="stColumn"]:nth-child(2),
+            div[data-testid="stHorizontalBlock"]:has(.sipara-row-anchor) > div[data-testid="column"]:nth-child(2) {
+              flex: 0 0 66px !important;
+              width: 66px !important;
+              min-width: 66px !important;
+            }
+
+            /* 6. Card Containers (Hifz, Ahkam, Makharij) */
+            div[data-testid="stVerticalBlockBorderWrapper"] {
+              margin-bottom: 8px !important;
+              border-radius: 10px !important;
+            }
+            div[data-testid="stVerticalBlockBorderWrapper"] > div {
+              padding: 6px 8px !important;
+              gap: 6px !important;
+            }
+            .hifz-card-anchor,
+            .ahkam-card-anchor,
+            .makharij-card-anchor {
+              display: block !important;
+              height: auto !important;
+              line-height: 1.2 !important;
+              margin: 0 0 2px 0 !important;
+              padding: 0 !important;
+            }
+            div:has(> .hifz-card-anchor),
+            div:has(> .ahkam-card-anchor),
+            div:has(> .makharij-card-anchor),
+            div[data-testid="stElementContainer"]:has(.hifz-card-anchor),
+            div[data-testid="stElementContainer"]:has(.ahkam-card-anchor),
+            div[data-testid="stElementContainer"]:has(.makharij-card-anchor),
+            div[data-testid="stElementContainer"]:has(.hw-row-anchor),
+            div[data-testid="stElementContainer"]:has(.hifz-card-anchor) *,
+            div[data-testid="stElementContainer"]:has(.ahkam-card-anchor) *,
+            div[data-testid="stElementContainer"]:has(.makharij-card-anchor) * {
+              min-height: 18px !important;
+              height: auto !important;
+            }
+
+            /* 7. Symmetrical 3-column mistake rows (I'rab) on mobile */
+            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="stColumn"]:nth-child(3), div[data-testid="column"]:nth-child(3)) > div:nth-child(1),
+            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="stColumn"]:nth-child(3), div[data-testid="column"]:nth-child(3)) > div:nth-child(3) {
+              flex: 0 0 26px !important;
+              width: 26px !important;
+              max-width: 26px !important;
+              min-width: 26px !important;
+            }
+            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="stColumn"]:nth-child(3), div[data-testid="column"]:nth-child(3)) > div:nth-child(2) {
+              flex: 1 1 0% !important;
+              min-width: 0 !important;
+            }
+            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="stColumn"]:nth-child(3), div[data-testid="column"]:nth-child(3)) .stButton > button {
+              width: 26px !important;
+              max-width: 26px !important;
+              height: 23px !important;
+              min-height: 23px !important;
+              padding: 0 !important;
+              font-size: 11px !important;
+            }
+
+            /* 8. Make ALL buttons very compact and prevent overflowing */
             .stButton, div[data-testid="stFormSubmitButton"] {
               border: none !important;
               background: transparent !important;
@@ -381,10 +505,10 @@ def apply_islamic_theme() -> None:
             }
             .stButton > button, div[data-testid="stFormSubmitButton"] > button {
               width: 100% !important;
-              padding: 2px 1px !important;
-              font-size: 8.5px !important;
-              height: 23px !important;
-              min-height: 23px !important;
+              padding: 1px 2px !important;
+              font-size: 9.5px !important;
+              height: 25px !important;
+              min-height: 25px !important;
               line-height: 1.1 !important;
               border-radius: 6px !important;
               text-overflow: ellipsis !important;
@@ -396,40 +520,40 @@ def apply_islamic_theme() -> None:
               margin: 0 !important;
             }
 
-            /* Override the global button style for emoji buttons to keep them square on mobile */
-            div[data-testid="stVerticalBlockBorderWrapper"] div[data-testid="stHorizontalBlock"]:has(div[data-testid="column"]:nth-child(3)) .stButton > button {
-              width: 23px !important;
-              max-width: 23px !important;
-              height: 23px !important;
-              min-height: 23px !important;
-              padding: 0 !important;
-              font-size: 11px !important;
-            }
-
-            /* Makharij Arabic font sizing overrides for mobile (using card anchor) */
+            /* 9. Makharij Arabic font sizing overrides for mobile */
             div[data-testid="stVerticalBlockBorderWrapper"]:has(.makharij-card-anchor) .stButton > button,
             div[data-testid="stVerticalBlockBorderWrapper"]:has(.makharij-card-anchor) .stButton > button * {
-              font-family: 'Amiri', 'Noto Naskh Arabic', 'Simplified Arabic', 'Traditional Arabic', 'Arabic Typesetting', serif !important;
-              font-size: 12.5px !important;
+              font-family: 'Amiri', 'Noto Naskh Arabic', 'Simplified Arabic', serif !important;
+              font-size: 14px !important;
               font-weight: 700 !important;
               overflow: visible !important;
-              line-height: 0.9 !important;
+              line-height: 1 !important;
+              height: 26px !important;
+              min-height: 26px !important;
               padding: 0 !important;
               margin: 0 !important;
             }
 
+            /* 10. Main container compact padding on mobile */
+            [data-testid="stMainBlockContainer"] {
+              padding: 6px 8px 10px 8px !important;
+            }
+            div[data-testid="stVerticalBlock"] {
+              gap: 6px !important;
+            }
+
             /* Adjust titles and texts */
             h3 {
-              font-size: 0.95rem !important;
+              font-size: 0.9rem !important;
               margin: 0 !important;
             }
             div[data-testid="stVerticalBlock"] p,
             div[data-testid="stVerticalBlock"] span,
             div[data-testid="stVerticalBlock"] div {
-              font-size: 11px !important;
+              font-size: 10px !important;
             }
             hr {
-              margin: 0.4rem 0 !important;
+              margin: 0.2rem 0 !important;
             }
           }
 
