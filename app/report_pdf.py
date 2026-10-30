@@ -3362,5 +3362,351 @@ def build_unified_3in1_report_html(student_name: str, rows: List[Dict[str, Any]]
 """
 
 
+def build_teacher_detailed_attendance_html(
+    *,
+    teacher_name: str,
+    teacher_username: str = "",
+    from_date: str,
+    to_date: str,
+    records: List[Dict[str, Any]],
+) -> str:
+    """
+    Generates a high-fidelity, A4 printable day-wise attendance report HTML for a teacher,
+    including Sundays, status, and login times.
+    """
+    from html import escape
+    from datetime import datetime
+
+    total_days = len(records)
+    present_days = sum(1 for r in records if r.get("is_present"))
+    absent_days = total_days - present_days
+    pct = round((present_days / total_days * 100), 1) if total_days > 0 else 0
+
+    # Format Date Range string
+    try:
+        f_dt = datetime.strptime(from_date, "%Y-%m-%d").strftime("%d %b %Y")
+        t_dt = datetime.strptime(to_date, "%Y-%m-%d").strftime("%d %b %Y")
+        range_str = f"{f_dt} to {t_dt}" if f_dt != t_dt else f_dt
+    except Exception:
+        range_str = f"{from_date} to {to_date}"
+
+    rows_html = []
+    for idx, r in enumerate(records, 1):
+        day_name = r.get("day_name", "")
+        f_date = r.get("formatted_date") or r.get("date", "")
+        is_sun = r.get("is_sunday", False)
+        is_pres = r.get("is_present", False)
+        login_time = r.get("login_time", "-")
+
+        # Row style for Sundays
+        row_style = ' style="background-color: #fdfaf0;"' if is_sun else ""
+        sun_badge = ' <span class="badge-sunday">Sunday</span>' if is_sun else ""
+
+        if is_pres:
+            status_html = '<span class="badge-present">🟢 Present</span>'
+            time_html = f'<span class="time-present">{escape(login_time)}</span>'
+        else:
+            status_html = '<span class="badge-absent">🔴 Absent</span>'
+            time_html = '<span class="time-absent">-</span>'
+
+        rows_html.append(f"""
+        <tr{row_style}>
+          <td style="text-align: center; color: #718096; font-weight: 500;">{idx}</td>
+          <td style="font-weight: 600; color: #2d3748;">{escape(day_name)}{sun_badge}</td>
+          <td style="font-weight: 500; color: #4a5568;">{escape(f_date)}</td>
+          <td style="text-align: center;">{status_html}</td>
+          <td style="text-align: center; font-weight: 600;">{time_html}</td>
+        </tr>
+        """)
+
+    table_rows_str = "\n".join(rows_html)
+    username_sub = f" <span style='font-size: 11pt; font-weight: normal; color: #718096;'>({escape(teacher_username)})</span>" if teacher_username else ""
+
+    return f"""<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8"/>
+  <title>Teacher Attendance Report - {escape(teacher_name)}</title>
+  <style>
+    @page {{
+      size: A4 portrait;
+      margin: 10mm 12mm 10mm 12mm;
+    }}
+    @media print {{
+      .print-btn {{ display: none !important; }}
+      * {{
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }}
+    }}
+    * {{
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      box-sizing: border-box;
+    }}
+    body {{
+      font-family: "Segoe UI", Arial, sans-serif;
+      direction: ltr;
+      color: #2d3748;
+      font-size: 8.5pt;
+      line-height: 1.4;
+      margin: 0;
+      padding: 0;
+      background-color: #ffffff;
+    }}
+    .print-btn {{
+      position: fixed;
+      bottom: 22px;
+      right: 22px;
+      z-index: 9999;
+      background: linear-gradient(135deg, #0E6B50 0%, #0a4d3a 100%);
+      color: #ffffff;
+      border: 2px solid #D4AF37;
+      border-radius: 12px;
+      padding: 10px 24px;
+      font-size: 10.5pt;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 18px rgba(14,107,80,0.35);
+      letter-spacing: 0.4px;
+      transition: all 0.2s ease;
+    }}
+    .print-btn:hover {{
+      background: linear-gradient(135deg, #128262 0%, #0c5c45 100%);
+      transform: translateY(-1px);
+    }}
+
+    /* Header */
+    .header-container {{
+      border-bottom: 2px solid #D4AF37;
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }}
+    .logo-title-area {{
+      display: flex;
+      flex-direction: column;
+    }}
+    .inst-name {{
+      font-size: 11pt;
+      font-weight: 700;
+      color: #0E6B50;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+    }}
+    .report-title {{
+      font-size: 15pt;
+      font-weight: 800;
+      color: #1E1A12;
+      margin: 2px 0;
+    }}
+    .arabic-title {{
+      font-family: 'Amiri', 'Traditional Arabic', serif;
+      font-size: 14pt;
+      color: #B88917;
+      direction: rtl;
+    }}
+
+    /* Teacher Info Card */
+    .info-bar {{
+      background: #fdfcf9;
+      border: 1px solid #e2dccf;
+      border-left: 4px solid #0E6B50;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }}
+    .teacher-name {{
+      font-size: 13pt;
+      font-weight: 800;
+      color: #0E6B50;
+    }}
+    .date-range-badge {{
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      color: #166534;
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 9pt;
+    }}
+
+    /* Metrics Summary Cards */
+    .stats-grid {{
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+      width: 100%;
+    }}
+    .stat-card {{
+      flex: 1;
+      background: #fdfcf9;
+      border: 1px solid #e2dccf;
+      border-radius: 8px;
+      padding: 8px 12px;
+      text-align: center;
+    }}
+    .stat-label {{
+      font-size: 7.5pt;
+      font-weight: 700;
+      color: #718096;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 3px;
+    }}
+    .stat-val {{
+      font-size: 14pt;
+      font-weight: 800;
+    }}
+
+    /* Table */
+    .table-container {{
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      overflow: hidden;
+    }}
+    table {{
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }}
+    th {{
+      background: #0E6B50;
+      color: #ffffff;
+      font-size: 8.5pt;
+      font-weight: 700;
+      padding: 7px 10px;
+      border-bottom: 1px solid #cbd5e1;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }}
+    td {{
+      padding: 6px 10px;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 8.5pt;
+    }}
+    tr:last-child td {{
+      border-bottom: none;
+    }}
+
+    /* Status Badges */
+    .badge-present {{
+      display: inline-block;
+      background-color: #dcfce7;
+      color: #15803d;
+      border: 1px solid #bbf7d0;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 8pt;
+      font-weight: 700;
+    }}
+    .badge-absent {{
+      display: inline-block;
+      background-color: #fee2e2;
+      color: #b91c1c;
+      border: 1px solid #fecaca;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 8pt;
+      font-weight: 700;
+    }}
+    .badge-sunday {{
+      display: inline-block;
+      background-color: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fde68a;
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 7pt;
+      font-weight: 700;
+      margin-left: 4px;
+    }}
+    .time-present {{
+      color: #0E6B50;
+    }}
+    .time-absent {{
+      color: #a0aec0;
+    }}
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header-container">
+    <div class="logo-title-area">
+      <div class="inst-name">Al Madrasa-tus-Saifiyah-tul-Burhaniyah</div>
+      <div class="report-title">Teacher Attendance Report</div>
+      <div style="font-size: 8.5pt; color: #718096;">Mukhayyam Al-Quran Al-Kareem</div>
+    </div>
+    <div class="arabic-title">
+      تقرير حضور المعلم التفصيلي
+    </div>
+  </div>
+
+  <!-- Teacher Info Bar -->
+  <div class="info-bar">
+    <div>
+      <span style="font-size: 8pt; color: #718096; text-transform: uppercase; font-weight: bold; display: block;">Teacher Name / اسم المعلم:</span>
+      <span class="teacher-name">{escape(teacher_name)}</span>{username_sub}
+    </div>
+    <div>
+      <span style="font-size: 8pt; color: #718096; text-transform: uppercase; font-weight: bold; display: block; text-align: right;">Period:</span>
+      <span class="date-range-badge">📅 {escape(range_str)}</span>
+    </div>
+  </div>
+
+  <!-- Stats Grid -->
+  <div class="stats-grid">
+    <div class="stat-card" style="border-left: 3px solid #64748b;">
+      <div class="stat-label">Total Days (incl. Sundays)</div>
+      <div class="stat-val" style="color: #334155;">{total_days}</div>
+    </div>
+    <div class="stat-card" style="border-left: 3px solid #16a34a;">
+      <div class="stat-label">Present Days</div>
+      <div class="stat-val" style="color: #16a34a;">{present_days}</div>
+    </div>
+    <div class="stat-card" style="border-left: 3px solid #dc2626;">
+      <div class="stat-label">Absent Days</div>
+      <div class="stat-val" style="color: #dc2626;">{absent_days}</div>
+    </div>
+    <div class="stat-card" style="border-left: 3px solid #0E6B50;">
+      <div class="stat-label">Attendance Rate</div>
+      <div class="stat-val" style="color: #0E6B50;">{pct}%</div>
+    </div>
+  </div>
+
+  <!-- Day-wise Table -->
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 6%; text-align: center;">#</th>
+          <th style="width: 25%;">Day</th>
+          <th style="width: 25%;">Date</th>
+          <th style="width: 20%; text-align: center;">Status</th>
+          <th style="width: 24%; text-align: center;">Login / Tasmee Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        {table_rows_str}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Print Button -->
+  <button class="print-btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
+
+</body>
+</html>
+"""
+
+
+
 
 
