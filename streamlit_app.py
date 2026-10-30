@@ -403,11 +403,12 @@ def main() -> None:
 
     # 0. Check if user is logged in
     if not st.session_state.get("logged_in"):
-        header_cols = st.columns([8.5, 1.5])
+        header_cols = st.columns([7.8, 2.2])
         with header_cols[0]:
-            st.markdown("<h2 style='font-size: 1.15rem; margin: 0; padding: 2px 0; color: var(--emerald); font-weight: bold; font-family: sans-serif;'>Al Madrasa-tus-Saifiyah-tul-Burhaniyah</h2>", unsafe_allow_html=True)
+            st.markdown("<div class='login-header-anchor' style='display: none;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='font-size: 0.95rem; line-height: 1.2; color: var(--emerald); font-weight: bold; font-family: sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 2px 0;'>Al Madrasa-tus-Saifiyah-tul-Burhaniyah</div>", unsafe_allow_html=True)
         with header_cols[1]:
-            st.markdown('<button id="fullscreen-toggle-btn" style="width: 100%; background: linear-gradient(180deg, var(--emerald), #0a4d3a); color: white; border: none; border-radius: 8px; padding: 2px 4px; font-weight: bold; cursor: pointer; font-size: 10px; height: 26px; min-height: 26px; line-height: 1.2; display: flex; align-items: center; justify-content: center; gap: 4px; font-family: sans-serif; box-shadow: 0 2px 4px rgba(0,0,0,0.12);">📱 Fullscreen</button>', unsafe_allow_html=True)
+            st.markdown('<button id="fullscreen-toggle-btn" style="width: 100%; background: linear-gradient(180deg, var(--emerald), #0a4d3a); color: white; border: none; border-radius: 6px; padding: 1px 2px; font-weight: bold; cursor: pointer; font-size: 9px; height: 24px; min-height: 24px; line-height: 1.2; display: flex; align-items: center; justify-content: center; gap: 2px; font-family: sans-serif; box-shadow: 0 1px 3px rgba(0,0,0,0.12);">📱 Full</button>', unsafe_allow_html=True)
             
         from app.ui.login import render_login
         render_login()
@@ -478,16 +479,27 @@ def main() -> None:
         current_page = "murajat"
         st.session_state.page = "murajat"
 
+    # 2. Top Student Bar (Elegant Luxury Pill + Switch Button)
     student_name = st.session_state.get("student_name", "Student")
-    st.markdown("<div class='student-bar-anchor' style='display: none;'></div>", unsafe_allow_html=True)
-    if st.button(f"👤 {student_name}   ·   Tap to Change Student ▾", width="stretch", key="nav_student_change_btn", help="Click to select another student"):
-        st.session_state.student_id = None
-        st.session_state.student_name = None
-        st.session_state.page = "home"
-        st.query_params.pop("student_id", None)
-        st.query_params.pop("student_name", None)
-        st.query_params.pop("page", None)
-        st.rerun()
+    stu_cols = st.columns([3.8, 1.2])
+    with stu_cols[0]:
+        st.markdown(f"""
+        <div class="student-luxury-pill" onclick="const b=document.querySelector('.student-change-btn-wrapper button');if(b)b.click();" title="Click to change student">
+          <span class="student-avatar-badge">👤</span>
+          <span class="student-title-text">{student_name}</span>
+        </div>
+        """, unsafe_allow_html=True)
+    with stu_cols[1]:
+        st.markdown("<div class='student-change-btn-wrapper'>", unsafe_allow_html=True)
+        if st.button("⇄ Switch", width="stretch", key="nav_student_change_btn", help="Click to select another student"):
+            st.session_state.student_id = None
+            st.session_state.student_name = None
+            st.session_state.page = "home"
+            st.query_params.pop("student_id", None)
+            st.query_params.pop("student_name", None)
+            st.query_params.pop("page", None)
+            st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
 
     # 3. Bottom Thumb-Zone Navigation Dock
     with st.container(border=True):
@@ -503,19 +515,19 @@ def main() -> None:
                     st.session_state.page = "planner"
                     st.query_params["page"] = "planner"
                     st.session_state.show_more_tray = False
-                    current_page = "planner"
+                    st.rerun()
             with tray_cols[1]:
                 if st.button("✉️ Email", type="primary" if current_page == "email" else "secondary", width="stretch", key="dock_btn_email"):
                     st.session_state.page = "email"
                     st.query_params["page"] = "email"
                     st.session_state.show_more_tray = False
-                    current_page = "email"
+                    st.rerun()
             with tray_cols[2]:
                 if st.button("📊 Report", type="primary" if current_page == "report" else "secondary", width="stretch", key="dock_btn_report"):
                     st.session_state.page = "report"
                     st.query_params["page"] = "report"
                     st.session_state.show_more_tray = False
-                    current_page = "report"
+                    st.rerun()
 
         st.markdown("<div class='dock-main-anchor' style='display: none;'></div>", unsafe_allow_html=True)
         dock_cols = st.columns(5)
@@ -524,25 +536,25 @@ def main() -> None:
                 st.session_state.page = "murajat"
                 st.query_params["page"] = "murajat"
                 st.session_state.show_more_tray = False
-                current_page = "murajat"
+                st.rerun()
         with dock_cols[1]:
             if st.button("📑 Juz'Hali", type="primary" if current_page == "juzulhali" else "secondary", width="stretch", key="dock_btn_juzulhali"):
                 st.session_state.page = "juzulhali"
                 st.query_params["page"] = "juzulhali"
                 st.session_state.show_more_tray = False
-                current_page = "juzulhali"
+                st.rerun()
         with dock_cols[2]:
             if st.button("✨ Jadeed", type="primary" if current_page == "jadeed" else "secondary", width="stretch", key="dock_btn_jadeed"):
                 st.session_state.page = "jadeed"
                 st.query_params["page"] = "jadeed"
                 st.session_state.show_more_tray = False
-                current_page = "jadeed"
+                st.rerun()
         with dock_cols[3]:
             if st.button("📋 Takhteet", type="primary" if current_page == "takhteet" else "secondary", width="stretch", key="dock_btn_takhteet"):
                 st.session_state.page = "takhteet"
                 st.query_params["page"] = "takhteet"
                 st.session_state.show_more_tray = False
-                current_page = "takhteet"
+                st.rerun()
         with dock_cols[4]:
             more_label = "⋯ More"
             if is_utility_page:
