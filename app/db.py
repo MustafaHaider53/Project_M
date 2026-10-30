@@ -3004,10 +3004,14 @@ def fetch_teacher_attendance_report(
     # Map logs by teacher_id and teacher_name (lower)
     log_map_name = {str(l.get("teacher_name", "")).strip().lower(): l for l in att_logs if l.get("teacher_name")}
 
+    # Track explicit absents from attendance logs (teacher_id -> set of dates)
+    explicit_absents: Dict[str, Set[str]] = {}
+
     # Build per-teacher stats
     stats: Dict[str, Dict[str, Any]] = {}
     for t in teachers:
         t_id = str(t.get("id"))
+        explicit_absents[t_id] = set()
         t_name = t.get("full_name", t.get("username", "Teacher"))
         stats[t_id] = {
             "teacher_id": t_id,
@@ -3031,18 +3035,27 @@ def fetch_teacher_attendance_report(
         t_name = str(l.get("teacher_name", ""))
         first_at = l.get("first_tasmee_at")
         act_d = str(l.get("activity_date") or from_date)
+        s_cnt = l.get("sessions_count", 1)
         
         target = stats.get(t_id)
         if not target and t_name.strip().lower() in log_map_name:
             for s_item in stats.values():
                 if s_item["teacher_name"].strip().lower() == t_name.strip().lower():
                     target = s_item
+                    t_id = target["teacher_id"]
                     break
         if target:
-            target["is_present"] = True
-            target["present_dates"].add(act_d)
-            if first_at and (not target["first_tasmee_raw"] or first_at < target["first_tasmee_raw"]):
-                target["first_tasmee_raw"] = first_at
+            if s_cnt == 0:
+                # Explicitly marked absent by admin override
+                if t_id not in explicit_absents:
+                    explicit_absents[t_id] = set()
+                explicit_absents[t_id].add(act_d)
+                target["present_dates"].discard(act_d)
+            else:
+                target["is_present"] = True
+                target["present_dates"].add(act_d)
+                if first_at and (not target["first_tasmee_raw"] or first_at < target["first_tasmee_raw"]):
+                    target["first_tasmee_raw"] = first_at
 
     # Process listening sessions
     for s in session_rows:
@@ -3061,8 +3074,11 @@ def fetch_teacher_attendance_report(
             for s_item in stats.values():
                 if s_item["teacher_name"].strip().lower() == t_name.strip().lower():
                     target = s_item
+                    t_id = target["teacher_id"]
                     break
         if target:
+            if act_d in explicit_absents.get(t_id, set()):
+                continue  # Skip dates explicitly marked absent
             target["is_present"] = True
             target["present_dates"].add(act_d)
             target["total_sessions"] += 1
@@ -3091,8 +3107,11 @@ def fetch_teacher_attendance_report(
             for s_item in stats.values():
                 if s_item["teacher_name"].strip().lower() == t_name.strip().lower():
                     target = s_item
+                    t_id = target["teacher_id"]
                     break
         if target:
+            if act_d in explicit_absents.get(t_id, set()):
+                continue  # Skip dates explicitly marked absent
             target["is_present"] = True
             target["present_dates"].add(act_d)
             target["total_sessions"] += 1
@@ -3118,8 +3137,11 @@ def fetch_teacher_attendance_report(
             for s_item in stats.values():
                 if s_item["teacher_name"].strip().lower() == t_name.strip().lower():
                     target = s_item
+                    t_id = target["teacher_id"]
                     break
         if target:
+            if act_d in explicit_absents.get(t_id, set()):
+                continue  # Skip dates explicitly marked absent
             target["is_present"] = True
             target["present_dates"].add(act_d)
             target["takhteet_count"] += 1
@@ -3131,9 +3153,11 @@ def fetch_teacher_attendance_report(
     # Format result
     result = []
     for item in stats.values():
-        raw_ts = item["first_tasmee_raw"]
+        present_cnt = len(item["present_dates"])
+        is_pres = present_cnt > 0
+        raw_ts = item["first_tasmee_raw"] if is_pres else None
         time_str = "-"
-        if raw_ts:
+        if is_pres and raw_ts:
             try:
                 from datetime import datetime, timezone
                 cleaned = raw_ts.replace("Z", "+00:00")
@@ -3145,14 +3169,13 @@ def fetch_teacher_attendance_report(
             except Exception:
                 time_str = str(raw_ts)[:16]
         
-        present_cnt = len(item["present_dates"])
         absent_cnt = max(0, total_working_days - present_cnt)
 
         result.append({
             "teacher_id": item["teacher_id"],
             "teacher_name": item["teacher_name"],
             "teacher_username": item["teacher_username"],
-            "is_present": present_cnt > 0,
+            "is_present": is_pres,
             "present_days": present_cnt,
             "absent_days": absent_cnt,
             "total_working_days": total_working_days,
@@ -3168,6 +3191,252 @@ def fetch_teacher_attendance_report(
 
     result.sort(key=lambda x: (-x["present_days"], x["teacher_name"]))
     return result
+
+
+@st.cache_data(show_spinner=False, ttl=15)
+def fetch_teacher_daywise_attendance(
+    *,
+    teacher_id: str,
+    from_date: str,
+    to_date: str,
+) -> List[Dict[str, Any]]:
+    """
+    Fetches day-by-day attendance records for a specific teacher within a date range,
+    including Sundays. Returns list of dicts with day, date, status, login_time.
+    """
+    rest = get_rest()
+    if rest is None:
+        return []
+
+    from datetime import datetime, date, timedelta, timezone
+
+    try:
+        d_start = datetime.strptime(from_date, "%Y-%m-%d").date()
+        d_end = datetime.strptime(to_date, "%Y-%m-%d").date()
+        if d_start > d_end:
+            d_start, d_end = d_end, d_start
+            from_date, to_date = to_date, from_date
+    except Exception:
+        d_start = date.today()
+        d_end = date.today()
+        from_date = d_start.strftime("%Y-%m-%d")
+        to_date = d_end.strftime("%Y-%m-%d")
+
+    # Generate all days in range (including Sundays)
+    total_days_count = (d_end - d_start).days + 1
+    all_dates = [d_start + timedelta(days=i) for i in range(total_days_count)]
+
+    # Fetch teacher's logs from teacher_attendance_logs
+    q_params = {
+        "teacher_id": f"eq.{teacher_id}",
+        "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})"
+    } if from_date != to_date else {
+        "teacher_id": f"eq.{teacher_id}",
+        "activity_date": f"eq.{from_date}"
+    }
+
+    try:
+        logs = rest.select(
+            "teacher_attendance_logs",
+            select="id,teacher_id,teacher_name,activity_date,first_tasmee_at,sessions_count",
+            params=q_params
+        )
+    except Exception as e:
+        print(f"Error fetching teacher_attendance_logs: {e}")
+        logs = []
+
+    # Map logs by activity_date
+    logs_by_date = {str(l.get("activity_date")): l for l in logs if l.get("activity_date")}
+
+    # Also query sessions to capture any activity on dates where a log entry might not exist
+    import concurrent.futures
+    sess_params = {
+        "teacher_id": f"eq.{teacher_id}",
+        "and": f"(activity_date.gte.{from_date},activity_date.lte.{to_date})"
+    } if from_date != to_date else {
+        "teacher_id": f"eq.{teacher_id}",
+        "activity_date": f"eq.{from_date}"
+    }
+
+    session_dates = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
+        f_ls = executor.submit(
+            rest.select, "listening_sessions",
+            select="activity_date,created_at",
+            params=sess_params
+        )
+        f_jd = executor.submit(
+            rest.select, "jadeed_entries",
+            select="activity_date,created_at",
+            params=sess_params
+        )
+        f_tk = executor.submit(
+            rest.select, "takhteet_daily",
+            select="activity_date,updated_at",
+            params=sess_params
+        )
+        try:
+            for row in f_ls.result():
+                d = str(row.get("activity_date"))
+                ca = row.get("created_at")
+                if d and (d not in session_dates or (ca and ca < session_dates[d])):
+                    session_dates[d] = ca
+        except Exception:
+            pass
+        try:
+            for row in f_jd.result():
+                d = str(row.get("activity_date"))
+                ca = row.get("created_at")
+                if d and (d not in session_dates or (ca and ca < session_dates[d])):
+                    session_dates[d] = ca
+        except Exception:
+            pass
+        try:
+            for row in f_tk.result():
+                d = str(row.get("activity_date"))
+                ca = row.get("updated_at")
+                if d and (d not in session_dates or (ca and ca < session_dates[d])):
+                    session_dates[d] = ca
+        except Exception:
+            pass
+
+    records = []
+    for cur_date in all_dates:
+        d_str = cur_date.strftime("%Y-%m-%d")
+        day_name = cur_date.strftime("%A")
+        is_sunday = (cur_date.weekday() == 6)
+
+        log = logs_by_date.get(d_str)
+        if log:
+            s_cnt = log.get("sessions_count")
+            if s_cnt == 0:
+                # Explicitly marked absent by admin override!
+                is_present = False
+                login_time = "-"
+                raw_ts = None
+            else:
+                is_present = True
+                raw_ts = log.get("first_tasmee_at") or session_dates.get(d_str)
+        else:
+            # No manual override row: check session_dates
+            if d_str in session_dates:
+                is_present = True
+                raw_ts = session_dates.get(d_str)
+            else:
+                is_present = False
+                raw_ts = None
+
+        time_str = "-"
+        if is_present and raw_ts:
+            try:
+                cleaned = str(raw_ts).replace("Z", "+00:00")
+                dt = datetime.fromisoformat(cleaned)
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                local_dt = dt.astimezone()
+                time_str = local_dt.strftime("%I:%M %p").lstrip("0")
+            except Exception:
+                time_str = str(raw_ts)[11:16]
+        elif is_present and not raw_ts:
+            time_str = "Present"
+
+        records.append({
+            "date": d_str,
+            "formatted_date": cur_date.strftime("%d %b %Y"),
+            "day_name": day_name,
+            "is_sunday": is_sunday,
+            "is_present": is_present,
+            "login_time": time_str,
+            "raw_time": raw_ts,
+            "log_id": log.get("id") if log else None,
+            "sessions_count": log.get("sessions_count", 1) if log else 1
+        })
+
+    return records
+
+
+def update_teacher_attendance_day(
+    *,
+    teacher_id: str,
+    teacher_name: str,
+    activity_date: str,
+    is_present: bool,
+    login_time_str: Optional[str] = None,
+) -> bool:
+    """
+    Manually marks a teacher present or absent on a specific date, and updates their login time.
+    """
+    rest = get_rest()
+    if rest is None:
+        return False
+
+    from datetime import datetime, timezone, timedelta
+
+    if is_present:
+        # Construct proper timestamp with local timezone offset (+05:00 for Pakistan)
+        iso_ts = None
+        if login_time_str and login_time_str.strip() and login_time_str.strip() != "-":
+            clean_time = login_time_str.strip().upper()
+            try:
+                # Try parsing formats like "08:30 AM", "8:30 AM", "08:30", "14:00"
+                for fmt in ("%I:%M %p", "%I:%M%p", "%H:%M", "%I %p"):
+                    try:
+                        t_obj = datetime.strptime(clean_time, fmt).time()
+                        iso_ts = f"{activity_date}T{t_obj.hour:02d}:{t_obj.minute:02d}:00+05:00"
+                        break
+                    except ValueError:
+                        continue
+            except Exception:
+                pass
+
+        if not iso_ts:
+            # Default to 08:00 AM on that date
+            iso_ts = f"{activity_date}T08:00:00+05:00"
+
+        try:
+            rest.upsert(
+                "teacher_attendance_logs",
+                [{
+                    "teacher_id": teacher_id,
+                    "teacher_name": teacher_name,
+                    "activity_date": activity_date,
+                    "first_tasmee_at": iso_ts,
+                    "sessions_count": 1,
+                    "updated_at": now_utc_iso()
+                }],
+                on_conflict="teacher_id,activity_date",
+                returning="minimal"
+            )
+            # Clear caches so the UI shows immediate changes
+            fetch_teacher_attendance_report.clear()
+            fetch_teacher_daywise_attendance.clear()
+            return True
+        except Exception as e:
+            print(f"Failed to upsert teacher attendance day: {e}")
+            return False
+    else:
+        # Mark absent: upsert with sessions_count=0 to explicitly override any session records!
+        try:
+            rest.upsert(
+                "teacher_attendance_logs",
+                [{
+                    "teacher_id": teacher_id,
+                    "teacher_name": teacher_name,
+                    "activity_date": activity_date,
+                    "first_tasmee_at": f"{activity_date}T00:00:00+05:00",
+                    "sessions_count": 0,
+                    "updated_at": now_utc_iso()
+                }],
+                on_conflict="teacher_id,activity_date",
+                returning="minimal"
+            )
+            fetch_teacher_attendance_report.clear()
+            fetch_teacher_daywise_attendance.clear()
+            return True
+        except Exception as e:
+            print(f"Failed to upsert teacher attendance day absent override: {e}")
+            return False
+
 
 
 
