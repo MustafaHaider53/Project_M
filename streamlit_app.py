@@ -472,40 +472,84 @@ def main() -> None:
         require_student()
         return
 
-    # 2. Compact Student + Navigation Bar (Replaces tall stacked student banner and 8 vertical buttons)
+    # 2. Top Student Bar (Tap to change student)
     current_page = st.session_state.get("page", "home")
     if current_page == "home":
         current_page = "murajat"
         st.session_state.page = "murajat"
 
     student_name = st.session_state.get("student_name", "Student")
-    nav_cols = st.columns([1.1, 1.9])
-    with nav_cols[0]:
-        st.markdown("<div class='nav-row-anchor' style='display: none;'></div>", unsafe_allow_html=True)
-        if st.button(f"👥 {student_name}", width="stretch", key="nav_student_change_btn", help="Click to change student"):
-            st.session_state.student_id = None
-            st.session_state.student_name = None
-            st.session_state.page = "home"
-            st.query_params.pop("student_id", None)
-            st.query_params.pop("student_name", None)
-            st.query_params.pop("page", None)
-            st.rerun()
+    st.markdown("<div class='student-bar-anchor' style='display: none;'></div>", unsafe_allow_html=True)
+    if st.button(f"👤 {student_name}   ·   Tap to Change Student ▾", width="stretch", key="nav_student_change_btn", help="Click to select another student"):
+        st.session_state.student_id = None
+        st.session_state.student_name = None
+        st.session_state.page = "home"
+        st.query_params.pop("student_id", None)
+        st.query_params.pop("student_name", None)
+        st.query_params.pop("page", None)
+        st.rerun()
 
-    with nav_cols[1]:
-        PAGE_OPTIONS = ["Murajat", "Juzulhali", "Jadeed", "Takhteet", "Planner", "Email", "Report"]
-        current_page_cap = current_page.capitalize() if current_page else "Murajat"
-        default_idx = PAGE_OPTIONS.index(current_page_cap) if current_page_cap in PAGE_OPTIONS else 0
-        selected_page = st.selectbox(
-            "Page",
-            options=PAGE_OPTIONS,
-            index=default_idx,
-            key="header_nav_page_selectbox",
-            label_visibility="collapsed"
-        )
-        if selected_page and selected_page.lower() != current_page:
-            st.session_state.page = selected_page.lower()
-            st.query_params["page"] = selected_page.lower()
-            st.rerun()
+    # 3. Bottom Thumb-Zone Navigation Dock
+    with st.container(border=True):
+        st.markdown("<div class='mobile-bottom-dock-anchor' style='display: none;'></div>", unsafe_allow_html=True)
+        
+        # Sub-tray for utility pages (Planner, Email, Report) when 'More' is open or active
+        is_utility_page = current_page in ["planner", "email", "report"]
+        if st.session_state.get("show_more_tray") or is_utility_page:
+            st.markdown("<div class='dock-tray-anchor' style='display: none;'></div>", unsafe_allow_html=True)
+            tray_cols = st.columns(3)
+            with tray_cols[0]:
+                if st.button("📅 Planner", type="primary" if current_page == "planner" else "secondary", width="stretch", key="dock_btn_planner"):
+                    st.session_state.page = "planner"
+                    st.query_params["page"] = "planner"
+                    st.session_state.show_more_tray = False
+                    current_page = "planner"
+            with tray_cols[1]:
+                if st.button("✉️ Email", type="primary" if current_page == "email" else "secondary", width="stretch", key="dock_btn_email"):
+                    st.session_state.page = "email"
+                    st.query_params["page"] = "email"
+                    st.session_state.show_more_tray = False
+                    current_page = "email"
+            with tray_cols[2]:
+                if st.button("📊 Report", type="primary" if current_page == "report" else "secondary", width="stretch", key="dock_btn_report"):
+                    st.session_state.page = "report"
+                    st.query_params["page"] = "report"
+                    st.session_state.show_more_tray = False
+                    current_page = "report"
+
+        st.markdown("<div class='dock-main-anchor' style='display: none;'></div>", unsafe_allow_html=True)
+        dock_cols = st.columns(5)
+        with dock_cols[0]:
+            if st.button("📖 Murajat", type="primary" if current_page == "murajat" else "secondary", width="stretch", key="dock_btn_murajat"):
+                st.session_state.page = "murajat"
+                st.query_params["page"] = "murajat"
+                st.session_state.show_more_tray = False
+                current_page = "murajat"
+        with dock_cols[1]:
+            if st.button("📑 Juz'Hali", type="primary" if current_page == "juzulhali" else "secondary", width="stretch", key="dock_btn_juzulhali"):
+                st.session_state.page = "juzulhali"
+                st.query_params["page"] = "juzulhali"
+                st.session_state.show_more_tray = False
+                current_page = "juzulhali"
+        with dock_cols[2]:
+            if st.button("✨ Jadeed", type="primary" if current_page == "jadeed" else "secondary", width="stretch", key="dock_btn_jadeed"):
+                st.session_state.page = "jadeed"
+                st.query_params["page"] = "jadeed"
+                st.session_state.show_more_tray = False
+                current_page = "jadeed"
+        with dock_cols[3]:
+            if st.button("📋 Takhteet", type="primary" if current_page == "takhteet" else "secondary", width="stretch", key="dock_btn_takhteet"):
+                st.session_state.page = "takhteet"
+                st.query_params["page"] = "takhteet"
+                st.session_state.show_more_tray = False
+                current_page = "takhteet"
+        with dock_cols[4]:
+            more_label = "⋯ More"
+            if is_utility_page:
+                more_label = f"⋯ {current_page.capitalize()[:4]}"
+            if st.button(more_label, type="primary" if is_utility_page else "secondary", width="stretch", key="dock_btn_more"):
+                st.session_state.show_more_tray = not st.session_state.get("show_more_tray", False)
+                st.rerun()
 
     # --- ORIGINAL 8 DESKTOP BUTTONS (Preserved in code for reference) ---
     # cols = st.columns(8)

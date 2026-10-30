@@ -323,7 +323,7 @@ def apply_islamic_theme() -> None:
           /* Mobile responsive layout overrides to prevent vertical column stacking and scrolling */
           @media (max-width: 991px) {
             .block-container {
-              padding: 0.5rem 0.15rem 0.25rem 0.15rem !important;
+              padding: 0.4rem 0.15rem 52px 0.15rem !important;
             }
 
             /* Tighten vertical layout gaps on mobile */
@@ -395,19 +395,112 @@ def apply_islamic_theme() -> None:
               min-width: 48px !important;
             }
 
-            /* 3. Student + Navigation Row (Single sleek row) */
-            div[data-testid="stHorizontalBlock"]:has(.nav-row-anchor) {
-              margin-bottom: 2px !important;
+            /* 3. Top Student Bar (Single clean pill row) */
+            div[data-testid="stElementContainer"]:has(.student-bar-anchor) {
+              margin-bottom: 3px !important;
+              min-height: 24px !important;
             }
-            div[data-testid="stHorizontalBlock"]:has(.nav-row-anchor) > div[data-testid="stColumn"]:nth-child(1),
-            div[data-testid="stHorizontalBlock"]:has(.nav-row-anchor) > div[data-testid="column"]:nth-child(1) {
-              flex: 1 1 45% !important;
-              min-width: 0 !important;
+            div[data-testid="stElementContainer"]:has(.student-bar-anchor) + div[data-testid="stElementContainer"] .stButton > button {
+              height: 25px !important;
+              min-height: 25px !important;
+              font-size: 11px !important;
+              font-weight: 600 !important;
+              background: #f8fafc !important;
+              color: #1e293b !important;
+              border: 1px solid rgba(14, 107, 80, 0.25) !important;
+              border-radius: 6px !important;
+              padding: 0 8px !important;
+              line-height: 1.2 !important;
+              box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
             }
-            div[data-testid="stHorizontalBlock"]:has(.nav-row-anchor) > div[data-testid="stColumn"]:nth-child(2),
-            div[data-testid="stHorizontalBlock"]:has(.nav-row-anchor) > div[data-testid="column"]:nth-child(2) {
-              flex: 1 1 55% !important;
+
+            /* Bottom Thumb-Zone Dock Container (Fixed at bottom on all devices) */
+            div[data-testid="stLayoutWrapper"]:has(.mobile-bottom-dock-anchor) {
+              position: fixed !important;
+              bottom: 0px !important;
+              left: 50% !important;
+              transform: translateX(-50%) !important;
+              width: 100% !important;
+              max-width: 480px !important;
+              z-index: 999999 !important;
+              background: rgba(255, 255, 255, 0.98) !important;
+              backdrop-filter: blur(16px) !important;
+              -webkit-backdrop-filter: blur(16px) !important;
+              border-top: 2px solid var(--emerald) !important;
+              border-left: none !important;
+              border-right: none !important;
+              border-bottom: none !important;
+              box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.12) !important;
+              padding: 4px 6px 6px 6px !important;
+              margin: 0 !important;
+              border-radius: 14px 14px 0 0 !important;
+            }
+
+            div[data-testid="stLayoutWrapper"]:has(.mobile-bottom-dock-anchor) div[data-testid="stVerticalBlock"] {
+              gap: 2px !important;
+            }
+
+            /* Ensure horizontal rows inside bottom dock stay in a single row */
+            div[data-testid="stLayoutWrapper"]:has(.mobile-bottom-dock-anchor) div[data-testid="stHorizontalBlock"] {
+              display: flex !important;
+              flex-direction: row !important;
+              flex-wrap: nowrap !important;
+              width: 100% !important;
+              gap: 4px !important;
+              margin: 0 !important;
+              align-items: center !important;
+            }
+
+            div[data-testid="stLayoutWrapper"]:has(.mobile-bottom-dock-anchor) div[data-testid="stHorizontalBlock"] > div[data-testid="stColumn"],
+            div[data-testid="stLayoutWrapper"]:has(.mobile-bottom-dock-anchor) div[data-testid="stHorizontalBlock"] > div[data-testid="column"] {
+              flex: 1 1 0% !important;
               min-width: 0 !important;
+              padding: 0 !important;
+            }
+
+            /* Dock tab buttons */
+            div[data-testid="stLayoutWrapper"]:has(.mobile-bottom-dock-anchor) .stButton > button {
+              height: 36px !important;
+              min-height: 36px !important;
+              font-size: 10.5px !important;
+              font-weight: 700 !important;
+              padding: 1px 2px !important;
+              line-height: 1.1 !important;
+              border-radius: 8px !important;
+              white-space: nowrap !important;
+              overflow: hidden !important;
+              text-overflow: ellipsis !important;
+              letter-spacing: -0.2px !important;
+              box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06) !important;
+            }
+
+            /* Active primary button in dock */
+            div[data-testid="stLayoutWrapper"]:has(.mobile-bottom-dock-anchor) .stButton > button[kind="primary"],
+            div[data-testid="stLayoutWrapper"]:has(.mobile-bottom-dock-anchor) .stButton > button[data-testid="stBaseButton-primary"] {
+              background: linear-gradient(180deg, var(--emerald), #084c39) !important;
+              color: #ffffff !important;
+              border: 1px solid var(--gold) !important;
+              box-shadow: 0 2px 8px rgba(14, 107, 80, 0.35) !important;
+            }
+
+            /* Inactive secondary button in dock */
+            div[data-testid="stLayoutWrapper"]:has(.mobile-bottom-dock-anchor) .stButton > button[kind="secondary"],
+            div[data-testid="stLayoutWrapper"]:has(.mobile-bottom-dock-anchor) .stButton > button[data-testid="stBaseButton-secondary"] {
+              background: #f1f5f9 !important;
+              color: #334155 !important;
+              border: 1px solid #cbd5e1 !important;
+            }
+
+            /* Sub-tray for utility pages */
+            div[data-testid="stHorizontalBlock"]:has(.dock-tray-anchor) {
+              margin-bottom: 3px !important;
+              padding-bottom: 4px !important;
+              border-bottom: 1px dashed rgba(14, 107, 80, 0.2) !important;
+            }
+            div[data-testid="stHorizontalBlock"]:has(.dock-tray-anchor) .stButton > button {
+              height: 26px !important;
+              min-height: 26px !important;
+              font-size: 9.5px !important;
             }
 
             /* 4. Homework & Title Row */
