@@ -275,12 +275,12 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
             except (ValueError, TypeError):
                 page_int = 0
             surah_id = j.get("surah_id") or surah.get("id")
-            if page_int in range(1, 31) and (surah_id == SIPARA_TO_SURAH.get(page_int) or surah_name in ("Surah", "")):
+            if surah_id and page_int in range(1, 31) and surah_id == SIPARA_TO_SURAH.get(page_int):
                 recitation_display = SIPARA_NAMES.get(page_int, f"Sipara {page_int}")
-            elif surah_name:
-                recitation_display = f"{surah_name} (Page {page})"
+            elif surah_name and surah_name not in ("Surah", ""):
+                recitation_display = f"{surah_name} ({page} Pages)"
             else:
-                recitation_display = f"Page {page}"
+                recitation_display = f"{page_int} Pages" if page_int > 1 else (f"{page_int} Page" if page_int == 1 else "Juz'ul Hali")
             counts = j.get("mistake_counts") or {}
             if isinstance(counts, list):
                 counts = counts[0] if counts else {}

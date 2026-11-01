@@ -465,9 +465,9 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type
                     if surah_id and page in range(1, 31) and surah_id == SIPARA_TO_SURAH.get(page):
                         page_display = SIPARA_NAMES.get(page, f"Sipara {page}")
                     elif surah_name and surah_name != "Surah":
-                        page_display = f"{surah_name} (p. {page})"
+                        page_display = f"{surah_name} ({page} Pages)"
                     else:
-                        page_display = f"Page {page}" if page > 0 else "-"
+                        page_display = f"{page} Pages" if page > 1 else (f"{page} Page" if page == 1 else "-")
                     
                     counts = j
                     talqeen = counts.get("talqeen", 0)
@@ -2845,7 +2845,7 @@ def build_unified_3in1_report_html(student_name: str, rows: List[Dict[str, Any]]
 
         # Juzulhali stats
         for j in juzulhali:
-            juzulhali_pages += 1
+            juzulhali_pages += int(j.get("page_number") or 1)
             if "marks" in j:
                 juzulhali_marks_sum += float(j.get("marks", 10.0))
                 juzulhali_marks_count += 1
