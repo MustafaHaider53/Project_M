@@ -462,9 +462,9 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type
                         surah_name = parts[1] if len(parts) > 1 else surah_name
                     
                     surah_id = j.get("surah_id")
-                    if page in range(1, 31) and (surah_id == SIPARA_TO_SURAH.get(page) or not surah_name or surah_name == "Surah"):
+                    if surah_id and page in range(1, 31) and surah_id == SIPARA_TO_SURAH.get(page):
                         page_display = SIPARA_NAMES.get(page, f"Sipara {page}")
-                    elif surah_name:
+                    elif surah_name and surah_name != "Surah":
                         page_display = f"{surah_name} (p. {page})"
                     else:
                         page_display = f"Page {page}" if page > 0 else "-"
@@ -2998,9 +2998,11 @@ def build_unified_3in1_report_html(student_name: str, rows: List[Dict[str, Any]]
                 except (ValueError, TypeError):
                     p_num = 0
                 surah_id = j.get("surah_id")
-                if p_num in range(1, 31) and (surah_id == SIPARA_TO_SURAH.get(p_num) or not s_name or s_name == "Surah"):
+                if surah_id and p_num in range(1, 31) and surah_id == SIPARA_TO_SURAH.get(p_num):
                     s_name = SIPARA_NAMES.get(p_num, f"Sipara {p_num}")
                     p_val = "-"
+                elif not s_name:
+                    s_name = "Juz'ul Hali"
 
                 j_marks = j.get("marks", 10.0)
                 grade_html = _format_grade_badge(j_marks)

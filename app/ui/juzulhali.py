@@ -30,6 +30,8 @@ def render_juzulhali() -> None:
         st.session_state.pop("juzulhali_sipara", None)
         st.session_state.pop("juzulhali_surah_id", None)
         st.session_state.pop("juzulhali_page_number", None)
+        st.session_state.pop("juzulhali_page_input", None)
+        st.session_state.pop("juzulhali_page_select", None)
         st.session_state.pop("juzulhali_surah", None)
         st.session_state.pop("juzulhali_page_widget", None)
         st.session_state.juzulhali_student_id = student_id
@@ -53,25 +55,62 @@ def render_juzulhali() -> None:
         # )
         timer_elapsed, is_timer_running, is_timer_overtime = 0, False, False
 
-        # --- SIPARA SELECTOR + SUBTRACTION TOGGLE (Compact 1-row layout) ---
-        col_sipara, col_sub = st.columns([3.3, 0.7])
-        with col_sipara:
+        # --- PAGE DROPDOWN (1 — 10) + SUBTRACTION TOGGLE (Compact 1-row layout) ---
+        col_page, col_sub = st.columns([3.3, 0.7])
+        with col_page:
             st.markdown("<div class='sipara-row-anchor' style='display: none;'></div>", unsafe_allow_html=True)
-            selected_sipara = st.selectbox(
-                "Select Sipara",
-                options=SIPARA_OPTIONS,
-                index=None,
-                placeholder="Select a Sipara (1 — 30)...",
-                format_func=lambda x: x[1] if x else "",
-                key="juzulhali_sipara",
+            current_page_val = st.session_state.get("juzulhali_page_number")
+            default_index = None
+            if current_page_val and int(current_page_val) in range(1, 11):
+                default_index = list(range(1, 11)).index(int(current_page_val))
+
+            # Dropdown for 1-10 pages (no typing required)
+            page_val = st.selectbox(
+                "Select Pages",
+                options=list(range(1, 11)),
+                index=default_index,
+                placeholder="Select Pages (1 — 10)...",
+                format_func=lambda x: f"Page {x}" if x else "",
+                key="juzulhali_page_select",
                 label_visibility="collapsed"
             )
         with col_sub:
             st.toggle("Sub", value=False, key="sub_mode_toggle")
         
-        sipara_num = selected_sipara[0] if selected_sipara else None
-        surah_id = SIPARA_TO_SURAH.get(sipara_num) if sipara_num else None
-        page_number = sipara_num
+        page_number = int(page_val) if page_val is not None else None
+        surah_id = None
+
+        # --- PREVIOUS NUMBER INPUT (1 — 20) (Preserved in code) ---
+        # page_val = st.number_input(
+        #     "Pages (1 — 20)",
+        #     min_value=1,
+        #     max_value=20,
+        #     value=int(current_page_val) if current_page_val is not None else None,
+        #     step=1,
+        #     placeholder="Type page count / page (1 — 20)...",
+        #     key="juzulhali_page_input",
+        #     label_visibility="collapsed",
+        #     help="Type page count / page number (1 to 20)"
+        # )
+        # --- END PREVIOUS NUMBER INPUT ---
+
+        # --- PREVIOUS SIPARA SELECTOR (Preserved in code) ---
+        # col_sipara, col_sub = st.columns([3.3, 0.7])
+        # with col_sipara:
+        #     st.markdown("<div class='sipara-row-anchor' style='display: none;'></div>", unsafe_allow_html=True)
+        #     selected_sipara = st.selectbox(
+        #         "Select Sipara",
+        #         options=SIPARA_OPTIONS,
+        #         index=None,
+        #         placeholder="Select a Sipara (1 — 30)...",
+        #         format_func=lambda x: x[1] if x else "",
+        #         key="juzulhali_sipara",
+        #         label_visibility="collapsed"
+        #     )
+        # sipara_num = selected_sipara[0] if selected_sipara else None
+        # surah_id = SIPARA_TO_SURAH.get(sipara_num) if sipara_num else None
+        # page_number = sipara_num
+        # --- END PREVIOUS SIPARA SELECTOR ---
 
         # --- ORIGINAL SURAH/PAGE & PREV/NEXT BUTTONS (Preserved in code) ---
         # from app.ui.jadeed import load_quran_metadata
@@ -83,7 +122,7 @@ def render_juzulhali() -> None:
         # ...
         # --- END ORIGINAL NAVIGATION ---
 
-    if sipara_num is not None:
+    if page_number is not None:
         if (
             st.session_state.get("juzulhali_surah_id") != surah_id
             or st.session_state.get("juzulhali_page_number") != page_number
@@ -95,7 +134,7 @@ def render_juzulhali() -> None:
             st.session_state.juzulhali_student_id = student_id
             # Check if there is an existing session for this student, mode, surah and page today using local cache
             ensure_today_sessions(student_id)
-            key = ("juzulhali", int(surah_id), int(page_number))
+            key = ("juzulhali", surah_id, int(page_number))
             existing_id = st.session_state.today_sessions.get(key)
             if existing_id:
                 st.session_state.juzulhali_session_id = existing_id
@@ -130,12 +169,12 @@ def render_juzulhali() -> None:
                 counts[col] = 0
 
     def _on_click(kind: str) -> None:
-        if surah_id is None or page_number is None:
+        if page_number is None:
             return
         sid = st.session_state.get("juzulhali_session_id")
         if not sid:
             ensure_today_sessions(student_id)
-            key = ("juzulhali", int(surah_id), int(page_number))
+            key = ("juzulhali", surah_id, int(page_number))
             existing_id = st.session_state.today_sessions.get(key)
             if existing_id:
                 sid = existing_id
@@ -273,8 +312,8 @@ def render_juzulhali() -> None:
 
     student_name = st.session_state.get("student_name", "Student")
 
-    if sipara_num is None:
-        st.info("Please select a Sipara to start Juzulhali recitation.")
+    if page_number is None:
+        st.info("Please select a page (1 — 10) above to start Juzulhali recitation.")
         return
 
     mistake_buttons(session_id=session_id or "", counts=counts, on_click=_on_click)

@@ -277,7 +277,7 @@ def mistake_buttons(*, session_id: str, counts: Dict[str, int], on_click) -> Non
         # Simplified Makharij: 4 specific rows
         # Row 1: saa, sin, saad, daad (ض، ص، س، ث)
         # Row 2: ain, haa, do chachmi haa (ع، ح، هـ)
-        # Row 3: zuin, zaal, tain, taa (ز، ذ، ط، ت)
+        # Row 3: zuin, zaal, tain, zaa (ز، ذ، ط، ظ)
         # Row 4: qaaf, kaaf (ق، ك)
         simplified_makharij_rows = [
             [
@@ -292,7 +292,7 @@ def mistake_buttons(*, session_id: str, counts: Dict[str, int], on_click) -> Non
                 {"char": "ع", "kind": "makhraj_ain"},
             ],
             [
-                {"char": "ت", "kind": "makhraj_taa"},
+                {"char": "ظ", "kind": "makhraj_zaa_thick"},
                 {"char": "ط", "kind": "makhraj_taa_thick"},
                 {"char": "ذ", "kind": "makhraj_thaal"},
                 {"char": "ز", "kind": "makhraj_zaa"},
