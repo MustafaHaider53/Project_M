@@ -63,14 +63,14 @@ def apply_islamic_theme() -> None:
             border: none !important;
             box-shadow: none !important;
             background: transparent !important;
-            padding: 0.5rem 1rem 1rem 1rem !important;
+            padding: 0.5rem 1rem 6.5rem 1rem !important;
             max-width: 100% !important;
           }
           .block-container {
             border: none !important;
             box-shadow: none !important;
             background: transparent !important;
-            padding: 0.5rem 1rem 1rem 1rem !important;
+            padding: 0.5rem 1rem 6.5rem 1rem !important;
             max-width: 100% !important;
           }
           .main {
@@ -485,26 +485,23 @@ def apply_islamic_theme() -> None:
               white-space: nowrap !important;
             }
 
-            /* Bottom Thumb-Zone Dock Container (Fixed at bottom on all devices) */
+            /* Bottom Thumb-Zone Dock Container (Lifted 48px above bottom to avoid Streamlit Cloud icon) */
             div[data-testid="stLayoutWrapper"]:has(.mobile-bottom-dock-anchor) {
               position: fixed !important;
-              bottom: 0px !important;
+              bottom: 48px !important;
               left: 50% !important;
               transform: translateX(-50%) !important;
-              width: 100% !important;
+              width: calc(100% - 12px) !important;
               max-width: 480px !important;
               z-index: 999999 !important;
               background: rgba(255, 255, 255, 0.98) !important;
               backdrop-filter: blur(16px) !important;
               -webkit-backdrop-filter: blur(16px) !important;
-              border-top: 2px solid var(--emerald) !important;
-              border-left: none !important;
-              border-right: none !important;
-              border-bottom: none !important;
-              box-shadow: 0 -3px 16px rgba(0, 0, 0, 0.10) !important;
+              border: 1.5px solid var(--emerald) !important;
+              box-shadow: 0 4px 18px rgba(0, 0, 0, 0.14) !important;
               padding: 2px 4px 3px 4px !important;
               margin: 0 !important;
-              border-radius: 12px 12px 0 0 !important;
+              border-radius: 12px !important;
             }
 
             div[data-testid="stLayoutWrapper"]:has(.mobile-bottom-dock-anchor) div[data-testid="stVerticalBlock"] {
