@@ -36,6 +36,25 @@ def render_juzulhali() -> None:
         st.session_state.pop("juzulhali_page_widget", None)
         st.session_state.juzulhali_student_id = student_id
 
+    # Ensure today's sessions are loaded into session_state.today_sessions
+    ensure_today_sessions(student_id)
+
+    # Find existing today's session for this student in mode "juzulhali"
+    existing_jh_id = None
+    existing_jh_pages = None
+    if "today_sessions" in st.session_state:
+        for k, sid in st.session_state.today_sessions.items():
+            if k[0] == "juzulhali":
+                existing_jh_id = sid
+                existing_jh_pages = k[2]
+                break
+
+    # If active session id not set in session state, adopt existing today's session
+    if not st.session_state.get("juzulhali_session_id") and existing_jh_id:
+        st.session_state.juzulhali_session_id = existing_jh_id
+        if not st.session_state.get("juzulhali_page_number") and existing_jh_pages:
+            st.session_state.juzulhali_page_number = existing_jh_pages
+
     # Render the sticky container wrapping header, student badge, navigation, and mistake cards
     sticky_container = st.container()
     with sticky_container:
@@ -45,146 +64,89 @@ def render_juzulhali() -> None:
 
         current_student_badge()
 
-        # --- TIMER (Hidden in simple version, preserved in code) ---
-        # from app.ui.timer import render_recitation_timer
-        # timer_elapsed, is_timer_running, is_timer_overtime = render_recitation_timer(
-        #     module_name="juzulhali",
-        #     target_minutes=15,
-        #     student_id=student_id,
-        #     auto_start=bool(surah_id is not None)
-        # )
         timer_elapsed, is_timer_running, is_timer_overtime = 0, False, False
 
-        # --- PAGE DROPDOWN (1 — 10) + SUBTRACTION TOGGLE (Compact 1-row layout) ---
+        # --- PAGES DROPDOWN (1 — 10 Pages) + SUBTRACTION TOGGLE ---
         col_page, col_sub = st.columns([3.3, 0.7])
         with col_page:
             st.markdown("<div class='sipara-row-anchor' style='display: none;'></div>", unsafe_allow_html=True)
-            current_page_val = st.session_state.get("juzulhali_page_number")
+            current_page_val = st.session_state.get("juzulhali_page_number") or existing_jh_pages
             default_index = None
             if current_page_val and int(current_page_val) in range(1, 11):
                 default_index = list(range(1, 11)).index(int(current_page_val))
 
-            # Dropdown for 1-10 pages (no typing required)
+            # Dropdown for 1-10 pages (no typing required, clean "1 Page", "2 Pages", ... "10 Pages")
             page_val = st.selectbox(
-                "Select Pages",
+                "Select Recited Pages",
                 options=list(range(1, 11)),
                 index=default_index,
-                placeholder="Select Pages (1 — 10)...",
-                format_func=lambda x: f"Page {x}" if x else "",
+                placeholder="Select Recited Pages (1 — 10)...",
+                format_func=lambda x: f"{x} Page" if x == 1 else f"{x} Pages",
                 key="juzulhali_page_select",
                 label_visibility="collapsed"
             )
         with col_sub:
             st.toggle("Sub", value=False, key="sub_mode_toggle")
         
-        page_number = int(page_val) if page_val is not None else None
+        page_number = int(page_val) if page_val is not None else (int(current_page_val) if current_page_val is not None else None)
         surah_id = None
 
-        # --- PREVIOUS NUMBER INPUT (1 — 20) (Preserved in code) ---
-        # page_val = st.number_input(
-        #     "Pages (1 — 20)",
-        #     min_value=1,
-        #     max_value=20,
-        #     value=int(current_page_val) if current_page_val is not None else None,
-        #     step=1,
-        #     placeholder="Type page count / page (1 — 20)...",
-        #     key="juzulhali_page_input",
-        #     label_visibility="collapsed",
-        #     help="Type page count / page number (1 to 20)"
-        # )
-        # --- END PREVIOUS NUMBER INPUT ---
-
-        # --- PREVIOUS SIPARA SELECTOR (Preserved in code) ---
-        # col_sipara, col_sub = st.columns([3.3, 0.7])
-        # with col_sipara:
-        #     st.markdown("<div class='sipara-row-anchor' style='display: none;'></div>", unsafe_allow_html=True)
-        #     selected_sipara = st.selectbox(
-        #         "Select Sipara",
-        #         options=SIPARA_OPTIONS,
-        #         index=None,
-        #         placeholder="Select a Sipara (1 — 30)...",
-        #         format_func=lambda x: x[1] if x else "",
-        #         key="juzulhali_sipara",
-        #         label_visibility="collapsed"
-        #     )
-        # sipara_num = selected_sipara[0] if selected_sipara else None
-        # surah_id = SIPARA_TO_SURAH.get(sipara_num) if sipara_num else None
-        # page_number = sipara_num
-        # --- END PREVIOUS SIPARA SELECTOR ---
-
-        # --- ORIGINAL SURAH/PAGE & PREV/NEXT BUTTONS (Preserved in code) ---
-        # from app.ui.jadeed import load_quran_metadata
-        # from app.db import list_surahs
-        # quran_metadata = load_quran_metadata()
-        # surahs = list_surahs()
-        # options = [(s["id"], f'{s["number"]:03d} — {s["name_en"]} ({s["name_ar"]})') for s in surahs]
-        # col_s, col_p, col_prev, col_next = st.columns([2, 1, 1, 1])
-        # ...
-        # --- END ORIGINAL NAVIGATION ---
-
+    # Handle page count change without resetting the active session or mistake panel!
     if page_number is not None:
-        if (
-            st.session_state.get("juzulhali_surah_id") != surah_id
-            or st.session_state.get("juzulhali_page_number") != page_number
-            or st.session_state.get("juzulhali_student_id") != student_id
-            or not st.session_state.get("juzulhali_session_id")
-        ):
-            st.session_state.juzulhali_surah_id = surah_id
+        if st.session_state.get("juzulhali_page_number") != page_number:
             st.session_state.juzulhali_page_number = page_number
-            st.session_state.juzulhali_student_id = student_id
-            # Check if there is an existing session for this student, mode, surah and page today using local cache
-            ensure_today_sessions(student_id)
-            key = ("juzulhali", surah_id, int(page_number))
-            existing_id = st.session_state.today_sessions.get(key)
-            if existing_id:
-                st.session_state.juzulhali_session_id = existing_id
-            else:
-                st.session_state.juzulhali_session_id = None
-            st.session_state.pop("juzulhali_counts", None)
-            st.session_state.pop("juzulhali_counts_session_id", None)
+            active_sid = st.session_state.get("juzulhali_session_id")
+            if active_sid:
+                from app.db import update_session_page_number
+                update_session_page_number(active_sid, page_number)
+                if "today_sessions" in st.session_state:
+                    for k in list(st.session_state.today_sessions.keys()):
+                        if k[0] == "juzulhali":
+                            st.session_state.today_sessions.pop(k, None)
+                    st.session_state.today_sessions[("juzulhali", None, page_number)] = active_sid
 
-        session_id = st.session_state.get("juzulhali_session_id")
-        if session_id:
-            if timer_elapsed > 0:
-                from app.db import update_session_duration
-                update_session_duration(session_id, timer_elapsed, is_timer_overtime)
-            if "juzulhali_counts" not in st.session_state or st.session_state.get("juzulhali_counts_session_id") != session_id:
-                st.session_state.juzulhali_counts = get_session_counts(session_id)
-                st.session_state.juzulhali_counts_session_id = session_id
-            counts = st.session_state.juzulhali_counts
-        else:
-            counts = {
-                "talqeen": 0, "tanbeeh": 0, "repeat_mistake": 0, "mutashabehat": 0, "irab": 0, "awakhir_ul_ayat": 0,
-                "irab_talqeen": 0, "irab_tanbeeh": 0,
-                "repeat_mistake_talqeen": 0, "repeat_mistake_tanbeeh": 0,
-                "mutashabehat_talqeen": 0, "mutashabehat_tanbeeh": 0,
-                "awakhir_ul_ayat_talqeen": 0, "awakhir_ul_ayat_tanbeeh": 0,
-                "ikhfa": 0, "izhaar": 0, "qalqalah": 0, "ism_jalalah": 0, "tahreek_sakin": 0, "gunnah": 0,
-                "idgham": 0, "madd_lazim": 0, "madd_muttasil": 0, "mad_tabaiee": 0, "ikhfa_shafawi": 0, "iqlab": 0
-            }
-            from app.db import MAKHARIJ_COLS, MUSAID_COLS
-            for col in MAKHARIJ_COLS:
-                counts[col] = 0
-            for col in MUSAID_COLS:
-                counts[col] = 0
+    session_id = st.session_state.get("juzulhali_session_id")
+    if session_id:
+        if timer_elapsed > 0:
+            from app.db import update_session_duration
+            update_session_duration(session_id, timer_elapsed, is_timer_overtime)
+        if "juzulhali_counts" not in st.session_state or st.session_state.get("juzulhali_counts_session_id") != session_id:
+            st.session_state.juzulhali_counts = get_session_counts(session_id)
+            st.session_state.juzulhali_counts_session_id = session_id
+        counts = st.session_state.juzulhali_counts
+    else:
+        counts = {
+            "talqeen": 0, "tanbeeh": 0, "repeat_mistake": 0, "mutashabehat": 0, "irab": 0, "awakhir_ul_ayat": 0,
+            "irab_talqeen": 0, "irab_tanbeeh": 0,
+            "repeat_mistake_talqeen": 0, "repeat_mistake_tanbeeh": 0,
+            "mutashabehat_talqeen": 0, "mutashabehat_tanbeeh": 0,
+            "awakhir_ul_ayat_talqeen": 0, "awakhir_ul_ayat_tanbeeh": 0,
+            "ikhfa": 0, "izhaar": 0, "qalqalah": 0, "ism_jalalah": 0, "tahreek_sakin": 0, "gunnah": 0,
+            "idgham": 0, "madd_lazim": 0, "madd_muttasil": 0, "mad_tabaiee": 0, "ikhfa_shafawi": 0, "iqlab": 0
+        }
+        from app.db import MAKHARIJ_COLS, MUSAID_COLS
+        for col in MAKHARIJ_COLS:
+            counts[col] = 0
+        for col in MUSAID_COLS:
+            counts[col] = 0
 
     def _on_click(kind: str) -> None:
-        if page_number is None:
-            return
+        recited_pages = st.session_state.get("juzulhali_page_number") or 1
         sid = st.session_state.get("juzulhali_session_id")
         if not sid:
             ensure_today_sessions(student_id)
-            key = ("juzulhali", surah_id, int(page_number))
-            existing_id = st.session_state.today_sessions.get(key)
-            if existing_id:
-                sid = existing_id
+            for k, existing_id in st.session_state.today_sessions.items():
+                if k[0] == "juzulhali":
+                    sid = existing_id
+                    break
+            if sid:
                 st.session_state.juzulhali_session_id = sid
                 st.session_state.juzulhali_counts = get_session_counts(sid)
                 st.session_state.juzulhali_counts_session_id = sid
             else:
-                session = create_listening_session(student_id=student_id, mode="juzulhali", surah_id=surah_id, page_number=page_number, force_new=True)
+                session = create_listening_session(student_id=student_id, mode="juzulhali", surah_id=None, page_number=recited_pages, force_new=False)
                 sid = session["id"]
-                st.session_state.today_sessions[key] = session["id"]
+                st.session_state.today_sessions[("juzulhali", None, recited_pages)] = session["id"]
                 st.session_state.juzulhali_session_id = sid
                 
                 # Initialize local counts with all 0s in memory without a network request!
@@ -312,8 +274,8 @@ def render_juzulhali() -> None:
 
     student_name = st.session_state.get("student_name", "Student")
 
-    if page_number is None:
-        st.info("Please select a page (1 — 10) above to start Juzulhali recitation.")
+    if page_number is None and not session_id:
+        st.info("Please select recited pages (1 — 10) above to start Juzulhali recitation.")
         return
 
     mistake_buttons(session_id=session_id or "", counts=counts, on_click=_on_click)

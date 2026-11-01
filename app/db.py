@@ -687,6 +687,23 @@ def increment_mistake(session_id: str, kind: str) -> Dict[str, int]:
     return counts
 
 
+def update_session_page_number(session_id: str, page_number: int) -> None:
+    rest = get_rest()
+    if rest is None or not session_id:
+        return
+    def _bg_update():
+        try:
+            rest.update("listening_sessions", match={"id": session_id}, patch={
+                "page_number": int(page_number),
+            })
+            clear_all_read_caches()
+        except Exception:
+            pass
+    t = threading.Thread(target=_bg_update)
+    t.daemon = True
+    t.start()
+
+
 def update_session_duration(session_id: str, duration_seconds: int, time_exceeded: bool = False) -> None:
     rest = get_rest()
     if rest is None or not session_id:
