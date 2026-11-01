@@ -95,12 +95,10 @@ def render_jadeed() -> None:
     todays_entries = summary.get("jadeed") or []
     no_jadeed_status = summary.get("no_jadeed") or False
 
-    # 1. Title/Header Section
-    st.markdown("### Today's Jadeed Recitations")
-    
-    # 2. Render Existing Entries styled beautifully
+    # 1. Render Existing Entries or No Jadeed status if any exist
     if todays_entries:
-        st.markdown("<div style='margin-bottom: 15px;'>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size: 0.88rem; font-weight: 700; color: var(--emerald); margin: 2px 0 4px 0;'>Today's Jadeed Recitations</div>", unsafe_allow_html=True)
+        st.markdown("<div style='margin-bottom: 8px;'>", unsafe_allow_html=True)
         for idx, entry in enumerate(todays_entries):
             entry_id = entry.get("id")
             surah_info = entry.get("surahs") or {}
@@ -134,15 +132,15 @@ def render_jadeed() -> None:
 
             # Premium card design for each entry (dedented to prevent markdown code-block interpretation)
             card_html = (
-                "<div style='background-color: var(--card); border: 1.5px solid var(--border); padding: 15px; border-radius: 10px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.02);'>"
+                "<div style='background-color: var(--card); border: 1.5px solid var(--border); padding: 8px 12px; border-radius: 8px; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 2px 5px rgba(0,0,0,0.02);'>"
                 "<div>"
                 "<div style='display: flex; align-items: center; flex-wrap: wrap; gap: 4px;'>"
-                f"<span style='font-size: 1.1rem; font-weight: bold; color: var(--emerald);'>📖 Surah {surah_num} — {surah_name} ({surah_ar})</span>"
+                f"<span style='font-size: 1rem; font-weight: bold; color: var(--emerald);'>📖 Surah {surah_num} — {surah_name} ({surah_ar})</span>"
                 f"{badges_str}"
                 "</div>"
-                "<div style='font-size: 0.9rem; color: var(--ink); opacity: 0.85; margin-top: 4px;'>"
-                f"<span style='margin-right: 15px;'>📄 <b>Page:</b> {page_num}</span>"
-                f"<span style='margin-right: 15px;'>🔢 <b>Ayah:</b> {ayah_num}</span>"
+                "<div style='font-size: 0.85rem; color: var(--ink); opacity: 0.85; margin-top: 2px;'>"
+                f"<span style='margin-right: 12px;'>📄 <b>Page:</b> {page_num}</span>"
+                f"<span style='margin-right: 12px;'>🔢 <b>Ayah:</b> {ayah_num}</span>"
                 f"<span>📊 <b>Volume:</b> {volume}</span>"
                 f"{duration_detail}"
                 "</div>"
@@ -153,10 +151,8 @@ def render_jadeed() -> None:
             with c_card:
                 st.markdown(card_html, unsafe_allow_html=True)
             with c_btn:
-                # Vertical alignment centering the delete button
-                st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
-                if st.button("🗑️ Delete", key=f"del_entry_{idx}_{entry_id}", type="secondary", width="stretch"):
-                    # Remove the item and update Supabase
+                st.markdown("<div style='height: 4px;'></div>", unsafe_allow_html=True)
+                if st.button("🗑️", key=f"del_entry_{idx}_{entry_id}", type="secondary", width="stretch", help="Delete entry"):
                     payload = []
                     for e in todays_entries:
                         if e.get("id") != entry_id:
@@ -178,47 +174,40 @@ def render_jadeed() -> None:
                     st.session_state.jadeed_flash = "Entry deleted successfully."
                     st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
-    else:
-        if no_jadeed_status:
-            no_jd_details = summary.get("no_jadeed_details") or {}
-            reason_badges = []
-            if no_jd_details.get("weak_hifz"):
-                reason_badges.append("<span style='background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; padding: 2px 8px; border-radius: 12px; font-size: 0.78rem; font-weight: bold; margin-left: 6px;'>⚠️ Weak Hifz</span>")
-            if no_jd_details.get("airab_mistakes"):
-                reason_badges.append("<span style='background-color: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; padding: 2px 8px; border-radius: 12px; font-size: 0.78rem; font-weight: bold; margin-left: 6px;'>🔤 Airab Mistakes</span>")
-            if no_jd_details.get("time_exceeded"):
-                reason_badges.append("<span style='background-color: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; padding: 2px 8px; border-radius: 12px; font-size: 0.78rem; font-weight: bold; margin-left: 6px;'>⏱️ Time Exceeded</span>")
-            if no_jd_details.get("weak_murajat"):
-                reason_badges.append("<span style='background-color: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; padding: 2px 8px; border-radius: 12px; font-size: 0.78rem; font-weight: bold; margin-left: 6px;'>📖 Weak Murajat</span>")
-            if no_jd_details.get("weak_juzulhali"):
-                reason_badges.append("<span style='background-color: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; padding: 2px 8px; border-radius: 12px; font-size: 0.78rem; font-weight: bold; margin-left: 6px;'>📖 Weak Juz'ul Hali</span>")
-            
-            reasons_str = "".join(reason_badges) if reason_badges else ""
-            
-            c_nj_card, c_nj_btn = st.columns([5, 1])
-            with c_nj_card:
-                card_html = (
-                    f"<div style='background-color: rgba(197, 168, 128, 0.1); border: 1.5px solid #c5a880; color: #854d0e; padding: 15px; border-radius: 10px; margin-bottom: 20px; font-weight: 500; display: flex; align-items: center; justify-content: space-between;'>"
-                    f"<div><span style='font-weight: bold; font-size: 1rem;'>🌙 Status: Marked as 'No Jadeed' for today</span>{reasons_str}</div>"
-                    f"</div>"
-                )
-                st.markdown(card_html, unsafe_allow_html=True)
-            with c_nj_btn:
-                st.markdown("<div style='height: 4px;'></div>", unsafe_allow_html=True)
-                if st.button("🗑️ Clear", key="btn_clear_no_jadeed", type="secondary", width="stretch", help="Clear 'No Jadeed' status"):
-                    from app.db import get_rest, clear_all_read_caches
-                    rest = get_rest()
-                    if rest:
-                        rest.delete("jadeed_daily", match={"student_id": student_id, "activity_date": today})
-                    clear_all_read_caches()
-                    st.session_state.pop("jadeed_state_init", None)
-                    st.session_state.jadeed_flash = "'No Jadeed' status cleared."
-                    st.rerun()
-        else:
-            st.info("No Jadeed entries recorded for today yet.")
-
-    # 3. Add New Entry Section
-    st.markdown("---")
+    elif no_jadeed_status:
+        no_jd_details = summary.get("no_jadeed_details") or {}
+        reason_badges = []
+        if no_jd_details.get("weak_hifz"):
+            reason_badges.append("<span style='background-color: #fef3c7; color: #92400e; border: 1px solid #fde68a; padding: 2px 6px; border-radius: 10px; font-size: 0.74rem; font-weight: bold; margin-left: 4px;'>⚠️ Weak Hifz</span>")
+        if no_jd_details.get("airab_mistakes"):
+            reason_badges.append("<span style='background-color: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; padding: 2px 6px; border-radius: 10px; font-size: 0.74rem; font-weight: bold; margin-left: 4px;'>🔤 Airab Mistakes</span>")
+        if no_jd_details.get("time_exceeded"):
+            reason_badges.append("<span style='background-color: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; padding: 2px 6px; border-radius: 10px; font-size: 0.74rem; font-weight: bold; margin-left: 4px;'>⏱️ Time Exceeded</span>")
+        if no_jd_details.get("weak_murajat"):
+            reason_badges.append("<span style='background-color: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; padding: 2px 6px; border-radius: 10px; font-size: 0.74rem; font-weight: bold; margin-left: 4px;'>📖 Weak Murajat</span>")
+        if no_jd_details.get("weak_juzulhali"):
+            reason_badges.append("<span style='background-color: #f3e8ff; color: #6b21a8; border: 1px solid #d8b4fe; padding: 2px 6px; border-radius: 10px; font-size: 0.74rem; font-weight: bold; margin-left: 4px;'>📖 Weak Juz'ul Hali</span>")
+        
+        reasons_str = "".join(reason_badges) if reason_badges else ""
+        
+        c_nj_card, c_nj_btn = st.columns([5, 1])
+        with c_nj_card:
+            card_html = (
+                f"<div style='background-color: rgba(197, 168, 128, 0.1); border: 1.5px solid #c5a880; color: #854d0e; padding: 8px 12px; border-radius: 8px; margin-bottom: 6px; font-weight: 500; display: flex; align-items: center; justify-content: space-between;'>"
+                f"<div><span style='font-weight: bold; font-size: 0.88rem;'>🌙 Marked as 'No Jadeed'</span>{reasons_str}</div>"
+                f"</div>"
+            )
+            st.markdown(card_html, unsafe_allow_html=True)
+        with c_nj_btn:
+            if st.button("🗑️", key="btn_clear_no_jadeed", type="secondary", width="stretch", help="Clear 'No Jadeed' status"):
+                from app.db import get_rest, clear_all_read_caches
+                rest = get_rest()
+                if rest:
+                    rest.delete("jadeed_daily", match={"student_id": student_id, "activity_date": today})
+                clear_all_read_caches()
+                st.session_state.pop("jadeed_state_init", None)
+                st.session_state.jadeed_flash = "'No Jadeed' status cleared."
+                st.rerun()
     
     # Pre-build Surah options in sorted order
     surah_list = []
@@ -280,21 +269,23 @@ def render_jadeed() -> None:
         st.session_state.jadeed_ayah = default_ayah
         st.session_state.jadeed_volume = last_entry.get("volume", "Kamil") if last_entry else "Kamil"
 
-    # Outer container for form
     with st.container(border=True):
-        st.markdown("<h4 style='margin-top: 0; margin-bottom: 15px; color: var(--emerald);'>➕ Add New Recitation</h4>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size: 0.95rem; font-weight: 700; margin: 0 0 4px 0; color: var(--emerald);'>➕ Add New Recitation</div>", unsafe_allow_html=True)
         
-        col_s, col_p, col_a, col_v = st.columns([2, 1, 1, 1])
+        # Row 1: Surah dropdown (Full width so the full Surah name and Arabic name are completely visible)
+        st.markdown("<div class='jadeed-surah-row'>", unsafe_allow_html=True)
+        selected_surah = st.selectbox(
+            "Surah",
+            options=surah_list,
+            format_func=lambda x: x["label"],
+            key="jadeed_surah",
+            on_change=on_surah_change
+        )
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        # Row 2: Page, Ayah, Volume in 3 balanced columns
+        col_p, col_a, col_v = st.columns([1, 1, 1.2])
         
-        with col_s:
-            selected_surah = st.selectbox(
-                "Surah",
-                options=surah_list,
-                format_func=lambda x: x["label"],
-                key="jadeed_surah",
-                on_change=on_surah_change
-            )
-            
         with col_p:
             # Dynamically fetch pages for the selected Surah
             s_num_str = str(selected_surah["number"])
@@ -370,7 +361,6 @@ def render_jadeed() -> None:
         is_weak_murajat = st.session_state.get("jadeed_weak_murajat", False)
         is_weak_juzulhali = st.session_state.get("jadeed_weak_juzulhali", False)
 
-        st.markdown("<div style='height: 4px;'></div>", unsafe_allow_html=True)
         col_t1, col_t2, col_t3 = st.columns(3)
         with col_t1:
             weak_active_class = "makhraj-active" if is_weak else "makhraj-inactive"
@@ -400,7 +390,6 @@ def render_jadeed() -> None:
                 width="stretch"
             )
 
-        st.markdown("<div style='height: 4px;'></div>", unsafe_allow_html=True)
         col_t4, col_t5 = st.columns(2)
         with col_t4:
             wm_active_class = "makhraj-active" if is_weak_murajat else "makhraj-inactive"
@@ -420,8 +409,6 @@ def render_jadeed() -> None:
                 key="btn_toggle_weak_juzulhali",
                 width="stretch"
             )
-            
-        st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
         
         # Action buttons
         c_add, c_no = st.columns([2, 1])

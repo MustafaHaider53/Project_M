@@ -35,6 +35,51 @@ def back_home_button() -> None:
     pass
 
 
+# 30 Siparas (Juz 1 to 30) for simplified recitation navigation
+SIPARA_OPTIONS: List[Tuple[int, str]] = [
+    (1, "Sipara 1 — Alif Lam Meem (الم)"),
+    (2, "Sipara 2 — Sayaqool (سيقول)"),
+    (3, "Sipara 3 — Tilkal Rusul (تلك الرسل)"),
+    (4, "Sipara 4 — Lan Tanaaloo (لن تنالوا)"),
+    (5, "Sipara 5 — Wal Mohsanat (والمحصنات)"),
+    (6, "Sipara 6 — La Yuhibbullah (لا يحب الله)"),
+    (7, "Sipara 7 — Wa Iza Sami'oo (وإذا سمعوا)"),
+    (8, "Sipara 8 — Wa Lau Annana (ولو أننا)"),
+    (9, "Sipara 9 — Qal Al-Mala'o (قال الملأ)"),
+    (10, "Sipara 10 — Wa'lamoo (واعلموا)"),
+    (11, "Sipara 11 — Ya'taziroon (يعتذرون)"),
+    (12, "Sipara 12 — Wa Mamin Da'abbah (وما من دابة)"),
+    (13, "Sipara 13 — Wa Ma Ubri'oo (وما أبرئ)"),
+    (14, "Sipara 14 — Rubama (ربما)"),
+    (15, "Sipara 15 — Subhanallazi (سبحان الذي)"),
+    (16, "Sipara 16 — Qala Alam (قال ألم)"),
+    (17, "Sipara 17 — Iqtarraba (اقترب)"),
+    (18, "Sipara 18 — Qadd Aflaha (قد أفلح)"),
+    (19, "Sipara 19 — Wa Qalallazina (وقال الذين)"),
+    (20, "Sipara 20 — Amman Khalaqa (أمن خلق)"),
+    (21, "Sipara 21 — Utlu Ma Oohiya (اتل ما أوحي)"),
+    (22, "Sipara 22 — Wa Manyaqnut (ومن يقنت)"),
+    (23, "Sipara 23 — Wa Maliya (وما لي)"),
+    (24, "Sipara 24 — Faman Azlam (فمن أظلم)"),
+    (25, "Sipara 25 — Ilaihi Yuraddu (إليه يرد)"),
+    (26, "Sipara 26 — Ha'a Meem (حم)"),
+    (27, "Sipara 27 — Qala Fama Khatbukum (قال فما خطبكم)"),
+    (28, "Sipara 28 — Qadd Sami'Allah (قد سمع الله)"),
+    (29, "Sipara 29 — Tabarakallazi (تبارك الذي)"),
+    (30, "Sipara 30 — Amma Yatasa'aloon (عم يتساءلون)"),
+]
+
+# Map each Sipara to its starting Surah to satisfy DB constraint murajat_needs_surah
+SIPARA_TO_SURAH: Dict[int, int] = {
+    1: 1, 2: 2, 3: 2, 4: 3, 5: 4, 6: 4, 7: 5, 8: 6, 9: 7, 10: 8,
+    11: 9, 12: 11, 13: 12, 14: 15, 15: 17, 16: 18, 17: 21, 18: 23, 19: 25, 20: 27,
+    21: 29, 22: 33, 23: 36, 24: 39, 25: 41, 26: 46, 27: 51, 28: 58, 29: 67, 30: 78
+}
+
+SIPARA_NAMES: Dict[int, str] = {num: label for num, label in SIPARA_OPTIONS}
+
+
+
 def surah_selector(*, surahs: List[Dict[str, Any]], key: str) -> Tuple[Optional[int], Optional[Dict[str, Any]]]:
     if not surahs:
         st.info("No Surahs found yet. Run the SQL in `supabase/schema.sql` (it includes a seed list).")
@@ -137,162 +182,143 @@ def mistake_buttons(*, session_id: str, counts: Dict[str, int], on_click) -> Non
     tb_ico = "➖" if sub_mode else "🟡"
     prefix = "➖ " if sub_mode else ""
     
-    col_hifz, col_ahkam, col_makharij = st.columns([1, 1.25, 1.6])
-    
-    with col_hifz:
-        with st.container(border=True):
-            st.markdown("<div class='hifz-card-anchor' style='display: none;'></div><div style='text-align: center; font-weight: bold; margin-bottom: 5px; color: var(--emerald);'>Hifz Mistakes</div>", unsafe_allow_html=True)
-            
-            # Row 1: Talqeen & Tanbeeh
-            r1_c1, r1_c2 = st.columns(2)
-            with r1_c1:
-                st.button(f"{tq_ico} Tq ({counts.get('talqeen', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "talqeen"}, key="btn_talqeen")
-            with r1_c2:
-                st.button(f"{tb_ico} Tb ({counts.get('tanbeeh', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "tanbeeh"}, key="btn_tanbeeh")
-            
-            # Row 2: I'rab (symmetrical)
-            r2_c1, r2_c2, r2_c3 = st.columns([0.75, 4.5, 0.75])
-            with r2_c1:
-                st.button(tq_ico, on_click=on_click, kwargs={"kind": "irab_talqeen"}, key="btn_irab_tq")
-            with r2_c2:
-                st.markdown(f"<div style='font-size: 0.8rem; font-weight: bold; line-height: 26px; text-align: center; width: 100%; white-space: nowrap;'>I'rab ({counts.get('irab_talqeen', 0)}-{counts.get('irab_tanbeeh', 0)})</div>", unsafe_allow_html=True)
-            with r2_c3:
-                st.button(tb_ico, on_click=on_click, kwargs={"kind": "irab_tanbeeh"}, key="btn_irab_tb")
+    # 1. Hifz Mistakes Card (Full width, ultra-compact)
+    with st.container(border=True):
+        st.markdown("<div class='hifz-card-anchor' style='text-align: center; font-weight: bold; font-size: 0.78rem; color: var(--emerald); line-height: 1.4; padding: 2px 0 3px 0;'>Hifz Mistakes</div>", unsafe_allow_html=True)
+        
+        # Row 1: Talqeen & Tanbeeh
+        r1_c1, r1_c2 = st.columns(2)
+        with r1_c1:
+            st.button(f"{tq_ico} Tq ({counts.get('talqeen', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "talqeen"}, key="btn_talqeen")
+        with r1_c2:
+            st.button(f"{tb_ico} Tb ({counts.get('tanbeeh', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "tanbeeh"}, key="btn_tanbeeh")
+        
+        # Row 2: I'rab (symmetrical)
+        r2_c1, r2_c2, r2_c3 = st.columns([0.75, 4.5, 0.75])
+        with r2_c1:
+            st.button(tq_ico, on_click=on_click, kwargs={"kind": "irab_talqeen"}, key="btn_irab_tq")
+        with r2_c2:
+            st.markdown(f"<div style='font-size: 0.78rem; font-weight: bold; line-height: 24px; text-align: center; width: 100%; white-space: nowrap;'>I'rab ({counts.get('irab_talqeen', 0)}-{counts.get('irab_tanbeeh', 0)})</div>", unsafe_allow_html=True)
+        with r2_c3:
+            st.button(tb_ico, on_click=on_click, kwargs={"kind": "irab_tanbeeh"}, key="btn_irab_tb")
 
-            # Row 3: Repeat (symmetrical)
-            r3_c1, r3_c2, r3_c3 = st.columns([0.75, 4.5, 0.75])
-            with r3_c1:
-                st.button(tq_ico, on_click=on_click, kwargs={"kind": "repeat_mistake_talqeen"}, key="btn_repeat_tq")
-            with r3_c2:
-                st.markdown(f"<div style='font-size: 0.8rem; font-weight: bold; line-height: 26px; text-align: center; width: 100%; white-space: nowrap;'>Repeat ({counts.get('repeat_mistake_talqeen', 0)}-{counts.get('repeat_mistake_tanbeeh', 0)})</div>", unsafe_allow_html=True)
-            with r3_c3:
-                st.button(tb_ico, on_click=on_click, kwargs={"kind": "repeat_mistake_tanbeeh"}, key="btn_repeat_tb")
+        # --- HIDDEN IN SIMPLE VERSION (Preserved in code) ---
+        # # Row 3: Repeat (symmetrical)
+        # r3_c1, r3_c2, r3_c3 = st.columns([0.75, 4.5, 0.75])
+        # with r3_c1:
+        #     st.button(tq_ico, on_click=on_click, kwargs={"kind": "repeat_mistake_talqeen"}, key="btn_repeat_tq")
+        # with r3_c2:
+        #     st.markdown(f"<div style='font-size: 0.8rem; font-weight: bold; line-height: 26px; text-align: center; width: 100%; white-space: nowrap;'>Repeat ({counts.get('repeat_mistake_talqeen', 0)}-{counts.get('repeat_mistake_tanbeeh', 0)})</div>", unsafe_allow_html=True)
+        # with r3_c3:
+        #     st.button(tb_ico, on_click=on_click, kwargs={"kind": "repeat_mistake_tanbeeh"}, key="btn_repeat_tb")
+        #
+        # # Row 4: Mutashab. (symmetrical)
+        # r4_c1, r4_c2, r4_c3 = st.columns([0.75, 4.5, 0.75])
+        # with r4_c1:
+        #     st.button(tq_ico, on_click=on_click, kwargs={"kind": "mutashabehat_talqeen"}, key="btn_mutashab_tq")
+        # with r4_c2:
+        #     st.markdown(f"<div style='font-size: 0.75rem; font-weight: bold; line-height: 26px; text-align: center; width: 100%; white-space: nowrap;'>Mutashab. ({counts.get('mutashabehat_talqeen', 0)}-{counts.get('mutashabehat_tanbeeh', 0)})</div>", unsafe_allow_html=True)
+        # with r4_c3:
+        #     st.button(tb_ico, on_click=on_click, kwargs={"kind": "mutashabehat_tanbeeh"}, key="btn_mutashab_tb")
+        #
+        # # Row 5: Awakhir (symmetrical)
+        # r5_c1, r5_c2, r5_c3 = st.columns([0.75, 4.5, 0.75])
+        # with r5_c1:
+        #     st.button(tq_ico, on_click=on_click, kwargs={"kind": "awakhir_ul_ayat_talqeen"}, key="btn_awakhir_tq")
+        # with r5_c2:
+        #     st.markdown(f"<div style='font-size: 0.8rem; font-weight: bold; line-height: 26px; text-align: center; width: 100%; white-space: nowrap;'>Awakhir ({counts.get('awakhir_ul_ayat_talqeen', 0)}-{counts.get('awakhir_ul_ayat_tanbeeh', 0)})</div>", unsafe_allow_html=True)
+        # with r5_c3:
+        #     st.button(tb_ico, on_click=on_click, kwargs={"kind": "awakhir_ul_ayat_tanbeeh"}, key="btn_awakhir_tb")
+        # --- END HIDDEN SECTION ---
 
-            # Row 4: Mutashab. (symmetrical)
-            r4_c1, r4_c2, r4_c3 = st.columns([0.75, 4.5, 0.75])
-            with r4_c1:
-                st.button(tq_ico, on_click=on_click, kwargs={"kind": "mutashabehat_talqeen"}, key="btn_mutashab_tq")
-            with r4_c2:
-                st.markdown(f"<div style='font-size: 0.75rem; font-weight: bold; line-height: 26px; text-align: center; width: 100%; white-space: nowrap;'>Mutashab. ({counts.get('mutashabehat_talqeen', 0)}-{counts.get('mutashabehat_tanbeeh', 0)})</div>", unsafe_allow_html=True)
-            with r4_c3:
-                st.button(tb_ico, on_click=on_click, kwargs={"kind": "mutashabehat_tanbeeh"}, key="btn_mutashab_tb")
+        # Row 3: Zero Marks Override (Compact without extra divider)
+        is_zero_active = bool(counts.get("is_zero_marks", False))
+        if sub_mode:
+            st.button(
+                "↩️ Remove Zero Marks" if is_zero_active else "Remove Zero Marks (No-op)",
+                disabled=not is_zero_active,
+                width="stretch",
+                on_click=on_click,
+                kwargs={"kind": "is_zero_marks"},
+                key="btn_remove_zero_marks"
+            )
+        else:
+            st.button(
+                "⚠️ Mark Zero Marks" if not is_zero_active else "✅ Zero Marks Applied",
+                type="primary" if is_zero_active else "secondary",
+                width="stretch",
+                on_click=on_click,
+                kwargs={"kind": "is_zero_marks"},
+                key="btn_mark_zero_marks"
+            )
 
-            # Row 5: Awakhir (symmetrical)
-            r5_c1, r5_c2, r5_c3 = st.columns([0.75, 4.5, 0.75])
-            with r5_c1:
-                st.button(tq_ico, on_click=on_click, kwargs={"kind": "awakhir_ul_ayat_talqeen"}, key="btn_awakhir_tq")
-            with r5_c2:
-                st.markdown(f"<div style='font-size: 0.8rem; font-weight: bold; line-height: 26px; text-align: center; width: 100%; white-space: nowrap;'>Awakhir ({counts.get('awakhir_ul_ayat_talqeen', 0)}-{counts.get('awakhir_ul_ayat_tanbeeh', 0)})</div>", unsafe_allow_html=True)
-            with r5_c3:
-                st.button(tb_ico, on_click=on_click, kwargs={"kind": "awakhir_ul_ayat_tanbeeh"}, key="btn_awakhir_tb")
+    # 2. Ahkam Mistakes Card (Full width, 1 row of 3 buttons)
+    with st.container(border=True):
+        st.markdown("<div class='ahkam-card-anchor' style='text-align: center; font-weight: bold; font-size: 0.78rem; color: var(--emerald); line-height: 1.4; padding: 2px 0 3px 0;'>Ahkam Mistakes</div>", unsafe_allow_html=True)
+        
+        simplified_ahkam = [
+            ("ikhfa", "Ikhfa"),
+            ("madd_lazim", "Mad"),
+            ("iqlab", "Iqlab")
+        ]
+        
+        ar_cols = st.columns(3)
+        for col_idx, (kind, label) in enumerate(simplified_ahkam):
+            with ar_cols[col_idx]:
+                is_active = counts.get(kind, 0) == 1
+                active_class = "ahkam-active" if is_active else "ahkam-inactive"
+                st.markdown(f"<span class='{active_class}' style='display: none;'>active</span>", unsafe_allow_html=True)
+                st.button(label, width="stretch", on_click=on_click, kwargs={"kind": kind}, key=f"btn_{kind}")
 
-            # Row 6: Zero Marks Override
-            st.divider()
-            is_zero_active = bool(counts.get("is_zero_marks", False))
-            if sub_mode:
-                st.button(
-                    "↩️ Remove Zero Marks" if is_zero_active else "Remove Zero Marks (No-op)",
-                    disabled=not is_zero_active,
-                    width="stretch",
-                    on_click=on_click,
-                    kwargs={"kind": "is_zero_marks"},
-                    key="btn_remove_zero_marks"
-                )
-            else:
-                st.button(
-                    "⚠️ Mark Zero Marks" if not is_zero_active else "✅ Zero Marks Applied",
-                    type="primary" if is_zero_active else "secondary",
-                    width="stretch",
-                    on_click=on_click,
-                    kwargs={"kind": "is_zero_marks"},
-                    key="btn_mark_zero_marks"
-                )
-                
-    with col_ahkam:
-        with st.container(border=True):
-            st.markdown("<div class='ahkam-card-anchor' style='display: none;'></div><div style='text-align: center; font-weight: bold; margin-bottom: 5px; color: var(--emerald);'>Ahkam Mistakes</div>", unsafe_allow_html=True)
-            
-            ahkam_buttons_layout = [
-                [("ikhfa", "Ikhfa"), ("izhaar", "Izhaar"), ("iqlab", "Iqlab")],
-                [("idgham", "Idgham"), ("gunnah", "Gunnah"), ("qalqalah", "Qalqalah")],
-                [("madd_lazim", "M. Lazim"), ("madd_muttasil", "M. Mutta."), ("mad_tabaiee", "M. Tabai.")],
-                [("ism_jalalah", "Ism Jalal"), ("tahreek_sakin", "Tahreek"), ("ikhfa_shafawi", "Ikh. Shaf.")],
+    # 3. Makharij Mistakes Card (Full width, 4 compact rows)
+    with st.container(border=True):
+        st.markdown("<div class='makharij-card-anchor' style='text-align: center; font-weight: bold; font-size: 0.78rem; color: var(--emerald); line-height: 1.4; padding: 2px 0 3px 0;'>Makharij Mistakes</div>", unsafe_allow_html=True)
+        
+        # Simplified Makharij: 4 specific rows
+        # Row 1: saa, sin, saad, daad (ض، ص، س، ث)
+        # Row 2: ain, haa, do chachmi haa (ع، ح، هـ)
+        # Row 3: zuin, zaal, tain, zaa (ز، ذ، ط، ظ)
+        # Row 4: qaaf, kaaf (ق، ك)
+        simplified_makharij_rows = [
+            [
+                {"char": "ض", "kind": "makhraj_daad"},
+                {"char": "ص", "kind": "makhraj_saad"},
+                {"char": "س", "kind": "makhraj_seen"},
+                {"char": "ث", "kind": "makhraj_thaa"},
+            ],
+            [
+                {"char": "هـ", "kind": "makhraj_haa_weak"},
+                {"char": "ح", "kind": "makhraj_haa"},
+                {"char": "ع", "kind": "makhraj_ain"},
+            ],
+            [
+                {"char": "ظ", "kind": "makhraj_zaa_thick"},
+                {"char": "ط", "kind": "makhraj_taa_thick"},
+                {"char": "ذ", "kind": "makhraj_thaal"},
+                {"char": "ز", "kind": "makhraj_zaa"},
+            ],
+            [
+                {"char": "ك", "kind": "makhraj_kaaf"},
+                {"char": "ق", "kind": "makhraj_qaaf"},
             ]
+        ]
 
-            for row in ahkam_buttons_layout:
-                ar_cols = st.columns(3)
-                for col_idx, (kind, label) in enumerate(row):
-                    with ar_cols[col_idx]:
-                        is_active = counts.get(kind, 0) == 1
-                        active_class = "ahkam-active" if is_active else "ahkam-inactive"
-                        st.markdown(f"<span class='{active_class}' style='display: none;'>active</span>", unsafe_allow_html=True)
-                        st.button(label, width="stretch", on_click=on_click, kwargs={"kind": kind}, key=f"btn_{kind}")
-
-    with col_makharij:
-        with st.container(border=True):
-            st.markdown("<div class='makharij-card-anchor' style='text-align: center; font-weight: bold; margin-bottom: 8px; color: var(--emerald);'>Makharij Mistakes</div>", unsafe_allow_html=True)
-            
-            # 4 rows of 7 columns, right-to-left layout matching the image:
-            makharij_rows = [
-                # Row 1 (right-to-left): ا, ب, ت, ث, ج, ح, خ -> represented in python list left-to-right as: خ, ح, ج, ث, ت, ب, ا
-                [
-                    {"char": "خ", "kind": "makhraj_khaa"},
-                    {"char": "ح", "kind": "makhraj_haa"},
-                    {"char": "ج", "kind": "makhraj_jeem"},
-                    {"char": "ث", "kind": "makhraj_thaa"},
-                    {"char": "ت", "kind": "makhraj_taa"},
-                    {"char": "ب", "kind": "makhraj_baa"},
-                    {"char": "ا", "kind": "makhraj_alif"},
-                ],
-                # Row 2 (right-to-left): د, ذ, ر, z, s, sh, s -> represented in python list left-to-right as: ص, sh, s, z, r, th, d
-                [
-                    {"char": "ص", "kind": "makhraj_saad"},
-                    {"char": "ش", "kind": "makhraj_sheen"},
-                    {"char": "س", "kind": "makhraj_seen"},
-                    {"char": "ز", "kind": "makhraj_zaa"},
-                    {"char": "ر", "kind": "makhraj_raa"},
-                    {"char": "ذ", "kind": "makhraj_thaal"},
-                    {"char": "د", "kind": "makhraj_daal"},
-                ],
-                # Row 3 (right-to-left): ض, ط, ظ, ع, gh, f, q -> represented in python list left-to-right as: q, f, gh, a, z, t, d
-                [
-                    {"char": "ق", "kind": "makhraj_qaaf"},
-                    {"char": "ف", "kind": "makhraj_faa"},
-                    {"char": "غ", "kind": "makhraj_ghain"},
-                    {"char": "ع", "kind": "makhraj_ain"},
-                    {"char": "ظ", "kind": "makhraj_zaa_thick"},
-                    {"char": "ط", "kind": "makhraj_taa_thick"},
-                    {"char": "ض", "kind": "makhraj_daad"},
-                ],
-                # Row 4 (right-to-left): k, l, m, n, h, w, y -> represented in python list left-to-right as: y, w, h, n, m, l, k
-                [
-                    {"char": "ي", "kind": "makhraj_yaa"},
-                    {"char": "و", "kind": "makhraj_waw"},
-                    {"char": "هـ", "kind": "makhraj_haa_weak"},
-                    {"char": "ن", "kind": "makhraj_noon"},
-                    {"char": "م", "kind": "makhraj_meem"},
-                    {"char": "ل", "kind": "makhraj_laam"},
-                    {"char": "ك", "kind": "makhraj_kaaf"},
-                ]
-            ]
-            
-
-
-            for row_idx, row_letters in enumerate(makharij_rows):
-                cols = st.columns(7)
-                for col_idx, letter in enumerate(row_letters):
-                    with cols[col_idx]:
-                        char = letter["char"]
-                        kind = letter["kind"]
-                        active_class = "makhraj-active" if counts.get(kind, 0) == 1 else "makhraj-inactive"
-                        st.markdown(f"<span class='{active_class}' style='display: none;'>active</span>", unsafe_allow_html=True)
-                        st.button(f"{char}", width="stretch", on_click=on_click, kwargs={"kind": kind}, key=f"btn_makhraj_{kind}")
+        for row_idx, row_letters in enumerate(simplified_makharij_rows):
+            cols = st.columns(len(row_letters))
+            for col_idx, letter in enumerate(row_letters):
+                with cols[col_idx]:
+                    char = letter["char"]
+                    kind = letter["kind"]
+                    active_class = "makhraj-active" if counts.get(kind, 0) == 1 else "makhraj-inactive"
+                    st.markdown(f"<span class='{active_class}' style='display: none;'>active</span>", unsafe_allow_html=True)
+                    st.button(f"{char}", width="stretch", on_click=on_click, kwargs={"kind": kind}, key=f"btn_makhraj_{kind}")
 
 
 def render_header_with_homework(title: str, student_id: Optional[str]) -> None:
-    col_title, col_hw = st.columns([1.2, 5])
+    col_title, col_hw = st.columns([1.2, 3.8])
     with col_title:
-        st.markdown(f"<h3 style='margin: 0; padding: 0;'>{title}</h3>", unsafe_allow_html=True)
+        st.markdown("<div class='hw-row-anchor' style='display: none;'></div>", unsafe_allow_html=True)
+        st.markdown(f"<h3 style='margin: 0; padding: 0; font-size: 0.95rem; line-height: 1.2; font-weight: bold; color: var(--emerald);'>{title}</h3>", unsafe_allow_html=True)
     with col_hw:
         if student_id:
             cache_key = f"prev_takhteet_{student_id}"
@@ -313,16 +339,16 @@ def render_header_with_homework(title: str, student_id: Optional[str]) -> None:
                 murajat_inline = murajat.replace("\n", " ")
                 
                 st.markdown(f"""
-                <div style="display: flex; gap: 12px; justify-content: flex-end; align-items: center; height: 100%; padding-top: 6px; font-size: 0.82rem; flex-wrap: wrap;">
-                  <span style="color: var(--ink); opacity: 0.6; font-weight: bold; white-space: nowrap;">Prev HW:</span>
-                  <span style="color: var(--emerald); font-weight: bold; white-space: nowrap;">Jadeed:</span>
-                  <span style="color: var(--ink); font-weight: 500; white-space: nowrap;">{jadeed_inline}</span>
+                <div style="display: flex; gap: 8px; justify-content: flex-end; align-items: center; height: 100%; font-size: 0.72rem; flex-wrap: nowrap; overflow-x: auto; white-space: nowrap;">
+                  <span style="color: var(--ink); opacity: 0.6; font-weight: bold;">Prev HW:</span>
+                  <span style="color: var(--emerald); font-weight: bold;">Jd:</span>
+                  <span style="color: var(--ink); font-weight: 500;">{jadeed_inline}</span>
                   <span style="color: var(--border); font-weight: bold;">|</span>
-                  <span style="color: var(--emerald); font-weight: bold; white-space: nowrap;">Juzulhali:</span>
-                  <span style="color: var(--ink); font-weight: 500; white-space: nowrap;">{juzulhali_inline}</span>
+                  <span style="color: var(--emerald); font-weight: bold;">Jz:</span>
+                  <span style="color: var(--ink); font-weight: 500;">{juzulhali_inline}</span>
                   <span style="color: var(--border); font-weight: bold;">|</span>
-                  <span style="color: var(--emerald); font-weight: bold; white-space: nowrap;">Murajat:</span>
-                  <span style="color: var(--ink); font-weight: 500; white-space: nowrap;">{murajat_inline}</span>
+                  <span style="color: var(--emerald); font-weight: bold;">Mr:</span>
+                  <span style="color: var(--ink); font-weight: 500;">{murajat_inline}</span>
                 </div>
                 """, unsafe_allow_html=True)
 

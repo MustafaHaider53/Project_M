@@ -13,11 +13,8 @@ def render_login() -> None:
         CORRECT_USERNAME = st.secrets.get("login_username", CORRECT_USERNAME)
         CORRECT_PASSWORD = st.secrets.get("login_password", CORRECT_PASSWORD)
 
-    st.markdown("<div style='height: 8vh;'></div>", unsafe_allow_html=True)
-
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        with st.container(border=True):
+    st.markdown("<div class='login-card-container'>", unsafe_allow_html=True)
+    with st.container(border=True):
             st.markdown(
                 """
                 <div style="text-align: center; margin-bottom: 1.5rem;">
@@ -121,3 +118,4 @@ def render_login() -> None:
 
             if st.session_state.get("login_error"):
                 st.error(st.session_state.login_error)
+    st.markdown("</div>", unsafe_allow_html=True)

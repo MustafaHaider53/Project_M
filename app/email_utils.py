@@ -7,6 +7,7 @@ from typing import Any, Dict, Tuple
 from datetime import datetime
 from html import escape
 import streamlit as st
+from app.ui.shared import SIPARA_NAMES, SIPARA_TO_SURAH
 
 
 AHKAM_MAP = {
@@ -174,7 +175,11 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
                 page = int(page_val) if page_val is not None else 0
             except (ValueError, TypeError):
                 page = 0
-            if page > 0:
+            surah_id = m.get("surah_id") or surah.get("id")
+            if page in range(1, 31) and (surah_id == SIPARA_TO_SURAH.get(page) or surah_name in ("Surah", "")):
+                surah_display = SIPARA_NAMES.get(page, f"Sipara {page}")
+                surah_ar = ""
+            elif page > 0:
                 surah_display = f"{surah_name} (Page {page})"
             else:
                 surah_display = surah_name
@@ -211,17 +216,18 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
                 marks = 10.0 - (0.5 * talqeen) - (0.25 * tanbeeh)
                 if marks < 0:
                     marks = 0.0
+            ar_span = f'<span style="font-size: 11px; color: #888; display: block;">({surah_ar})</span>' if surah_ar else ""
             murajat_rows += f"""
             <tr>
                 <td style="border: 1px solid #e0dcd5; padding: 8px 4px; font-weight: bold; color: #1b4d3e;">
-                    {surah_display} <span style="font-size: 11px; color: #888; display: block;">({surah_ar})</span>
+                    {surah_display} {ar_span}
                     {mistakes_detail}
                 </td>
                 <td style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center;">{talqeen}</td>
                 <td style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center;">{tanbeeh}</td>
                 <td style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center;">{irab}</td>
-                <td style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center;">{repeat}</td>
-                <td style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center;">{mutashabehat}</td>
+                <!-- <td style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center;">{repeat}</td> -->
+                <!-- <td style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center;">{mutashabehat}</td> -->
                 <td style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center; font-weight: bold; color: #1b4d3e;">{marks:.1f}/10</td>
             </tr>
             """
@@ -232,12 +238,12 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
             <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
                 <thead>
                     <tr style="background-color: #f7f5f0; color: #1b4d3e;">
-                        <th style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: left;">Surah</th>
-                        <th style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center; width: 32px;">T</th>
-                        <th style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center; width: 32px;">Tb</th>
-                        <th style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center; width: 32px;">I</th>
-                        <th style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center; width: 32px;">R</th>
-                        <th style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center; width: 32px;">M</th>
+                        <th style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: left;">Sipara / Surah</th>
+                        <th style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center; width: 36px;">T</th>
+                        <th style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center; width: 36px;">Tb</th>
+                        <th style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center; width: 36px;">I</th>
+                        <!-- <th style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center; width: 32px;">R</th> -->
+                        <!-- <th style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center; width: 32px;">M</th> -->
                         <th style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center; width: 55px;">Grade</th>
                     </tr>
                 </thead>
@@ -251,8 +257,8 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
             <span style="display: inline-block; margin-right: 12px;"><strong>T</strong>: Talqeen </span>
             <span style="display: inline-block; margin-right: 12px;"><strong>Tb</strong>: Tanbeeh </span>
             <span style="display: inline-block; margin-right: 12px;"><strong>I</strong>: I'rab </span>
-            <span style="display: inline-block; margin-right: 12px;"><strong>R</strong>: Repeat </span>
-            <span style="display: inline-block;"><strong>M</strong>: Mutashabehat (Similar Verses)</span>
+            <!-- <span style="display: inline-block; margin-right: 12px;"><strong>R</strong>: Repeat </span> -->
+            <!-- <span style="display: inline-block;"><strong>M</strong>: Mutashabehat (Similar Verses)</span> -->
         </div>
         """
 
@@ -264,7 +270,14 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
             surah = j.get("surahs") or {}
             surah_name = surah.get("name_en") or ""
             page = j.get("page_number") or "-"
-            if surah_name:
+            try:
+                page_int = int(page)
+            except (ValueError, TypeError):
+                page_int = 0
+            surah_id = j.get("surah_id") or surah.get("id")
+            if page_int in range(1, 31) and (surah_id == SIPARA_TO_SURAH.get(page_int) or surah_name in ("Surah", "")):
+                recitation_display = SIPARA_NAMES.get(page_int, f"Sipara {page_int}")
+            elif surah_name:
                 recitation_display = f"{surah_name} (Page {page})"
             else:
                 recitation_display = f"Page {page}"
@@ -309,8 +322,8 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
                 <td style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center;">{talqeen}</td>
                 <td style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center;">{tanbeeh}</td>
                 <td style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center;">{irab}</td>
-                <td style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center;">{repeat}</td>
-                <td style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center;">{mutashabehat}</td>
+                <!-- <td style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center;">{repeat}</td> -->
+                <!-- <td style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center;">{mutashabehat}</td> -->
                 <td style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center; font-weight: bold; color: #1b4d3e;">{marks:.1f}/10</td>
             </tr>
             """
@@ -321,12 +334,12 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
             <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
                 <thead>
                     <tr style="background-color: #f7f5f0; color: #1b4d3e;">
-                        <th style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center; width: 65px;">Page</th>
-                        <th style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center; width: 32px;">T</th>
-                        <th style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center; width: 32px;">Tb</th>
-                        <th style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center; width: 32px;">I</th>
-                        <th style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center; width: 32px;">R</th>
-                        <th style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center; width: 32px;">M</th>
+                        <th style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center; width: 65px;">Sipara / Page</th>
+                        <th style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center; width: 36px;">T</th>
+                        <th style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center; width: 36px;">Tb</th>
+                        <th style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center; width: 36px;">I</th>
+                        <!-- <th style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center; width: 32px;">R</th> -->
+                        <!-- <th style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center; width: 32px;">M</th> -->
                         <th style="border: 1px solid #e0dcd5; padding: 8px 4px; text-align: center; width: 55px;">Grade</th>
                     </tr>
                 </thead>
@@ -340,8 +353,8 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
             <span style="display: inline-block; margin-right: 12px;"><strong>T</strong>: Talqeen (Prompt)</span>
             <span style="display: inline-block; margin-right: 12px;"><strong>Tb</strong>: Tanbeeh (Correction)</span>
             <span style="display: inline-block; margin-right: 12px;"><strong>I</strong>: I'rab (Grammar Accent)</span>
-            <span style="display: inline-block; margin-right: 12px;"><strong>R</strong>: Repeat (Recurring Mistake)</span>
-            <span style="display: inline-block;"><strong>M</strong>: Mutashabehat (Similar Verses)</span>
+            <!-- <span style="display: inline-block; margin-right: 12px;"><strong>R</strong>: Repeat (Recurring Mistake)</span> -->
+            <!-- <span style="display: inline-block;"><strong>M</strong>: Mutashabehat (Similar Verses)</span> -->
         </div>
         """
 
