@@ -25,26 +25,12 @@ def apply_islamic_theme() -> None:
                         linear-gradient(180deg, var(--bg), var(--bg-2) 75%);
           }
 
-          /* Hide default Streamlit header, footer, and Streamlit Cloud Manage App / red crown badge */
+          /* Hide default Streamlit header and footer completely */
           header[data-testid="stHeader"] {
             display: none !important;
           }
           footer {
             display: none !important;
-          }
-          [data-testid="manage-app-button"],
-          #manage-app-button,
-          div[class*="viewerBadge"],
-          div[class*="manageApp"],
-          .viewerBadge_container,
-          button[data-testid="manage-app-button"],
-          div[data-testid="stStatusWidget"] {
-            display: none !important;
-            visibility: hidden !important;
-            opacity: 0 !important;
-            pointer-events: none !important;
-            width: 0 !important;
-            height: 0 !important;
           }
 
           /* Remove borders, shadows, and backgrounds around the main app container and layout wrappers */
@@ -499,23 +485,26 @@ def apply_islamic_theme() -> None:
               white-space: nowrap !important;
             }
 
-            /* Bottom Thumb-Zone Dock Container (Floating pill above screen bottom on all devices) */
+            /* Bottom Thumb-Zone Dock Container (Fixed at bottom on all devices) */
             div[data-testid="stLayoutWrapper"]:has(.mobile-bottom-dock-anchor) {
               position: fixed !important;
-              bottom: max(6px, env(safe-area-inset-bottom, 6px)) !important;
+              bottom: 0px !important;
               left: 50% !important;
               transform: translateX(-50%) !important;
-              width: calc(100% - 12px) !important;
+              width: 100% !important;
               max-width: 480px !important;
               z-index: 999999 !important;
               background: rgba(255, 255, 255, 0.98) !important;
               backdrop-filter: blur(16px) !important;
               -webkit-backdrop-filter: blur(16px) !important;
-              border: 1.5px solid var(--emerald) !important;
-              box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
+              border-top: 2px solid var(--emerald) !important;
+              border-left: none !important;
+              border-right: none !important;
+              border-bottom: none !important;
+              box-shadow: 0 -3px 16px rgba(0, 0, 0, 0.10) !important;
               padding: 2px 4px 3px 4px !important;
               margin: 0 !important;
-              border-radius: 14px !important;
+              border-radius: 12px 12px 0 0 !important;
             }
 
             div[data-testid="stLayoutWrapper"]:has(.mobile-bottom-dock-anchor) div[data-testid="stVerticalBlock"] {
