@@ -63,20 +63,7 @@ def render_email_page() -> None:
         has_records = bool(has_murajat or has_juzulhali or has_jadeed or t_has_hw)
         is_absent = not has_records
 
-        # Section 1: Checklist of inputs
-        st.markdown("### Today's Activity Checklist")
-        cols = st.columns(4)
-        with cols[0]:
-            st.checkbox("Murajat Recited", value=has_murajat, disabled=True)
-        with cols[1]:
-            st.checkbox("Juzulhali Recited", value=has_juzulhali, disabled=True)
-        with cols[2]:
-            st.checkbox("Jadeed Entered", value=has_jadeed, disabled=True)
-        with cols[3]:
-            st.checkbox("Takhteet (Homework) Saved", value=t_has_hw, disabled=True)
-
-        # Section 2: Email Status Card
-        st.markdown("### Email Dispatch Center")
+        # Section 1: Email Status & Send Action (Prominently placed at the top)
         if is_absent:
             st.error("🚨 **Status: Absent (No Activity Recorded Today)**\nThe student has no recorded activities today. An **Absence Warning Notice** will be sent.")
             email_html = generate_absence_html(summary)
@@ -88,7 +75,7 @@ def render_email_page() -> None:
             btn_label = "✉️ Send Daily Progress Report"
             btn_type = "primary"
 
-        # Section 3: Send Action
+        # Send Action Button
         if not email:
             st.warning("⚠️ **Cannot send email**: The student does not have an email address in the database. Please add the student's email address to enable notifications.")
             st.button(btn_label, disabled=True, type=btn_type, width="stretch")
@@ -117,10 +104,24 @@ def render_email_page() -> None:
                     threading.Thread(target=_send_bg, daemon=True).start()
                     st.info(f"✉️ Email dispatch started in the background to {email}. It will send silently without locking the app.")
 
-        # Section 4: HTML Live Preview
-        st.markdown("---")
+        # Section 2: Checklist of inputs
+        with st.expander("📋 Today's Activity Breakdown", expanded=False):
+            cols = st.columns(4)
+            with cols[0]:
+                st.checkbox("Murajat Recited", value=has_murajat, disabled=True)
+            with cols[1]:
+                st.checkbox("Juzulhali Recited", value=has_juzulhali, disabled=True)
+            with cols[2]:
+                st.checkbox("Jadeed Entered", value=has_jadeed, disabled=True)
+            with cols[3]:
+                st.checkbox("Takhteet Saved", value=t_has_hw, disabled=True)
+
+        # Section 3: HTML Live Preview
         with st.expander("👁️ View Email Preview", expanded=False):
             st.iframe(email_html, height=450)
+
+        # Generous bottom clearance spacer so nothing is hidden behind the dock
+        st.markdown("<div style='height: 160px;'></div>", unsafe_allow_html=True)
 
     else:
         # Monthly Report Logic
@@ -193,6 +194,8 @@ def render_email_page() -> None:
                         st.info(f"✉️ Monthly {selected_category_name} report dispatch started in the background to {email}.")
 
             # HTML Live Preview
-            st.markdown("---")
             with st.expander("👁️ View Monthly Email Preview", expanded=False):
                 st.iframe(email_html, height=450)
+
+            # Generous bottom clearance spacer so nothing is hidden behind the dock
+            st.markdown("<div style='height: 160px;'></div>", unsafe_allow_html=True)
