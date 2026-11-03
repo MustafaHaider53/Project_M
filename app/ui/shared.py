@@ -175,94 +175,18 @@ def mistake_buttons(*, session_id: str, counts: Dict[str, int], on_click) -> Non
             unsafe_allow_html=True
         )
 
-    # Read Subtraction Mode from session state
-    sub_mode = st.session_state.get("sub_mode_toggle", False)
-    
-    tq_ico = "➖" if sub_mode else "🔴"
-    tb_ico = "➖" if sub_mode else "🟡"
-    prefix = "➖ " if sub_mode else ""
-    
-    # 1. Hifz Mistakes Card (Full width, ultra-compact)
+    # Tajweed & Ahkam Mistakes Card (Full width, 1 row of 4 buttons)
     with st.container(border=True):
-        st.markdown("<div class='hifz-card-anchor' style='text-align: center; font-weight: bold; font-size: 0.78rem; color: var(--emerald); line-height: 1.4; padding: 2px 0 3px 0;'>Hifz Mistakes</div>", unsafe_allow_html=True)
-        
-        # Row 1: Talqeen & Tanbeeh
-        r1_c1, r1_c2 = st.columns(2)
-        with r1_c1:
-            st.button(f"{tq_ico} Tq ({counts.get('talqeen', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "talqeen"}, key="btn_talqeen")
-        with r1_c2:
-            st.button(f"{tb_ico} Tb ({counts.get('tanbeeh', 0)})", width="stretch", on_click=on_click, kwargs={"kind": "tanbeeh"}, key="btn_tanbeeh")
-        
-        # Row 2: I'rab (symmetrical)
-        r2_c1, r2_c2, r2_c3 = st.columns([0.75, 4.5, 0.75])
-        with r2_c1:
-            st.button(tq_ico, on_click=on_click, kwargs={"kind": "irab_talqeen"}, key="btn_irab_tq")
-        with r2_c2:
-            st.markdown(f"<div style='font-size: 0.78rem; font-weight: bold; line-height: 24px; text-align: center; width: 100%; white-space: nowrap;'>I'rab ({counts.get('irab_talqeen', 0)}-{counts.get('irab_tanbeeh', 0)})</div>", unsafe_allow_html=True)
-        with r2_c3:
-            st.button(tb_ico, on_click=on_click, kwargs={"kind": "irab_tanbeeh"}, key="btn_irab_tb")
-
-        # --- HIDDEN IN SIMPLE VERSION (Preserved in code) ---
-        # # Row 3: Repeat (symmetrical)
-        # r3_c1, r3_c2, r3_c3 = st.columns([0.75, 4.5, 0.75])
-        # with r3_c1:
-        #     st.button(tq_ico, on_click=on_click, kwargs={"kind": "repeat_mistake_talqeen"}, key="btn_repeat_tq")
-        # with r3_c2:
-        #     st.markdown(f"<div style='font-size: 0.8rem; font-weight: bold; line-height: 26px; text-align: center; width: 100%; white-space: nowrap;'>Repeat ({counts.get('repeat_mistake_talqeen', 0)}-{counts.get('repeat_mistake_tanbeeh', 0)})</div>", unsafe_allow_html=True)
-        # with r3_c3:
-        #     st.button(tb_ico, on_click=on_click, kwargs={"kind": "repeat_mistake_tanbeeh"}, key="btn_repeat_tb")
-        #
-        # # Row 4: Mutashab. (symmetrical)
-        # r4_c1, r4_c2, r4_c3 = st.columns([0.75, 4.5, 0.75])
-        # with r4_c1:
-        #     st.button(tq_ico, on_click=on_click, kwargs={"kind": "mutashabehat_talqeen"}, key="btn_mutashab_tq")
-        # with r4_c2:
-        #     st.markdown(f"<div style='font-size: 0.75rem; font-weight: bold; line-height: 26px; text-align: center; width: 100%; white-space: nowrap;'>Mutashab. ({counts.get('mutashabehat_talqeen', 0)}-{counts.get('mutashabehat_tanbeeh', 0)})</div>", unsafe_allow_html=True)
-        # with r4_c3:
-        #     st.button(tb_ico, on_click=on_click, kwargs={"kind": "mutashabehat_tanbeeh"}, key="btn_mutashab_tb")
-        #
-        # # Row 5: Awakhir (symmetrical)
-        # r5_c1, r5_c2, r5_c3 = st.columns([0.75, 4.5, 0.75])
-        # with r5_c1:
-        #     st.button(tq_ico, on_click=on_click, kwargs={"kind": "awakhir_ul_ayat_talqeen"}, key="btn_awakhir_tq")
-        # with r5_c2:
-        #     st.markdown(f"<div style='font-size: 0.8rem; font-weight: bold; line-height: 26px; text-align: center; width: 100%; white-space: nowrap;'>Awakhir ({counts.get('awakhir_ul_ayat_talqeen', 0)}-{counts.get('awakhir_ul_ayat_tanbeeh', 0)})</div>", unsafe_allow_html=True)
-        # with r5_c3:
-        #     st.button(tb_ico, on_click=on_click, kwargs={"kind": "awakhir_ul_ayat_tanbeeh"}, key="btn_awakhir_tb")
-        # --- END HIDDEN SECTION ---
-
-        # Row 3: Zero Marks Override (Compact without extra divider)
-        is_zero_active = bool(counts.get("is_zero_marks", False))
-        if sub_mode:
-            st.button(
-                "↩️ Remove Zero Marks" if is_zero_active else "Remove Zero Marks (No-op)",
-                disabled=not is_zero_active,
-                width="stretch",
-                on_click=on_click,
-                kwargs={"kind": "is_zero_marks"},
-                key="btn_remove_zero_marks"
-            )
-        else:
-            st.button(
-                "⚠️ Mark Zero Marks" if not is_zero_active else "✅ Zero Marks Applied",
-                type="primary" if is_zero_active else "secondary",
-                width="stretch",
-                on_click=on_click,
-                kwargs={"kind": "is_zero_marks"},
-                key="btn_mark_zero_marks"
-            )
-
-    # 2. Ahkam Mistakes Card (Full width, 1 row of 3 buttons)
-    with st.container(border=True):
-        st.markdown("<div class='ahkam-card-anchor' style='text-align: center; font-weight: bold; font-size: 0.78rem; color: var(--emerald); line-height: 1.4; padding: 2px 0 3px 0;'>Ahkam Mistakes</div>", unsafe_allow_html=True)
+        st.markdown("<div class='ahkam-card-anchor' style='text-align: center; font-weight: bold; font-size: 0.78rem; color: var(--emerald); line-height: 1.4; padding: 2px 0 3px 0;'>Tajweed & Ahkam Mistakes</div>", unsafe_allow_html=True)
         
         simplified_ahkam = [
+            ("irab", "I'rab"),
             ("ikhfa", "Ikhfa"),
             ("madd_lazim", "Mad"),
             ("iqlab", "Iqlab")
         ]
         
-        ar_cols = st.columns(3)
+        ar_cols = st.columns(4)
         for col_idx, (kind, label) in enumerate(simplified_ahkam):
             with ar_cols[col_idx]:
                 is_active = counts.get(kind, 0) == 1
