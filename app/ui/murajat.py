@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from app.db import create_listening_session, get_session_counts, increment_mistake, list_surahs
+from app.db import create_listening_session, get_session_counts, increment_mistake, list_surahs, set_session_marks
 from app.ui.shared import (
     back_home_button,
     mistake_buttons,
@@ -45,44 +45,26 @@ def render_murajat() -> None:
             
         current_student_badge()
 
-        # --- TIMER (Hidden in simple version, preserved in code) ---
-        # from app.ui.timer import render_recitation_timer
-        # timer_elapsed, is_timer_running, is_timer_overtime = render_recitation_timer(
-        #     module_name="murajat",
-        #     target_minutes=10,
-        #     student_id=student_id,
-        #     auto_start=bool(surah_id is not None)
-        # )
         timer_elapsed, is_timer_running, is_timer_overtime = 0, False, False
 
-        # --- SIPARA SELECTOR + SUBTRACTION TOGGLE (Compact 1-row layout) ---
-        col_sipara, col_sub = st.columns([3.3, 0.7])
-        with col_sipara:
-            st.markdown("<div class='sipara-row-anchor' style='display: none;'></div>", unsafe_allow_html=True)
-            selected_sipara = st.selectbox(
-                "Select Sipara",
-                options=SIPARA_OPTIONS,
-                index=None,
-                placeholder="Select a Sipara (1 — 30)...",
-                format_func=lambda x: x[1] if x else "",
-                key="murajat_sipara",
-                label_visibility="collapsed"
-            )
-        with col_sub:
-            st.toggle("Sub", value=False, key="sub_mode_toggle")
+        # --- SIPARA SELECTOR (Full Width Clean Dropdown) ---
+        st.markdown("<div class='sipara-row-anchor' style='display: none;'></div>", unsafe_allow_html=True)
+        selected_sipara = st.selectbox(
+            "Select Sipara",
+            options=SIPARA_OPTIONS,
+            index=None,
+            placeholder="Select a Sipara (1 — 30)...",
+            format_func=lambda x: x[1] if x else "",
+            key="murajat_sipara",
+            label_visibility="collapsed"
+        )
         
         sipara_num = selected_sipara[0] if selected_sipara else None
         surah_id = SIPARA_TO_SURAH.get(sipara_num) if sipara_num else None
         page_number = sipara_num
 
-        # --- ORIGINAL SURAH/PAGE & PREV/NEXT BUTTONS (Preserved in code) ---
-        # from app.ui.jadeed import load_quran_metadata
-        # quran_metadata = load_quran_metadata()
-        # surahs = list_surahs()
-        # options = [(s["id"], f'{s["number"]:03d} — {s["name_en"]} ({s["name_ar"]})') for s in surahs]
-        # col_s, col_p, col_prev, col_next = st.columns([2, 1, 1, 1])
-        # ...
-        # --- END ORIGINAL NAVIGATION ---
+    session_id = None
+    counts = None
 
     if sipara_num is not None:
         if (
@@ -124,13 +106,76 @@ def render_murajat() -> None:
                 "mutashabehat_talqeen": 0, "mutashabehat_tanbeeh": 0,
                 "awakhir_ul_ayat_talqeen": 0, "awakhir_ul_ayat_tanbeeh": 0,
                 "ikhfa": 0, "izhaar": 0, "qalqalah": 0, "ism_jalalah": 0, "tahreek_sakin": 0, "gunnah": 0,
-                "idgham": 0, "madd_lazim": 0, "madd_muttasil": 0, "mad_tabaiee": 0, "ikhfa_shafawi": 0, "iqlab": 0
+                "idgham": 0, "madd_lazim": 0, "madd_muttasil": 0, "mad_tabaiee": 0, "ikhfa_shafawi": 0, "iqlab": 0,
+                "manual_marks": None,
             }
             from app.db import MAKHARIJ_COLS, MUSAID_COLS
             for col in MAKHARIJ_COLS:
                 counts[col] = 0
             for col in MUSAID_COLS:
                 counts[col] = 0
+
+        # --- 1-10 MARKS DROPDOWN FOR THIS SIPARA ---
+        marks_options = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0]
+        saved_marks = None
+        if counts:
+            if counts.get("manual_marks") is not None:
+                saved_marks = int(round(float(counts["manual_marks"])))
+            elif counts.get("is_zero_marks"):
+                saved_marks = 0
+            elif counts.get("talqeen", 0) > 0 or counts.get("tanbeeh", 0) > 0:
+                calc = 10.0 - (0.5 * counts.get("talqeen", 0)) - (0.25 * counts.get("tanbeeh", 0))
+                saved_marks = max(0, min(10, int(round(calc))))
+            elif session_id:
+                saved_marks = 10
+
+        default_marks_idx = marks_options.index(saved_marks) if (saved_marks is not None and saved_marks in marks_options) else None
+
+        def _on_marks_change():
+            sel_val = st.session_state.get(f"murajat_marks_{sipara_num}")
+            if sel_val is not None:
+                sid = st.session_state.get("murajat_session_id")
+                if not sid:
+                    ensure_today_sessions(student_id)
+                    key = ("murajat", int(surah_id), int(page_number))
+                    existing_id = st.session_state.today_sessions.get(key)
+                    if existing_id:
+                        sid = existing_id
+                        st.session_state.murajat_session_id = sid
+                    else:
+                        session = create_listening_session(student_id=student_id, mode="murajat", surah_id=surah_id, page_number=page_number, force_new=True)
+                        sid = session["id"]
+                        st.session_state.today_sessions[key] = sid
+                        st.session_state.murajat_session_id = sid
+                
+                set_session_marks(sid, sel_val)
+                if "murajat_counts" not in st.session_state or st.session_state.get("murajat_counts_session_id") != sid:
+                    st.session_state.murajat_counts = get_session_counts(sid)
+                    st.session_state.murajat_counts_session_id = sid
+                st.session_state.murajat_counts["manual_marks"] = sel_val
+                st.session_state.murajat_counts["talqeen"] = int((10 - sel_val) * 2)
+                st.session_state.murajat_counts["tanbeeh"] = 0
+                st.session_state.murajat_counts["is_zero_marks"] = (sel_val == 0)
+                st.session_state.play_sound = True
+
+        with sticky_container:
+            st.markdown(
+                f"<div style='display: flex; justify-content: space-between; align-items: center; margin: 4px 0 2px 0;'>"
+                f"<span style='font-size: 0.8rem; font-weight: bold; color: var(--emerald);'>Recitation Marks (1 — 10):</span>"
+                f"<span style='font-size: 0.75rem; color: #888;'>Sipara {sipara_num}</span>"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+            st.selectbox(
+                f"Marks for Sipara {sipara_num}",
+                options=marks_options,
+                index=default_marks_idx,
+                placeholder=f"Select Marks (1 — 10) for Sipara {sipara_num}...",
+                format_func=lambda x: f"⭐ {x} Marks" if x == 10 else (f"{x} Marks" if x > 1 else (f"{x} Mark" if x == 1 else "0 Marks (Zero)")),
+                key=f"murajat_marks_{sipara_num}",
+                on_change=_on_marks_change,
+                label_visibility="collapsed"
+            )
 
     def _on_click(kind: str) -> None:
         if surah_id is None or page_number is None:
@@ -264,7 +309,7 @@ def render_murajat() -> None:
                 local_counts["awakhir_ul_ayat"] = local_counts.get("awakhir_ul_ayat", 0) + 1
                 local_counts["tanbeeh"] += 1
         elif (
-            kind in ("ikhfa", "izhaar", "qalqalah", "ism_jalalah", "tahreek_sakin", "gunnah", "idgham", "madd_lazim", "madd_muttasil", "mad_tabaiee", "ikhfa_shafawi", "iqlab")
+            kind in ("ikhfa", "izhaar", "qalqalah", "ism_jalalah", "tahreek_sakin", "gunnah", "idgham", "madd_lazim", "madd_muttasil", "mad_tabaiee", "ikhfa_shafawi", "iqlab", "irab")
             or kind.startswith("makhraj_")
             or kind.startswith("musaid_")
         ):

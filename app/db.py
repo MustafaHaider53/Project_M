@@ -525,6 +525,7 @@ def get_session_counts(session_id: str) -> Dict[str, int]:
             "ikhfa_shafawi": 0,
             "iqlab": 0,
             "is_zero_marks": False,
+            "manual_marks": None,
         }
         for col in MAKHARIJ_COLS:
             res[col] = 0
@@ -532,6 +533,7 @@ def get_session_counts(session_id: str) -> Dict[str, int]:
             res[col] = 0
         return res
 
+    manual_marks_val = row.get("manual_marks")
     res = {
         "talqeen": int(row.get("talqeen", 0) or 0),
         "tanbeeh": int(row.get("tanbeeh", 0) or 0),
@@ -560,6 +562,7 @@ def get_session_counts(session_id: str) -> Dict[str, int]:
         "ikhfa_shafawi": int(row.get("ikhfa_shafawi", 0) or 0),
         "iqlab": int(row.get("iqlab", 0) or 0),
         "is_zero_marks": bool(row.get("is_zero_marks", False)),
+        "manual_marks": float(manual_marks_val) if manual_marks_val is not None else None,
     }
     for col in MAKHARIJ_COLS:
         res[col] = int(row.get(col, 0) or 0)
@@ -776,6 +779,7 @@ def _bg_update_mistake(rest: SupabaseRest, session_id: str, kind: str, counts: D
             "ikhfa_shafawi",
             "iqlab",
             "is_zero_marks",
+            "manual_marks",
         ] + MAKHARIJ_COLS + MUSAID_COLS
         
         if not _db_supported_columns:
@@ -784,13 +788,17 @@ def _bg_update_mistake(rest: SupabaseRest, session_id: str, kind: str, counts: D
                 "awakhir_ul_ayat", "irab_talqeen", "irab_tanbeeh", "repeat_mistake_talqeen", "repeat_mistake_tanbeeh",
                 "mutashabehat_talqeen", "mutashabehat_tanbeeh", "awakhir_ul_ayat_talqeen", "awakhir_ul_ayat_tanbeeh",
                 "ikhfa", "izhaar", "qalqalah", "ism_jalalah", "tahreek_sakin", "gunnah", "idgham", "madd_lazim",
-                "madd_muttasil", "mad_tabaiee", "ikhfa_shafawi", "iqlab", "is_zero_marks"
+                "madd_muttasil", "mad_tabaiee", "ikhfa_shafawi", "iqlab", "is_zero_marks", "manual_marks"
             } | set(MAKHARIJ_COLS) | set(MUSAID_COLS)
             _db_supported_columns = all_possible_cols
 
         for col in new_cols:
             if _db_supported_columns and col in _db_supported_columns:
-                patch[col] = counts.get(col, 0)
+                if col == "manual_marks":
+                    if counts.get("manual_marks") is not None:
+                        patch[col] = float(counts["manual_marks"])
+                else:
+                    patch[col] = counts.get(col, 0)
 
         # Use upsert to handle new sessions where the mistake_counts row does not exist yet
         payload = {"session_id": session_id, **patch}
@@ -810,6 +818,59 @@ def _bg_update_mistake(rest: SupabaseRest, session_id: str, kind: str, counts: D
     except Exception as e:
         import logging
         logging.error(f"Background database update error: {e}")
+
+
+def set_session_marks(session_id: str, marks: float) -> None:
+    """
+    Saves manually assigned marks (0.0 to 10.0) for a session.
+    Synchronizes talqeen/tanbeeh/is_zero_marks for backward compatibility.
+    """
+    rest = get_rest()
+    if rest is None or not session_id:
+        return
+        
+    marks_val = float(marks)
+    is_zero = (marks_val == 0.0)
+    # Convert marks to equivalent talqeen for backward compatibility with 10 - 0.5*talqeen
+    talqeen = max(0, int(round((10.0 - marks_val) * 2)))
+    tanbeeh = 0
+
+    def _bg_save():
+        try:
+            global _db_supported_columns
+            patch = {
+                "talqeen": talqeen,
+                "tanbeeh": tanbeeh,
+                "is_zero_marks": is_zero,
+                "updated_at": now_utc_iso(),
+            }
+            if _db_supported_columns and "manual_marks" in _db_supported_columns:
+                patch["manual_marks"] = marks_val
+            else:
+                try:
+                    res = rest.select("mistake_counts", select="manual_marks", params={"limit": 1})
+                    if res is not None:
+                        if _db_supported_columns is not None:
+                            _db_supported_columns.add("manual_marks")
+                        patch["manual_marks"] = marks_val
+                except Exception:
+                    pass
+
+            payload = {"session_id": session_id, **patch}
+            rest.upsert(
+                "mistake_counts",
+                [payload],
+                on_conflict="session_id",
+                returning="minimal"
+            )
+            clear_all_read_caches()
+        except Exception as e:
+            import logging
+            logging.error(f"Error in set_session_marks: {e}")
+
+    t = threading.Thread(target=_bg_save)
+    t.daemon = True
+    t.start()
 
 
 def insert_jadeed_rows(
@@ -1296,7 +1357,9 @@ def fetch_monthly_report(*, student_id: str, year: int, month: int) -> List[Dict
         mutashabehat = int(counts.get("mutashabehat", 0) or 0)
         irab = int(counts.get("irab", 0) or 0)
         is_zero = bool(counts.get("is_zero_marks", False))
-        if is_zero:
+        if counts.get("manual_marks") is not None:
+            marks = float(counts["manual_marks"])
+        elif is_zero:
             marks = 0.0
         else:
             marks = 10.0 - (0.5 * talqeen) - (0.25 * tanbeeh)
@@ -2019,7 +2082,9 @@ def fetch_collective_attendance_report(*, year: int, month: int) -> Dict[str, An
         talqeen = int(counts.get("talqeen", 0) or 0)
         tanbeeh = int(counts.get("tanbeeh", 0) or 0)
         is_zero = bool(counts.get("is_zero_marks", False))
-        if is_zero:
+        if counts.get("manual_marks") is not None:
+            marks = float(counts["manual_marks"])
+        elif is_zero:
             marks = 0.0
         else:
             marks = 10.0 - (0.5 * talqeen) - (0.25 * tanbeeh)
@@ -2259,7 +2324,9 @@ def fetch_ikhtebar_report(*, from_date: str, to_date: str) -> Dict[str, Any]:
             talqeen = int(counts.get("talqeen", 0) or 0)
             tanbeeh = int(counts.get("tanbeeh", 0) or 0)
             is_zero = bool(counts.get("is_zero_marks", False))
-            if is_zero:
+            if counts.get("manual_marks") is not None:
+                marks = float(counts["manual_marks"])
+            elif is_zero:
                 marks = 0.0
             else:
                 marks = 10.0 - (0.5 * talqeen) - (0.25 * tanbeeh)
@@ -2855,7 +2922,9 @@ def get_student_page_listening_history(
         tanbeeh = int(counts.get("tanbeeh", 0) or 0)
         is_zero = bool(counts.get("is_zero_marks", False))
 
-        if is_zero:
+        if counts.get("manual_marks") is not None:
+            score = float(counts["manual_marks"])
+        elif is_zero:
             score = 0.0
         else:
             score = max(0.0, 10.0 - (0.5 * talqeen) - (0.25 * tanbeeh))

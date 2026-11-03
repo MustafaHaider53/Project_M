@@ -210,7 +210,9 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
             
             # calculate grade/marks (consistent with 10 - 0.5 * talqeen - 0.25 * tanbeeh)
             is_zero = bool(counts.get("is_zero_marks", False))
-            if is_zero:
+            if counts.get("manual_marks") is not None:
+                marks = float(counts["manual_marks"])
+            elif is_zero:
                 marks = 0.0
             else:
                 marks = 10.0 - (0.5 * talqeen) - (0.25 * tanbeeh)
@@ -307,7 +309,9 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
                 mistakes_detail += '</div>'
             
             is_zero = bool(counts.get("is_zero_marks", False))
-            if is_zero:
+            if counts.get("manual_marks") is not None:
+                marks = float(counts["manual_marks"])
+            elif is_zero:
                 marks = 0.0
             else:
                 marks = 10.0 - (0.5 * talqeen) - (0.25 * tanbeeh)

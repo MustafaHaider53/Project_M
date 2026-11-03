@@ -327,177 +327,94 @@ def render_jadeed() -> None:
                 options=["Kamil", "Ruba", "Nisf", "Sulus"],
                 key="jadeed_volume"
             )
-            
-        # One-click toggle buttons (Weak Hifz, Airab Mistakes, Time Exceeded, Weak Juzulhali, Weak Jadeed)
-        if "jadeed_weak_hifz" not in st.session_state:
-            st.session_state.jadeed_weak_hifz = False
-        if "jadeed_airab_mistakes" not in st.session_state:
-            st.session_state.jadeed_airab_mistakes = False
-        if "jadeed_time_exceeded" not in st.session_state:
-            st.session_state.jadeed_time_exceeded = False
-        if "jadeed_weak_murajat" not in st.session_state:
-            st.session_state.jadeed_weak_murajat = False
-        if "jadeed_weak_juzulhali" not in st.session_state:
-            st.session_state.jadeed_weak_juzulhali = False
-            
-        def _toggle_weak_hifz():
-            st.session_state.jadeed_weak_hifz = not st.session_state.get("jadeed_weak_hifz", False)
-            
-        def _toggle_airab_mistakes():
-            st.session_state.jadeed_airab_mistakes = not st.session_state.get("jadeed_airab_mistakes", False)
+        st.divider()
 
-        def _toggle_time_exceeded():
-            st.session_state.jadeed_time_exceeded = not st.session_state.get("jadeed_time_exceeded", False)
+        # No Jadeed Reason Selector
+        no_jd_disabled = len(todays_entries) > 0
+        reason_labels = {
+            "weak_hifz": "⚠️ Weak Hifz",
+            "airab_mistakes": "🔤 Airab Mistakes",
+            "time_exceeded": "⏱️ Time Exceeded",
+            "weak_murajat": "📖 Weak Murajat",
+            "weak_juzulhali": "📖 Weak Juz'ul Hali",
+        }
 
-        def _toggle_weak_murajat():
-            st.session_state.jadeed_weak_murajat = not st.session_state.get("jadeed_weak_murajat", False)
-
-        def _toggle_weak_juzulhali():
-            st.session_state.jadeed_weak_juzulhali = not st.session_state.get("jadeed_weak_juzulhali", False)
-
-        is_weak = st.session_state.get("jadeed_weak_hifz", False)
-        is_airab = st.session_state.get("jadeed_airab_mistakes", False)
-        is_time_exceeded = st.session_state.get("jadeed_time_exceeded", False) or is_timer_overtime
-        is_weak_murajat = st.session_state.get("jadeed_weak_murajat", False)
-        is_weak_juzulhali = st.session_state.get("jadeed_weak_juzulhali", False)
-
-        col_t1, col_t2, col_t3 = st.columns(3)
-        with col_t1:
-            weak_active_class = "makhraj-active" if is_weak else "makhraj-inactive"
-            st.markdown(f"<span class='{weak_active_class}' style='display: none;'>active</span>", unsafe_allow_html=True)
-            st.button(
-                "⚠️ Weak Hifz",
-                on_click=_toggle_weak_hifz,
-                key="btn_toggle_weak_hifz",
-                width="stretch"
-            )
-        with col_t2:
-            airab_active_class = "makhraj-active" if is_airab else "makhraj-inactive"
-            st.markdown(f"<span class='{airab_active_class}' style='display: none;'>active</span>", unsafe_allow_html=True)
-            st.button(
-                "🔤 Airab Mistakes",
-                on_click=_toggle_airab_mistakes,
-                key="btn_toggle_airab_mistakes",
-                width="stretch"
-            )
-        with col_t3:
-            time_active_class = "makhraj-active" if is_time_exceeded else "makhraj-inactive"
-            st.markdown(f"<span class='{time_active_class}' style='display: none;'>active</span>", unsafe_allow_html=True)
-            st.button(
-                "⏱️ Time Exceeded",
-                on_click=_toggle_time_exceeded,
-                key="btn_toggle_time_exceeded",
-                width="stretch"
-            )
-
-        col_t4, col_t5 = st.columns(2)
-        with col_t4:
-            wm_active_class = "makhraj-active" if is_weak_murajat else "makhraj-inactive"
-            st.markdown(f"<span class='{wm_active_class}' style='display: none;'>active</span>", unsafe_allow_html=True)
-            st.button(
-                "📖 Weak Murajat",
-                on_click=_toggle_weak_murajat,
-                key="btn_toggle_weak_murajat",
-                width="stretch"
-            )
-        with col_t5:
-            wj_active_class = "makhraj-active" if is_weak_juzulhali else "makhraj-inactive"
-            st.markdown(f"<span class='{wj_active_class}' style='display: none;'>active</span>", unsafe_allow_html=True)
-            st.button(
-                "📖 Weak Juz'ul Hali",
-                on_click=_toggle_weak_juzulhali,
-                key="btn_toggle_weak_juzulhali",
-                width="stretch"
-            )
-        
-        # Action buttons
-        c_add, c_no = st.columns([2, 1])
-        with c_add:
-            if st.button("➕ Add Entry", type="primary", width="stretch"):
-                # Find matching DB surah_id
-                db_surah = next((s for s in db_surahs if int(s["number"]) == selected_surah["number"]), None)
-                if not db_surah:
-                    st.error("Selected Surah not found in database.")
-                else:
-                    duration_sec = stop_and_capture_timer("jadeed", student_id, 5)
-                    is_overtime_entry = bool(is_time_exceeded or (duration_sec and int(duration_sec) > 300))
-                    new_row = {
-                        "surah_id": db_surah["id"],
-                        "page_number": int(selected_page),
-                        "ayah_number": int(selected_ayah),
-                        "volume": selected_volume,
-                        "weak_hifz": bool(is_weak),
-                        "airab_mistakes": bool(is_airab),
-                        "time_exceeded": bool(is_overtime_entry),
-                        "duration_seconds": int(duration_sec),
-                        "weak_murajat": bool(is_weak_murajat),
-                        "weak_juzulhali": bool(is_weak_juzulhali),
-                    }
-                    
-                    # Prepare payload of all existing + new
-                    payload = []
-                    for e in todays_entries:
-                        payload.append({
-                            "surah_id": e.get("surah_id"),
-                            "page_number": int(e.get("page_number") or 1),
-                            "ayah_number": int(e.get("ayah_number") or 1),
-                            "volume": e.get("volume") or "Kamil",
-                            "weak_hifz": bool(e.get("weak_hifz", False)),
-                            "airab_mistakes": bool(e.get("airab_mistakes", False)),
-                            "time_exceeded": bool(e.get("time_exceeded", False)),
-                            "duration_seconds": int(e.get("duration_seconds", 0) or 0),
-                            "weak_murajat": bool(e.get("weak_murajat", False)),
-                            "weak_juzulhali": bool(e.get("weak_juzulhali", False)),
-                        })
-                    payload.append(new_row)
-                    
-                    with st.spinner("Saving new entry..."):
-                        insert_jadeed_rows(student_id=student_id, rows=payload)
-                    st.session_state.pop("jadeed_state_init", None)
-                    st.session_state.jadeed_weak_hifz = False
-                    st.session_state.jadeed_airab_mistakes = False
-                    st.session_state.jadeed_time_exceeded = False
-                    st.session_state.jadeed_weak_murajat = False
-                    st.session_state.jadeed_weak_juzulhali = False
-                    st.session_state.jadeed_flash = "New Jadeed entry added successfully!"
-                    st.rerun()
-                    
-        with c_no:
-            # Show "No Jadeed today" button
-            has_reason_selected = bool(is_weak or is_airab or is_time_exceeded or is_weak_murajat or is_weak_juzulhali)
-            no_jadeed_disabled = len(todays_entries) > 0 or not has_reason_selected
-            
-            help_text = "Mark today as No Jadeed"
-            if len(todays_entries) > 0:
-                help_text = "Cannot mark No Jadeed when entries already exist"
-            elif not has_reason_selected:
-                help_text = "⚠️ Please select a reason (Weak Hifz, Airab, Time Exceeded, Weak Murajat, or Weak Juz'ul Hali) before marking No Jadeed"
-
-            if st.button(
-                "🌙 Mark 'No Jadeed'", 
-                type="secondary", 
-                disabled=no_jadeed_disabled, 
-                width="stretch",
-                help=help_text
-            ):
-                stop_and_capture_timer("jadeed", student_id, 5)
+        def _on_no_jadeed_reason_select():
+            reason = st.session_state.get("no_jadeed_reason_picker")
+            if reason:
+                duration_sec = stop_and_capture_timer("jadeed", student_id, 5)
+                reasons_dict = {
+                    "weak_hifz": reason == "weak_hifz",
+                    "airab_mistakes": reason == "airab_mistakes",
+                    "time_exceeded": reason == "time_exceeded",
+                    "weak_murajat": reason == "weak_murajat",
+                    "weak_juzulhali": reason == "weak_juzulhali",
+                }
                 with st.spinner("Marking as No Jadeed..."):
                     insert_jadeed_rows(
                         student_id=student_id,
                         rows=[],
-                        no_jadeed_reasons={
-                            "weak_hifz": bool(is_weak),
-                            "airab_mistakes": bool(is_airab),
-                            "time_exceeded": bool(is_time_exceeded),
-                            "weak_murajat": bool(is_weak_murajat),
-                            "weak_juzulhali": bool(is_weak_juzulhali),
-                        }
+                        no_jadeed_reasons=reasons_dict
                     )
                 st.session_state.pop("jadeed_state_init", None)
-                st.session_state.jadeed_weak_hifz = False
-                st.session_state.jadeed_airab_mistakes = False
-                st.session_state.jadeed_time_exceeded = False
-                st.session_state.jadeed_weak_murajat = False
-                st.session_state.jadeed_weak_juzulhali = False
-                st.session_state.jadeed_flash = "Marked: No Jadeed for today."
+                st.session_state.jadeed_flash = f"Marked: No Jadeed ({reason_labels.get(reason, '')})."
+                st.rerun()
+
+        st.markdown("<div style='font-size: 0.82rem; font-weight: bold; color: #854d0e; margin-bottom: 2px;'>🌙 If No Jadeed today, select reason:</div>", unsafe_allow_html=True)
+        st.selectbox(
+            "Select Reason for No Jadeed",
+            options=[None, "weak_hifz", "airab_mistakes", "time_exceeded", "weak_murajat", "weak_juzulhali"],
+            format_func=lambda x: reason_labels.get(x, "— Select Reason to Mark 'No Jadeed' —") if x else "— Select Reason to Mark 'No Jadeed' —",
+            key="no_jadeed_reason_picker",
+            on_change=_on_no_jadeed_reason_select,
+            disabled=no_jd_disabled,
+            help="Cannot mark No Jadeed when entries already exist" if no_jd_disabled else "Select a reason to immediately mark today as No Jadeed",
+            label_visibility="collapsed"
+        )
+
+        st.markdown("<div style='margin-top: 8px;'></div>", unsafe_allow_html=True)
+
+        # Action button: Add Entry for Jadeed
+        if st.button("➕ Add Entry for Jadeed", type="primary", width="stretch"):
+            # Find matching DB surah_id
+            db_surah = next((s for s in db_surahs if int(s["number"]) == selected_surah["number"]), None)
+            if not db_surah:
+                st.error("Selected Surah not found in database.")
+            else:
+                duration_sec = stop_and_capture_timer("jadeed", student_id, 5)
+                is_overtime_entry = bool(duration_sec and int(duration_sec) > 300)
+                new_row = {
+                    "surah_id": db_surah["id"],
+                    "page_number": int(selected_page),
+                    "ayah_number": int(selected_ayah),
+                    "volume": selected_volume,
+                    "weak_hifz": False,
+                    "airab_mistakes": False,
+                    "time_exceeded": bool(is_overtime_entry),
+                    "duration_seconds": int(duration_sec),
+                    "weak_murajat": False,
+                    "weak_juzulhali": False,
+                }
+                
+                # Prepare payload of all existing + new
+                payload = []
+                for e in todays_entries:
+                    payload.append({
+                        "surah_id": e.get("surah_id"),
+                        "page_number": int(e.get("page_number") or 1),
+                        "ayah_number": int(e.get("ayah_number") or 1),
+                        "volume": e.get("volume") or "Kamil",
+                        "weak_hifz": bool(e.get("weak_hifz", False)),
+                        "airab_mistakes": bool(e.get("airab_mistakes", False)),
+                        "time_exceeded": bool(e.get("time_exceeded", False)),
+                        "duration_seconds": int(e.get("duration_seconds", 0) or 0),
+                        "weak_murajat": bool(e.get("weak_murajat", False)),
+                        "weak_juzulhali": bool(e.get("weak_juzulhali", False)),
+                    })
+                payload.append(new_row)
+                
+                with st.spinner("Saving new entry..."):
+                    insert_jadeed_rows(student_id=student_id, rows=payload)
+                st.session_state.pop("jadeed_state_init", None)
+                st.session_state.jadeed_flash = "New Jadeed entry added successfully!"
                 st.rerun()
