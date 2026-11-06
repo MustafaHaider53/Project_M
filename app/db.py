@@ -496,7 +496,10 @@ def get_session_counts(session_id: str) -> Dict[str, int]:
             "is_zero_marks": False,
             "updated_at": now_utc_iso(),
         }
-        rest.insert("mistake_counts", [init], returning="minimal")
+        try:
+            rest.upsert("mistake_counts", [init], on_conflict="session_id", returning="minimal")
+        except Exception:
+            pass
         res = {
             "talqeen": 0,
             "tanbeeh": 0,

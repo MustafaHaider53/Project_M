@@ -165,12 +165,48 @@ def render_juzulhali() -> None:
                 
                 set_session_marks(sid, sel_val)
                 if "juzulhali_counts" not in st.session_state or st.session_state.get("juzulhali_counts_session_id") != sid:
-                    st.session_state.juzulhali_counts = get_session_counts(sid)
+                    zero_counts = {
+                        "talqeen": int((10 - sel_val) * 2),
+                        "tanbeeh": 0,
+                        "repeat_mistake": 0,
+                        "mutashabehat": 0,
+                        "irab": 0,
+                        "awakhir_ul_ayat": 0,
+                        "irab_talqeen": 0,
+                        "irab_tanbeeh": 0,
+                        "repeat_mistake_talqeen": 0,
+                        "repeat_mistake_tanbeeh": 0,
+                        "mutashabehat_talqeen": 0,
+                        "mutashabehat_tanbeeh": 0,
+                        "awakhir_ul_ayat_talqeen": 0,
+                        "awakhir_ul_ayat_tanbeeh": 0,
+                        "ikhfa": 0,
+                        "izhaar": 0,
+                        "qalqalah": 0,
+                        "ism_jalalah": 0,
+                        "tahreek_sakin": 0,
+                        "gunnah": 0,
+                        "idgham": 0,
+                        "madd_lazim": 0,
+                        "madd_muttasil": 0,
+                        "mad_tabaiee": 0,
+                        "ikhfa_shafawi": 0,
+                        "iqlab": 0,
+                        "is_zero_marks": (sel_val == 0),
+                        "manual_marks": sel_val,
+                    }
+                    from app.db import MAKHARIJ_COLS, MUSAID_COLS
+                    for col in MAKHARIJ_COLS:
+                        zero_counts[col] = 0
+                    for col in MUSAID_COLS:
+                        zero_counts[col] = 0
+                    st.session_state.juzulhali_counts = zero_counts
                     st.session_state.juzulhali_counts_session_id = sid
-                st.session_state.juzulhali_counts["manual_marks"] = sel_val
-                st.session_state.juzulhali_counts["talqeen"] = int((10 - sel_val) * 2)
-                st.session_state.juzulhali_counts["tanbeeh"] = 0
-                st.session_state.juzulhali_counts["is_zero_marks"] = (sel_val == 0)
+                else:
+                    st.session_state.juzulhali_counts["manual_marks"] = sel_val
+                    st.session_state.juzulhali_counts["talqeen"] = int((10 - sel_val) * 2)
+                    st.session_state.juzulhali_counts["tanbeeh"] = 0
+                    st.session_state.juzulhali_counts["is_zero_marks"] = (sel_val == 0)
                 st.session_state.play_sound = True
 
         with sticky_container:
