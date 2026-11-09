@@ -807,8 +807,10 @@ def _bg_update_mistake(rest: SupabaseRest, session_id: str, kind: str, counts: D
         for col in new_cols:
             if _db_supported_columns and col in _db_supported_columns:
                 if col == "manual_marks":
-                    if counts.get("manual_marks") is not None:
-                        patch[col] = float(counts["manual_marks"])
+                    val = counts.get("manual_marks")
+                    if val is not None:
+                        f_val = float(val)
+                        patch[col] = int(f_val) if f_val.is_integer() else f_val
                 else:
                     patch[col] = counts.get(col, 0)
 
@@ -856,15 +858,16 @@ def set_session_marks(session_id: str, marks: float) -> None:
                 "is_zero_marks": is_zero,
                 "updated_at": now_utc_iso(),
             }
+            save_marks = int(marks_val) if marks_val.is_integer() else marks_val
             if _db_supported_columns and "manual_marks" in _db_supported_columns:
-                patch["manual_marks"] = marks_val
+                patch["manual_marks"] = save_marks
             else:
                 try:
                     res = rest.select("mistake_counts", select="manual_marks", params={"limit": 1})
                     if res is not None:
                         if _db_supported_columns is not None:
                             _db_supported_columns.add("manual_marks")
-                        patch["manual_marks"] = marks_val
+                        patch["manual_marks"] = save_marks
                 except Exception:
                     pass
 
