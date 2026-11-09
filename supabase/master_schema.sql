@@ -139,6 +139,7 @@ create table if not exists public.students (
   id uuid primary key default uuid_generate_v4(),
   full_name text not null,
   email text,
+  its text,
   created_at timestamptz not null default now(),
   unique (full_name)
 );
@@ -274,7 +275,7 @@ create table if not exists public.mistake_counts (
   musaid_lehen int not null default 0,
   -- Flags & Manual Marks
   is_zero_marks boolean not null default false,
-  manual_marks int default null,
+  manual_marks numeric default null,
   updated_at timestamptz not null default now()
 );
 
@@ -308,7 +309,13 @@ create table if not exists public.jadeed_entries (
   duration_seconds int,
   is_weak boolean not null default false,
   has_tanbeeh boolean not null default false,
-  has_talqeen boolean not null default false
+  has_talqeen boolean not null default false,
+  weak_hifz boolean not null default false,
+  airab_mistakes boolean not null default false,
+  time_exceeded boolean not null default false,
+  weak_murajat boolean not null default false,
+  weak_juzulhali boolean not null default false,
+  weak_jadeed boolean not null default false
 );
 
 -- ------------------------------------------------------------------------
@@ -318,6 +325,12 @@ create table if not exists public.jadeed_daily (
   student_id uuid not null references public.students(id) on delete cascade,
   activity_date date not null,
   no_jadeed boolean not null default false,
+  weak_hifz boolean not null default false,
+  airab_mistakes boolean not null default false,
+  time_exceeded boolean not null default false,
+  weak_murajat boolean not null default false,
+  weak_juzulhali boolean not null default false,
+  weak_jadeed boolean not null default false,
   updated_at timestamptz not null default now(),
   primary key (student_id, activity_date)
 );

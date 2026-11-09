@@ -60,6 +60,15 @@ class SupabaseRest:
             h["Prefer"] = prefer
         return h
 
+    def _raise_with_details(self, r: requests.Response) -> None:
+        if not r.ok:
+            try:
+                err_data = r.json()
+                msg = err_data.get("message") or err_data.get("details") or err_data.get("hint") or r.text
+            except Exception:
+                msg = r.text
+            raise requests.HTTPError(f"{r.status_code} Client Error ({msg}) for url: {r.url}", response=r)
+
     def select(self, table: str, *, select: str, params: Optional[Dict[str, str]] = None) -> List[Dict[str, Any]]:
         r = requests.get(
             f"{self.url}/rest/v1/{table}",
@@ -67,7 +76,7 @@ class SupabaseRest:
             params={"select": select, **(params or {})},
             timeout=20,
         )
-        r.raise_for_status()
+        self._raise_with_details(r)
         if not r.content or not r.content.strip():
             return []
         try:
@@ -93,7 +102,7 @@ class SupabaseRest:
             json=rows,
             timeout=20,
         )
-        r.raise_for_status()
+        self._raise_with_details(r)
         # With Prefer: return=minimal, PostgREST returns an empty body.
         # Even when "representation" is requested, some setups can still return an empty body.
         if returning == "minimal" or not r.content or not r.content.strip():
@@ -121,7 +130,7 @@ class SupabaseRest:
             json=rows,
             timeout=20,
         )
-        r.raise_for_status()
+        self._raise_with_details(r)
 
     def update(self, table: str, *, match: Dict[str, Any], patch: Dict[str, Any]) -> None:
         params = {k: f"eq.{v}" for k, v in match.items()}
@@ -132,7 +141,7 @@ class SupabaseRest:
             json=patch,
             timeout=20,
         )
-        r.raise_for_status()
+        self._raise_with_details(r)
 
     def delete(self, table: str, *, match: Dict[str, Any]) -> None:
         params = {k: f"eq.{v}" for k, v in match.items()}
@@ -142,7 +151,7 @@ class SupabaseRest:
             params=params,
             timeout=20,
         )
-        r.raise_for_status()
+        self._raise_with_details(r)
 
 
 def clear_all_read_caches() -> None:
