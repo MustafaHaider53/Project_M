@@ -409,19 +409,19 @@
       font-weight: 600;
     }
 
-    /* 4 Compact KPI Strip */
+    /* Single Compact Jadeed KPI Card */
     .kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 5px;
-      margin-top: 9px;
+      display: flex;
+      justify-content: flex-end;
+      flex-shrink: 0;
     }
     .kpi-box {
-      background: rgba(255, 255, 255, 0.13);
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      border-radius: 8px;
-      padding: 5px 4px;
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      border-radius: 9px;
+      padding: 5px 12px;
       text-align: center;
+      min-width: 68px;
     }
     .kpi-lbl {
       font-size: 9px;
@@ -790,8 +790,8 @@
               <span id="stMonthLabel"></span>
             </div>
           </div>
+          <div class="kpi-grid" id="kpiGrid"></div>
         </div>
-        <div class="kpi-grid" id="kpiGrid"></div>
       </div>
 
       <div class="controls-bar">
@@ -1137,24 +1137,7 @@
     }
 
     function renderKpis(stats) {
-      const murAvg = stats.murajat_avg != null ? `Avg ${stats.murajat_avg}` : "—";
-      const jhAvg = stats.juzulhali_avg != null ? `Avg ${stats.juzulhali_avg}` : "—";
       $("kpiGrid").innerHTML = `
-        <div class="kpi-box">
-          <div class="kpi-lbl">Attend</div>
-          <div class="kpi-val">${stats.attendance_pct}%</div>
-          <div class="kpi-sub">${stats.active_days}/${stats.working_days}d</div>
-        </div>
-        <div class="kpi-box">
-          <div class="kpi-lbl">Murajat</div>
-          <div class="kpi-val">${stats.murajat_count}</div>
-          <div class="kpi-sub">${murAvg}</div>
-        </div>
-        <div class="kpi-box">
-          <div class="kpi-lbl">Juz'Hali</div>
-          <div class="kpi-val">${stats.juzulhali_pages}p</div>
-          <div class="kpi-sub">${jhAvg}</div>
-        </div>
         <div class="kpi-box">
           <div class="kpi-lbl">Jadeed</div>
           <div class="kpi-val">${stats.jadeed_count}</div>
