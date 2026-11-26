@@ -1,0 +1,1435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#074332" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="MSB USR" />
+  <link rel="manifest" href="/manifest.json" />
+  <title>MSB Collective USR — Admin Quick Report</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --emerald-dark: #074332;
+      --emerald: #0E6B50;
+      --emerald-soft: #ecfdf5;
+      --gold: #D4AF37;
+      --bg: #f3f6f5;
+      --surface: #ffffff;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --mur-fg: #0369a1;
+      --mur-bg: #e0f2fe;
+      --jh-fg: #b45309;
+      --jh-bg: #fef3c7;
+      --jd-fg: #15803d;
+      --jd-bg: #dcfce7;
+      --absent-fg: #b91c1c;
+      --absent-bg: #fef2f2;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 14px;
+      line-height: 1.35;
+      overscroll-behavior-y: none;
+    }
+
+    /* Top App Header */
+    .topbar {
+      background: linear-gradient(135deg, var(--emerald-dark) 0%, var(--emerald) 100%);
+      color: #fff;
+      padding: 10px 12px;
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      box-shadow: 0 2px 10px rgba(7, 67, 50, 0.22);
+    }
+    .topbar-row {
+      max-width: 1120px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+    .brand-icon {
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      background: rgba(212, 175, 55, 0.22);
+      border: 1px solid rgba(212, 175, 55, 0.65);
+      display: grid;
+      place-items: center;
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+    .brand-title {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 800;
+      font-size: 15.5px;
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .brand-sub {
+      font-size: 10.5px;
+      color: rgba(255, 255, 255, 0.8);
+      font-weight: 500;
+    }
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .icon-btn {
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      color: #fff;
+      border-radius: 8px;
+      height: 32px;
+      padding: 0 10px;
+      font-size: 12px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+    }
+    .icon-btn:active { transform: scale(0.96); background: rgba(255, 255, 255, 0.24); }
+    .icon-btn.hidden { display: none; }
+
+    /* Main Container */
+    .container {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 10px 8px 40px 8px;
+    }
+
+    /* Search Panel */
+    .search-card {
+      background: var(--surface);
+      border-radius: 14px;
+      padding: 10px;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+      border: 1px solid var(--border);
+      position: relative;
+      z-index: 30;
+    }
+    .search-input-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      color: var(--muted);
+      font-size: 15px;
+      pointer-events: none;
+    }
+    #searchInput {
+      width: 100%;
+      height: 42px;
+      padding: 0 36px 0 38px;
+      border-radius: 10px;
+      border: 1.5px solid #cbd5e1;
+      background: #f8fafc;
+      font-family: inherit;
+      font-size: 14.5px;
+      font-weight: 500;
+      color: var(--ink);
+      outline: none;
+      transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+    }
+    #searchInput:focus {
+      border-color: var(--emerald);
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(14, 107, 80, 0.14);
+    }
+    .clear-btn {
+      position: absolute;
+      right: 8px;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: none;
+      background: #e2e8f0;
+      color: #475569;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+    .clear-btn.visible { display: flex; }
+
+    /* Program Filter Pills */
+    .pills-row {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-top: 8px;
+      scrollbar-width: none;
+    }
+    .pills-row::-webkit-scrollbar { display: none; }
+    .pill {
+      border: 1px solid var(--border);
+      background: #f8fafc;
+      color: #334155;
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 11.5px;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.12s;
+    }
+    .pill .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .pill.active {
+      background: var(--emerald-dark);
+      color: #fff;
+      border-color: var(--emerald-dark);
+    }
+    .pill .cnt {
+      opacity: 0.78;
+      font-weight: 500;
+      font-size: 10.5px;
+    }
+
+    /* Live Search Dropdown */
+    .search-results {
+      display: none;
+      margin-top: 8px;
+      max-height: 52vh;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+    }
+    .search-results.open { display: block; }
+    .result-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 12px;
+      border-bottom: 1px solid #f1f5f9;
+      cursor: pointer;
+    }
+    .result-item:last-child { border-bottom: none; }
+    .result-item:active, .result-item:hover { background: var(--emerald-soft); }
+    .res-name {
+      font-weight: 600;
+      font-size: 13.5px;
+      color: var(--ink);
+    }
+    .res-its {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      margin-top: 1px;
+    }
+    .school-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 7px;
+      border-radius: 999px;
+      color: #fff;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .no-results {
+      padding: 16px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    /* Recent Students Strip */
+    .recent-wrap {
+      margin-top: 8px;
+      display: none;
+    }
+    .recent-wrap.visible { display: block; }
+    .recent-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+    .recent-label {
+      font-size: 10.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+    }
+    .recent-clear {
+      border: none;
+      background: none;
+      color: var(--muted);
+      font-size: 10.5px;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 0;
+    }
+    .recent-chips {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      scrollbar-width: none;
+      padding-bottom: 2px;
+    }
+    .recent-chips::-webkit-scrollbar { display: none; }
+    .recent-chip {
+      border: 1px solid #dbe4e0;
+      background: #fff;
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #1e293b;
+      white-space: nowrap;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .recent-chip.active {
+      border-color: var(--emerald);
+      background: var(--emerald-soft);
+      color: var(--emerald-dark);
+    }
+    .recent-chip .r-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+    }
+
+    /* Warnings Banner */
+    .warn-banner {
+      display: none;
+      margin-top: 8px;
+      padding: 7px 10px;
+      border-radius: 9px;
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      color: #92400e;
+      font-size: 11.5px;
+      font-weight: 500;
+    }
+    .warn-banner.visible { display: block; }
+
+    /* Empty State */
+    .empty-state {
+      margin-top: 14px;
+      background: var(--surface);
+      border: 1px dashed #cbd5e1;
+      border-radius: 14px;
+      padding: 28px 16px;
+      text-align: center;
+      color: var(--muted);
+    }
+    .empty-state .big-ico { font-size: 30px; margin-bottom: 6px; }
+    .empty-state h3 { margin: 0 0 4px 0; color: var(--ink); font-size: 15px; }
+    .empty-state p { margin: 0; font-size: 12.5px; }
+
+    /* Report Section */
+    .report-card {
+      margin-top: 10px;
+      background: var(--surface);
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
+      overflow: hidden;
+      display: none;
+    }
+    .report-card.visible { display: block; }
+
+    .student-banner {
+      background: linear-gradient(135deg, #074332 0%, #0E6B50 100%);
+      color: #fff;
+      padding: 11px 12px 10px 12px;
+    }
+    .student-banner-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .st-name {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 800;
+      font-size: 16px;
+      line-height: 1.2;
+    }
+    .st-meta {
+      margin-top: 3px;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.88);
+    }
+    .st-its-pill {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      background: rgba(255, 255, 255, 0.16);
+      padding: 1px 6px;
+      border-radius: 5px;
+      font-weight: 600;
+    }
+
+    /* 4 Compact KPI Strip */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5px;
+      margin-top: 9px;
+    }
+    .kpi-box {
+      background: rgba(255, 255, 255, 0.13);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 8px;
+      padding: 5px 4px;
+      text-align: center;
+    }
+    .kpi-lbl {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: rgba(255, 255, 255, 0.78);
+      font-weight: 700;
+    }
+    .kpi-val {
+      font-family: 'Outfit', sans-serif;
+      font-size: 13.5px;
+      font-weight: 800;
+      color: #fff;
+      margin-top: 1px;
+      white-space: nowrap;
+    }
+    .kpi-sub {
+      font-size: 9px;
+      color: #fde68a;
+      font-weight: 600;
+    }
+
+    /* Month Switcher & View Toggle Bar */
+    .controls-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      padding: 8px 10px;
+      background: #f8fafc;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .month-pills {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .month-pills::-webkit-scrollbar { display: none; }
+    .m-pill {
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      color: #334155;
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .m-pill.active {
+      background: var(--emerald);
+      color: #fff;
+      border-color: var(--emerald);
+      box-shadow: 0 1px 4px rgba(14, 107, 80, 0.28);
+    }
+    .older-select {
+      border: 1px solid #cbd5e1;
+      background: #fff;
+      color: #334155;
+      border-radius: 8px;
+      padding: 5px 6px;
+      font-size: 11.5px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .view-toggle {
+      display: inline-flex;
+      background: #e2e8f0;
+      border-radius: 8px;
+      padding: 2px;
+      gap: 2px;
+      margin-left: auto;
+    }
+    .vt-btn {
+      border: none;
+      background: transparent;
+      color: #475569;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .vt-btn.active {
+      background: #fff;
+      color: var(--emerald-dark);
+      box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+    }
+
+    /* Loading Skeleton */
+    .loading-box {
+      padding: 36px 16px;
+      text-align: center;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 3px solid #e2e8f0;
+      border-top-color: var(--emerald);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto 8px auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* USR Table Wrapper (Smooth horizontal scroll safety net + sticky date column) */
+    .table-scroll {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    table.usr-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      table-layout: fixed;
+    }
+    table.usr-table.mode-compact {
+      min-width: 350px; /* Fits inside standard 375px-430px phone screen with ZERO horizontal scroll! */
+    }
+    table.usr-table.mode-full {
+      min-width: 720px; /* Full 10-column classic USR layout with sticky Date column */
+      table-layout: auto;
+    }
+
+    .usr-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      padding: 6px 4px;
+      border-bottom: 1.5px solid #cbd5e1;
+      text-align: center;
+    }
+    .th-date { background: #f1f5f9; color: #334155; width: 46px; }
+    .th-mur  { background: var(--mur-bg); color: var(--mur-fg); border-left: 2px solid #bae6fd; }
+    .th-jh   { background: var(--jh-bg); color: var(--jh-fg); border-left: 2px solid #fde68a; }
+    .th-jd   { background: var(--jd-bg); color: var(--jd-fg); border-left: 2px solid #bbf7d0; }
+    .th-sub  { font-size: 9px !important; padding: 4px 3px !important; background: #f8fafc; color: #475569; }
+
+    .usr-table tbody td {
+      padding: 5px 4px;
+      border-bottom: 1px solid #e2e8f0;
+      vertical-align: middle;
+      font-size: 11px;
+      word-wrap: break-word;
+      overflow-wrap: anywhere;
+    }
+    .usr-table tbody tr.week-end td {
+      border-bottom: 2px solid #94a3b8;
+    }
+
+    /* Sticky Date Column */
+    .date-cell {
+      position: sticky;
+      left: 0;
+      z-index: 3;
+      background: #f8fafc;
+      text-align: center;
+      width: 46px;
+      border-right: 1px solid #cbd5e1;
+      padding: 4px 2px !important;
+    }
+    .d-num { font-weight: 800; font-size: 11.5px; color: var(--emerald-dark); line-height: 1.1; }
+    .d-dow { font-size: 9px; font-weight: 600; color: var(--muted); line-height: 1.1; margin-top: 1px; }
+
+    .col-mur { border-left: 2px solid #e0f2fe; }
+    .col-jh  { border-left: 2px solid #fef3c7; }
+    .col-jd  { border-left: 2px solid #dcfce7; }
+
+    /* Compact Cell Content */
+    .entry-stack { display: flex; flex-direction: column; gap: 4px; }
+    .entry-item { line-height: 1.2; }
+    .entry-surah { font-weight: 700; font-size: 10.5px; color: var(--ink); display: block; }
+    .entry-meta {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 3px;
+      margin-top: 2px;
+    }
+    .pg-tag {
+      font-size: 9.5px;
+      font-weight: 600;
+      color: #475569;
+      background: #f1f5f9;
+      padding: 0.5px 4px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+    .grade {
+      font-size: 9.5px;
+      font-weight: 800;
+      padding: 0.5px 4px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+    .grade-exc { background: #dcfce7; color: #166534; }
+    .grade-ok  { background: #fef3c7; color: #92400e; }
+    .grade-low { background: #fee2e2; color: #991b1b; }
+    .dur-tag {
+      font-size: 8.5px;
+      font-weight: 700;
+      padding: 0.5px 3px;
+      border-radius: 3px;
+      background: #f0f9ff;
+      color: #0369a1;
+      white-space: nowrap;
+    }
+    .dur-tag.over { background: #fee2e2; color: #dc2626; }
+    .flag-tag {
+      font-size: 8.5px;
+      font-weight: 700;
+      padding: 0.5px 3px;
+      border-radius: 3px;
+      background: #fff7ed;
+      color: #c2410c;
+      border: 1px solid #fed7aa;
+      white-space: nowrap;
+    }
+    .no-jadeed-box {
+      background: #fef9c3;
+      color: #854d0e;
+      font-size: 9.5px;
+      font-weight: 700;
+      font-style: italic;
+      padding: 3px 4px;
+      border-radius: 5px;
+      text-align: center;
+    }
+    .dash { color: #cbd5e1; text-align: center; display: block; font-size: 11px; }
+
+    /* Absent & Weekend Strip Rows */
+    .absent-cell {
+      background: var(--absent-bg);
+      color: var(--absent-fg);
+      text-align: center;
+      font-weight: 700;
+      font-style: italic;
+      font-size: 11px;
+      padding: 6px !important;
+    }
+    .weekend-cell {
+      background: #f8fafc;
+      color: #94a3b8;
+      text-align: center;
+      font-style: italic;
+      font-size: 10px;
+      padding: 4px !important;
+    }
+
+    .table-footer-note {
+      padding: 8px 10px;
+      font-size: 11px;
+      color: var(--muted);
+      background: #f8fafc;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    /* Larger Screens (Laptop / Tablet) */
+    @media (min-width: 720px) {
+      .container { padding: 14px 16px 48px 16px; }
+      .usr-table tbody td { padding: 7px 8px; font-size: 12px; }
+      .entry-surah { font-size: 12px; }
+      .pg-tag, .grade { font-size: 10.5px; padding: 1px 6px; }
+      .date-cell, .th-date { width: 64px; }
+      .d-num { font-size: 13px; }
+      .d-dow { font-size: 10.5px; }
+      .kpi-val { font-size: 16px; }
+    }
+
+    /* Clean Print Layout */
+    @media print {
+      body { background: #fff; }
+      .topbar, .search-card, .controls-bar, .warn-banner, .table-footer-note { display: none !important; }
+      .container { padding: 0; max-width: 100%; }
+      .report-card { margin: 0; border: none; box-shadow: none; }
+      .student-banner { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .table-scroll { overflow: visible !important; }
+      table.usr-table { min-width: 100% !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sticky Top Bar -->
+  <header class="topbar">
+    <div class="topbar-row">
+      <div class="brand">
+        <div class="brand-icon">📑</div>
+        <div>
+          <div class="brand-title">MSB Collective USR</div>
+          <div class="brand-sub" id="directoryStatus">Loading all schools...</div>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="icon-btn hidden" id="printBtn" title="Print / Save PDF">🖨️ Print</button>
+        <button class="icon-btn" id="refreshBtn" title="Refresh data">🔄</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Search + School Filter + Recent Chips -->
+    <section class="search-card">
+      <div class="search-input-wrap">
+        <span class="search-icon">🔍</span>
+        <input
+          type="search"
+          id="searchInput"
+          placeholder="Search student name or 8-digit ITS..."
+          autocomplete="off"
+          autocorrect="off"
+          spellcheck="false"
+        />
+        <button class="clear-btn" id="clearSearchBtn" aria-label="Clear search">×</button>
+      </div>
+
+      <div class="pills-row" id="sourcePills"></div>
+
+      <div class="search-results" id="searchResults"></div>
+
+      <div class="recent-wrap" id="recentWrap">
+        <div class="recent-header">
+          <span class="recent-label">Recent Searches</span>
+          <button class="recent-clear" id="clearRecentBtn">Clear</button>
+        </div>
+        <div class="recent-chips" id="recentChips"></div>
+      </div>
+
+      <div class="warn-banner" id="warnBanner"></div>
+    </section>
+
+    <!-- Initial Prompt -->
+    <section class="empty-state" id="emptyState">
+      <div class="big-ico">⚡</div>
+      <h3>Instant Student USR Lookup</h3>
+      <p>Type any student's <strong>name</strong> or <strong>ITS</strong> above — or tap a recent search — to view their 3-in-1 Monthly Report across all branches.</p>
+    </section>
+
+    <!-- USR Report Card -->
+    <section class="report-card" id="reportCard">
+      <div class="student-banner">
+        <div class="student-banner-top">
+          <div>
+            <div class="st-name" id="stName">—</div>
+            <div class="st-meta">
+              <span class="st-its-pill" id="stIts">ITS: —</span>
+              <span class="school-badge" id="stSchool">—</span>
+              <span id="stMonthLabel"></span>
+            </div>
+          </div>
+        </div>
+        <div class="kpi-grid" id="kpiGrid"></div>
+      </div>
+
+      <div class="controls-bar">
+        <div class="month-pills" id="monthPills"></div>
+        <div class="view-toggle" role="group" aria-label="Table layout">
+          <button class="vt-btn active" id="btnModeCompact" data-mode="compact">Fit</button>
+          <button class="vt-btn" id="btnModeFull" data-mode="full">Full 10-Col</button>
+        </div>
+      </div>
+
+      <div id="usrBody"></div>
+    </section>
+  </main>
+
+  <script>
+    const RECENT_KEY = "msb_usr_recent_v1";
+    const MAX_RECENT = 8;
+    const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+    const state = {
+      sources: [],
+      students: [],
+      activeSourceFilter: "all",
+      selectedStudent: null,
+      // cacheKey: `${source_id}::${student_id}` -> { today_iso, months: { 'YYYY-MM': payload } }
+      usrCache: new Map(),
+      activeMonthKey: null,
+      viewMode: window.innerWidth >= 760 ? "full" : "compact",
+      showFutureDays: false,
+    };
+
+    const $ = (id) => document.getElementById(id);
+
+    function esc(s) {
+      return String(s ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function fmtDur(sec) {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return `${m}m${s > 0 ? String(s).padStart(2, "0") + "s" : ""}`;
+    }
+
+    function gradeClass(m) {
+      if (m >= 9.0) return "grade-exc";
+      if (m >= 7.5) return "grade-ok";
+      return "grade-low";
+    }
+
+    function getRecent() {
+      try {
+        const arr = JSON.parse(localStorage.getItem(RECENT_KEY) || "[]");
+        return Array.isArray(arr) ? arr : [];
+      } catch {
+        return [];
+      }
+    }
+
+    function pushRecent(st) {
+      const key = `${st.source_id}::${st.id}`;
+      const list = getRecent().filter((x) => `${x.source_id}::${x.id}` !== key);
+      list.unshift({
+        id: st.id,
+        name: st.name,
+        its: st.its,
+        source_id: st.source_id,
+        source_label: st.source_label,
+        source_color: st.source_color,
+      });
+      localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, MAX_RECENT)));
+      renderRecent();
+    }
+
+    function renderRecent() {
+      const list = getRecent();
+      const wrap = $("recentWrap");
+      const box = $("recentChips");
+      if (!list.length) {
+        wrap.classList.remove("visible");
+        return;
+      }
+      wrap.classList.add("visible");
+      const activeKey = state.selectedStudent
+        ? `${state.selectedStudent.source_id}::${state.selectedStudent.id}`
+        : "";
+      box.innerHTML = list
+        .map((st, idx) => {
+          const isAct = `${st.source_id}::${st.id}` === activeKey;
+          const shortName = st.name.split(" ").slice(0, 2).join(" ");
+          return `<button class="recent-chip${isAct ? " active" : ""}" data-ridx="${idx}">
+            <span class="r-dot" style="background:${esc(st.source_color || "#0E6B50")}"></span>
+            <span>${esc(shortName)}</span>
+          </button>`;
+        })
+        .join("");
+      box.querySelectorAll(".recent-chip").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const st = list[Number(btn.dataset.ridx)];
+          if (st) selectStudent(st);
+        });
+      });
+    }
+
+    function renderSourcePills() {
+      const total = state.students.length;
+      const pills = [
+        `<button class="pill${state.activeSourceFilter === "all" ? " active" : ""}" data-src="all">
+          All <span class="cnt">(${total})</span>
+        </button>`,
+      ];
+      for (const s of state.sources) {
+        pills.push(
+          `<button class="pill${state.activeSourceFilter === s.id ? " active" : ""}" data-src="${esc(s.id)}">
+            <span class="dot" style="background:${esc(s.color)}"></span>
+            ${esc(s.label)} <span class="cnt">(${s.count})</span>
+          </button>`
+        );
+      }
+      $("sourcePills").innerHTML = pills.join("");
+      $("sourcePills").querySelectorAll(".pill").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          state.activeSourceFilter = btn.dataset.src;
+          renderSourcePills();
+          renderSearchResults();
+        });
+      });
+    }
+
+    function renderSearchResults() {
+      const q = $("searchInput").value.trim().toLowerCase();
+      const box = $("searchResults");
+      $("clearSearchBtn").classList.toggle("visible", q.length > 0);
+
+      if (!q) {
+        box.classList.remove("open");
+        box.innerHTML = "";
+        return;
+      }
+
+      const tokens = q.split(/\s+/).filter(Boolean);
+      const matches = [];
+      for (const st of state.students) {
+        if (state.activeSourceFilter !== "all" && st.source_id !== state.activeSourceFilter) {
+          continue;
+        }
+        const hay = `${st.name} ${st.its}`.toLowerCase();
+        if (tokens.every((t) => hay.includes(t))) {
+          matches.push(st);
+          if (matches.length >= 25) break;
+        }
+      }
+
+      box.classList.add("open");
+      if (!matches.length) {
+        box.innerHTML = `<div class="no-results">No students match "<strong>${esc(q)}</strong>"</div>`;
+        return;
+      }
+
+      box.innerHTML = matches
+        .map(
+          (st, idx) => `
+          <div class="result-item" data-midx="${idx}">
+            <div>
+              <div class="res-name">${esc(st.name)}</div>
+              <div class="res-its">${st.its ? "ITS: " + esc(st.its) : "No ITS"}</div>
+            </div>
+            <span class="school-badge" style="background:${esc(st.source_color)}">${esc(st.source_label)}</span>
+          </div>`
+        )
+        .join("");
+
+      box.querySelectorAll(".result-item").forEach((el) => {
+        el.addEventListener("click", () => {
+          const st = matches[Number(el.dataset.midx)];
+          if (st) {
+            $("searchInput").value = "";
+            $("clearSearchBtn").classList.remove("visible");
+            box.classList.remove("open");
+            $("searchInput").blur();
+            selectStudent(st);
+          }
+        });
+      });
+    }
+
+    async function loadDirectory(forceRefresh = false) {
+      $("directoryStatus").textContent = "Syncing schools...";
+      try {
+        const res = await fetch(`/api/students${forceRefresh ? "?refresh=1" : ""}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+        state.sources = data.sources || [];
+        state.students = data.students || [];
+
+        const okCount = state.sources.filter((s) => s.ok).length;
+        $("directoryStatus").textContent = `${state.students.length} students across ${okCount} school${okCount === 1 ? "" : "s"}`;
+
+        renderSourcePills();
+        renderRecent();
+
+        if (data.warnings && data.warnings.length) {
+          $("warnBanner").textContent = "⚠️ Some branches unavailable: " + data.warnings.join(" | ");
+          $("warnBanner").classList.add("visible");
+        } else {
+          $("warnBanner").classList.remove("visible");
+        }
+      } catch (err) {
+        $("directoryStatus").textContent = "Error loading directory";
+        $("warnBanner").textContent = `❌ ${err.message}`;
+        $("warnBanner").classList.add("visible");
+      }
+    }
+
+    function getLast18Months(todayIso) {
+      const [y0, m0] = todayIso.split("-").map(Number);
+      const list = [];
+      for (let i = 0; i < 18; i++) {
+        const total = y0 * 12 + (m0 - 1) - i;
+        const y = Math.floor(total / 12);
+        const m = ((total % 12) + 12) % 12 + 1;
+        const key = `${y}-${String(m).padStart(2, "0")}`;
+        list.push({ year: y, month: m, key, label: `${MONTH_SHORT[m - 1]} ${y}` });
+      }
+      return list;
+    }
+
+    async function selectStudent(st, forceRefresh = false) {
+      state.selectedStudent = st;
+      pushRecent(st);
+
+      $("emptyState").style.display = "none";
+      $("reportCard").classList.add("visible");
+      $("printBtn").classList.remove("hidden");
+
+      $("stName").textContent = st.name;
+      $("stIts").textContent = st.its ? `ITS: ${st.its}` : "ITS: —";
+      $("stSchool").textContent = st.source_label;
+      $("stSchool").style.background = st.source_color || "#0E6B50";
+
+      const cacheKey = `${st.source_id}::${st.id}`;
+      if (!forceRefresh && state.usrCache.has(cacheKey)) {
+        const cached = state.usrCache.get(cacheKey);
+        const keys = Object.keys(cached.months).sort().reverse();
+        if (!state.activeMonthKey || !cached.months[state.activeMonthKey]) {
+          state.activeMonthKey = keys[0];
+        }
+        renderCurrentMonth();
+        return;
+      }
+
+      $("kpiGrid").innerHTML = "";
+      $("monthPills").innerHTML = "";
+      $("usrBody").innerHTML = `<div class="loading-box"><div class="spinner"></div>Loading 3-month USR...</div>`;
+
+      try {
+        const url = `/api/usr?source=${encodeURIComponent(st.source_id)}&student_id=${encodeURIComponent(st.id)}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+        state.usrCache.set(cacheKey, {
+          today_iso: data.today_iso,
+          months: data.months || {},
+        });
+
+        const keys = Object.keys(data.months || {}).sort().reverse();
+        state.activeMonthKey = keys[0];
+        renderCurrentMonth();
+      } catch (err) {
+        $("usrBody").innerHTML = `<div class="loading-box" style="color:#b91c1c;">❌ ${esc(err.message)}</div>`;
+      }
+    }
+
+    async function switchMonth(year, month) {
+      const st = state.selectedStudent;
+      if (!st) return;
+      const cacheKey = `${st.source_id}::${st.id}`;
+      const entry = state.usrCache.get(cacheKey);
+      const mKey = `${year}-${String(month).padStart(2, "0")}`;
+
+      // 0ms instant switch if already prefetched/cached!
+      if (entry && entry.months[mKey]) {
+        state.activeMonthKey = mKey;
+        renderCurrentMonth();
+        return;
+      }
+
+      $("usrBody").innerHTML = `<div class="loading-box"><div class="spinner"></div>Loading ${MONTH_SHORT[month - 1]} ${year}...</div>`;
+      try {
+        const url = `/api/usr?source=${encodeURIComponent(st.source_id)}&student_id=${encodeURIComponent(st.id)}&year=${year}&month=${month}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        if (entry && data.months[mKey]) {
+          entry.months[mKey] = data.months[mKey];
+        }
+        state.activeMonthKey = mKey;
+        renderCurrentMonth();
+      } catch (err) {
+        $("usrBody").innerHTML = `<div class="loading-box" style="color:#b91c1c;">❌ ${esc(err.message)}</div>`;
+      }
+    }
+
+    function renderMonthControls(entry) {
+      const all18 = getLast18Months(entry.today_iso);
+      const quick3 = all18.slice(0, 3);
+      const older = all18.slice(3);
+
+      let html = quick3
+        .map((m) => {
+          const act = m.key === state.activeMonthKey;
+          return `<button class="m-pill${act ? " active" : ""}" data-y="${m.year}" data-m="${m.month}">${MONTH_SHORT[m.month - 1]} '${String(m.year).slice(2)}</button>`;
+        })
+        .join("");
+
+      const isOlderSelected = older.some((m) => m.key === state.activeMonthKey);
+      html += `<select class="older-select" id="olderMonthSelect" aria-label="Older months">
+        <option value="" ${!isOlderSelected ? "selected" : ""}>Older ▾</option>
+        ${older
+          .map(
+            (m) =>
+              `<option value="${m.year}-${m.month}" ${m.key === state.activeMonthKey ? "selected" : ""}>${m.label}</option>`
+          )
+          .join("")}
+      </select>`;
+
+      $("monthPills").innerHTML = html;
+      $("monthPills").querySelectorAll(".m-pill").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          switchMonth(Number(btn.dataset.y), Number(btn.dataset.m));
+        });
+      });
+      $("olderMonthSelect").addEventListener("change", (e) => {
+        if (!e.target.value) return;
+        const [y, m] = e.target.value.split("-").map(Number);
+        switchMonth(y, m);
+      });
+    }
+
+    function renderKpis(stats) {
+      const murAvg = stats.murajat_avg != null ? `Avg ${stats.murajat_avg}` : "—";
+      const jhAvg = stats.juzulhali_avg != null ? `Avg ${stats.juzulhali_avg}` : "—";
+      $("kpiGrid").innerHTML = `
+        <div class="kpi-box">
+          <div class="kpi-lbl">Attend</div>
+          <div class="kpi-val">${stats.attendance_pct}%</div>
+          <div class="kpi-sub">${stats.active_days}/${stats.working_days}d</div>
+        </div>
+        <div class="kpi-box">
+          <div class="kpi-lbl">Murajat</div>
+          <div class="kpi-val">${stats.murajat_count}</div>
+          <div class="kpi-sub">${murAvg}</div>
+        </div>
+        <div class="kpi-box">
+          <div class="kpi-lbl">Juz'Hali</div>
+          <div class="kpi-val">${stats.juzulhali_pages}p</div>
+          <div class="kpi-sub">${jhAvg}</div>
+        </div>
+        <div class="kpi-box">
+          <div class="kpi-lbl">Jadeed</div>
+          <div class="kpi-val">${stats.jadeed_count}</div>
+          <div class="kpi-sub">entries</div>
+        </div>`;
+    }
+
+    function renderCompactCellMurOrJh(items) {
+      if (!items.length) return `<span class="dash">—</span>`;
+      return `<div class="entry-stack">${items
+        .map((it) => {
+          const pg = it.page && it.page !== "-" ? `<span class="pg-tag">P:${esc(it.page)}</span>` : "";
+          const gr = `<span class="grade ${gradeClass(it.marks)}">${Number(it.marks).toFixed(1)}</span>`;
+          const dur =
+            it.dur > 0
+              ? `<span class="dur-tag${it.over ? " over" : ""}">⏱${fmtDur(it.dur)}</span>`
+              : "";
+          return `<div class="entry-item">
+            <span class="entry-surah">${esc(it.surah)}</span>
+            <div class="entry-meta">${pg}${gr}${dur}</div>
+          </div>`;
+        })
+        .join("")}</div>`;
+    }
+
+    function renderCompactCellJadeed(day) {
+      if (day.jadeed.length) {
+        return `<div class="entry-stack">${day.jadeed
+          .map((jd) => {
+            const pa = `<span class="pg-tag">P:${esc(jd.page)} A:${esc(jd.ayah)}</span>`;
+            const dur =
+              jd.dur > 0
+                ? `<span class="dur-tag${jd.over ? " over" : ""}">⏱${fmtDur(jd.dur)}</span>`
+                : "";
+            const flg = (jd.flags || [])
+              .map((f) => `<span class="flag-tag">${esc(f)}</span>`)
+              .join("");
+            return `<div class="entry-item">
+              <span class="entry-surah">${esc(jd.surah)}</span>
+              <div class="entry-meta">${pa}${dur}${flg}</div>
+            </div>`;
+          })
+          .join("")}</div>`;
+      }
+      if (day.no_jadeed) {
+        const rs = (day.no_jadeed_reasons || [])
+          .map((r) => `<span class="flag-tag">${esc(r)}</span>`)
+          .join(" ");
+        return `<div class="no-jadeed-box">No Jadeed${rs ? `<div style="margin-top:2px;">${rs}</div>` : ""}</div>`;
+      }
+      return `<span class="dash">—</span>`;
+    }
+
+    function buildCompactTable(visibleDays) {
+      const rowsHtml = visibleDays
+        .map((day) => {
+          const rowCls = day.is_sunday ? ' class="week-end"' : "";
+          const dateCell = `<td class="date-cell">
+            <div class="d-num">${String(day.day).padStart(2, "0")}</div>
+            <div class="d-dow">${day.dow}</div>
+          </td>`;
+
+          if (day.is_absent) {
+            return `<tr${rowCls}>${dateCell}<td colspan="3" class="absent-cell">Absent / غائب</td></tr>`;
+          }
+          if (day.is_weekend_empty) {
+            return `<tr${rowCls}>${dateCell}<td colspan="3" class="weekend-cell">${day.dow === "Sat" ? "Saturday" : "Sunday"} — Weekend</td></tr>`;
+          }
+          return `<tr${rowCls}>
+            ${dateCell}
+            <td class="col-mur">${renderCompactCellMurOrJh(day.murajat)}</td>
+            <td class="col-jh">${renderCompactCellMurOrJh(day.juzulhali)}</td>
+            <td class="col-jd">${renderCompactCellJadeed(day)}</td>
+          </tr>`;
+        })
+        .join("");
+
+      return `<div class="table-scroll">
+        <table class="usr-table mode-compact">
+          <colgroup>
+            <col style="width:46px" />
+            <col style="width:31%" />
+            <col style="width:31%" />
+            <col style="width:38%" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th class="th-date">Date</th>
+              <th class="th-mur">Murajat</th>
+              <th class="th-jh">Juz'Hali</th>
+              <th class="th-jd">Jadeed</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>`;
+    }
+
+    function buildFull10ColTable(visibleDays) {
+      const rowsHtml = [];
+      for (const day of visibleDays) {
+        const rowCls = day.is_sunday ? ' class="week-end"' : "";
+        const dateTd = (rs) => `<td class="date-cell"${rs > 1 ? ` rowspan="${rs}"` : ""}>
+          <div class="d-num">${day.ddmm}</div>
+          <div class="d-dow">${day.dow}</div>
+        </td>`;
+
+        if (day.is_absent) {
+          rowsHtml.push(`<tr${rowCls}>${dateTd(1)}<td colspan="9" class="absent-cell">Absent / غائب</td></tr>`);
+          continue;
+        }
+        if (day.is_weekend_empty) {
+          rowsHtml.push(`<tr${rowCls}>${dateTd(1)}<td colspan="9" class="weekend-cell">${day.dow === "Sat" ? "Saturday" : "Sunday"} — Weekend</td></tr>`);
+          continue;
+        }
+
+        const n = Math.max(day.murajat.length, day.juzulhali.length, day.jadeed.length, 1);
+        for (let i = 0; i < n; i++) {
+          const isLast = i === n - 1;
+          const trCls = isLast && day.is_sunday ? ' class="week-end"' : "";
+          const c = [];
+          if (i === 0) c.push(dateTd(n));
+
+          // Murajat (3 cols)
+          if (i < day.murajat.length) {
+            const m = day.murajat[i];
+            const dur = m.dur > 0 ? `<div style="margin-top:2px;"><span class="dur-tag${m.over ? " over" : ""}">⏱${fmtDur(m.dur)}</span></div>` : "";
+            c.push(`<td class="col-mur" style="font-weight:700;">${esc(m.surah)}</td>`);
+            c.push(`<td style="text-align:center;">${esc(m.page)}</td>`);
+            c.push(`<td style="text-align:center;"><span class="grade ${gradeClass(m.marks)}">${Number(m.marks).toFixed(1)}/10</span>${dur}</td>`);
+          } else if (day.murajat.length === 0 && i === 0) {
+            c.push(`<td class="col-mur"><span class="dash">-</span></td><td><span class="dash">-</span></td><td><span class="dash">-</span></td>`);
+          } else {
+            c.push(`<td class="col-mur"></td><td></td><td></td>`);
+          }
+
+          // Juzulhali (3 cols)
+          if (i < day.juzulhali.length) {
+            const j = day.juzulhali[i];
+            const dur = j.dur > 0 ? `<div style="margin-top:2px;"><span class="dur-tag${j.over ? " over" : ""}">⏱${fmtDur(j.dur)}</span></div>` : "";
+            c.push(`<td class="col-jh" style="font-weight:700;">${esc(j.surah)}</td>`);
+            c.push(`<td style="text-align:center;">${esc(j.page)}</td>`);
+            c.push(`<td style="text-align:center;"><span class="grade ${gradeClass(j.marks)}">${Number(j.marks).toFixed(1)}/10</span>${dur}</td>`);
+          } else if (day.juzulhali.length === 0 && i === 0) {
+            c.push(`<td class="col-jh"><span class="dash">-</span></td><td><span class="dash">-</span></td><td><span class="dash">-</span></td>`);
+          } else {
+            c.push(`<td class="col-jh"></td><td></td><td></td>`);
+          }
+
+          // Jadeed (3 cols)
+          if (i < day.jadeed.length) {
+            const jd = day.jadeed[i];
+            const flg = (jd.flags || []).map((f) => `<span class="flag-tag">${esc(f)}</span>`).join(" ");
+            const dur = jd.dur > 0 ? `<div style="margin-top:2px;"><span class="dur-tag${jd.over ? " over" : ""}">⏱${fmtDur(jd.dur)}</span></div>` : "";
+            c.push(`<td class="col-jd" style="font-weight:700;">${esc(jd.surah)}${flg ? `<div style="margin-top:2px;">${flg}</div>` : ""}</td>`);
+            c.push(`<td style="text-align:center;">${esc(jd.page)}</td>`);
+            c.push(`<td style="text-align:center;">${esc(jd.ayah)}${dur}</td>`);
+          } else if (day.no_jadeed && i === 0) {
+            const rs = (day.no_jadeed_reasons || []).map((r) => `<span class="flag-tag">${esc(r)}</span>`).join(" ");
+            c.push(`<td colspan="3" class="col-jd"><div class="no-jadeed-box">No Jadeed${rs ? `<div style="margin-top:2px;">${rs}</div>` : ""}</div></td>`);
+          } else if (day.jadeed.length === 0 && i === 0) {
+            c.push(`<td class="col-jd"><span class="dash">-</span></td><td><span class="dash">-</span></td><td><span class="dash">-</span></td>`);
+          } else {
+            c.push(`<td class="col-jd"></td><td></td><td></td>`);
+          }
+
+          rowsHtml.push(`<tr${trCls}>${c.join("")}</tr>`);
+        }
+      }
+
+      return `<div class="table-scroll">
+        <table class="usr-table mode-full">
+          <thead>
+            <tr>
+              <th class="th-date" rowspan="2">Date</th>
+              <th class="th-mur" colspan="3">Murajat</th>
+              <th class="th-jh" colspan="3">Juz'ul Hali</th>
+              <th class="th-jd" colspan="3">Jadeed</th>
+            </tr>
+            <tr>
+              <th class="th-sub col-mur">Surah</th><th class="th-sub">Pg</th><th class="th-sub">Marks</th>
+              <th class="th-sub col-jh">Surah</th><th class="th-sub">Pg</th><th class="th-sub">Marks</th>
+              <th class="th-sub col-jd">Surah</th><th class="th-sub">Pg</th><th class="th-sub">Ayah</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml.join("")}</tbody>
+        </table>
+      </div>`;
+    }
+
+    function renderCurrentMonth() {
+      const st = state.selectedStudent;
+      if (!st) return;
+      const entry = state.usrCache.get(`${st.source_id}::${st.id}`);
+      if (!entry) return;
+
+      const monthData = entry.months[state.activeMonthKey];
+      if (!monthData) return;
+
+      $("stMonthLabel").textContent = `• ${monthData.full_label}`;
+      renderKpis(monthData.stats);
+      renderMonthControls(entry);
+
+      $("btnModeCompact").classList.toggle("active", state.viewMode === "compact");
+      $("btnModeFull").classList.toggle("active", state.viewMode === "full");
+
+      const futureCount = monthData.days.filter((d) => d.is_future).length;
+      const visibleDays = state.showFutureDays
+        ? monthData.days
+        : monthData.days.filter((d) => !d.is_future);
+
+      const tableHtml =
+        state.viewMode === "full"
+          ? buildFull10ColTable(visibleDays)
+          : buildCompactTable(visibleDays);
+
+      const futureBtn =
+        futureCount > 0
+          ? `<button id="toggleFutureBtn" style="border:none;background:none;color:var(--emerald);font-weight:700;cursor:pointer;font-size:11px;padding:0;">${
+              state.showFutureDays ? "Hide future days" : `Show ${futureCount} upcoming days`
+            }</button>`
+          : "";
+
+      $("usrBody").innerHTML = `${tableHtml}
+        <div class="table-footer-note">
+          <span>Showing ${visibleDays.length} day${visibleDays.length === 1 ? "" : "s"} in ${esc(monthData.full_label)}</span>
+          ${futureBtn}
+        </div>`;
+
+      const tfb = $("toggleFutureBtn");
+      if (tfb) {
+        tfb.addEventListener("click", () => {
+          state.showFutureDays = !state.showFutureDays;
+          renderCurrentMonth();
+        });
+      }
+    }
+
+    // Event bindings
+    $("searchInput").addEventListener("input", renderSearchResults);
+    $("clearSearchBtn").addEventListener("click", () => {
+      $("searchInput").value = "";
+      renderSearchResults();
+      $("searchInput").focus();
+    });
+    $("clearRecentBtn").addEventListener("click", () => {
+      localStorage.removeItem(RECENT_KEY);
+      renderRecent();
+    });
+    $("btnModeCompact").addEventListener("click", () => {
+      state.viewMode = "compact";
+      renderCurrentMonth();
+    });
+    $("btnModeFull").addEventListener("click", () => {
+      state.viewMode = "full";
+      renderCurrentMonth();
+    });
+    $("printBtn").addEventListener("click", () => {
+      const prevMode = state.viewMode;
+      state.viewMode = "full";
+      renderCurrentMonth();
+      setTimeout(() => {
+        window.print();
+        state.viewMode = prevMode;
+        renderCurrentMonth();
+      }, 80);
+    });
+    $("refreshBtn").addEventListener("click", () => {
+      state.usrCache.clear();
+      loadDirectory(true);
+      if (state.selectedStudent) selectStudent(state.selectedStudent, true);
+    });
+
+    // Boot
+    loadDirectory(false);
+  </script>
+</body>
+</html>

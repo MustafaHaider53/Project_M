@@ -1,0 +1,13 @@
+{
+  "name": "msb-collective-usr-portal",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Mobile-first Collective Multi-School Admin USR Portal (Vercel)",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "node dev_server.mjs"
+  }
+}
