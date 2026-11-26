@@ -434,7 +434,7 @@ def generate_progress_html(summary: Dict[str, Any]) -> str:
         j_html = _format_takhteet_for_email("Juzulhali Homework", t_juzulhali)
         jd_html = _format_takhteet_for_email("Jadeed Homework", t_jadeed)
         takhteet_html = f"""
-        <h3 style="color: #1b4d3e; border-bottom: 2px solid #c5a880; padding-bottom: 4px; margin-top: 25px;">4. Takhteet (Homework Assigned)</h3>
+        <h3 style="color: #1b4d3e; border-bottom: 2px solid #c5a880; padding-bottom: 4px; margin-top: 25px;">4. Homework Assigned</h3>
         <div style="font-size: 13px; background-color: #fcfbfa; border: 1px solid #e8e4db; border-radius: 6px; padding: 12px 14px; margin-top: 10px;">
             {m_html}
             {j_html}
@@ -770,7 +770,7 @@ def send_monthly_report_email(*, student_name: str, recipient_email: str, rows: 
         "murajat": "Monthly Murajat Report",
         "juzulhali": "Monthly Juzulhali Report",
         "jadeed": "Monthly Jadeed Report",
-        "takhteet": "Monthly Takhteet Report"
+        "takhteet": "Monthly Homework Report"
     }
     title = report_titles.get(report_type.lower(), "Monthly Report")
     subject = f"{title} - {month_year_str} ({student_name})"

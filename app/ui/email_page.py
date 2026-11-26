@@ -114,7 +114,7 @@ def render_email_page() -> None:
             with cols[2]:
                 st.checkbox("Jadeed Entered", value=has_jadeed, disabled=True)
             with cols[3]:
-                st.checkbox("Takhteet Saved", value=t_has_hw, disabled=True)
+                st.checkbox("Homework Saved", value=t_has_hw, disabled=True)
 
         # Section 3: HTML Live Preview
         with st.expander("👁️ View Email Preview", expanded=False):
@@ -146,7 +146,7 @@ def render_email_page() -> None:
                 "Murajat": "murajat",
                 "Juzulhali": "juzulhali",
                 "Jadeed": "jadeed",
-                "Takhteet": "takhteet"
+                "Homework": "takhteet"
             }
             selected_category_name = st.selectbox("Report Category", options=list(categories.keys()))
             selected_category_val = categories[selected_category_name]

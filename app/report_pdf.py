@@ -155,7 +155,7 @@ def build_report_html(student_name: str, rows: List[Dict[str, Any]], report_type
         "takhteet": {
             "bg": "linear-gradient(135deg, #2980b9 0%, #1b4f72 100%)",
             "border": "#2980b9",
-            "title": "Monthly Takhteet Report",
+            "title": "Monthly Homework Report",
             "arabic_title": "تقرير التخطيط الشهري",
             "colspan": 3
         }
@@ -2327,7 +2327,7 @@ def build_ummul_banin_report_html(report_data: List[Dict[str, Any]]) -> str:
         <th style="width: 13%;">Status</th>
         <th style="text-align: left; width: 22%;">Latest Jadeed Recited</th>
         <th style="width: 12%;">Recitation Date</th>
-        <th style="text-align: left; width: 36%;">Takhteet (Homework)</th>
+        <th style="text-align: left; width: 36%;">Homework</th>
       </tr>
     </thead>
     <tbody>

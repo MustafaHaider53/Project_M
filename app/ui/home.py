@@ -35,7 +35,7 @@ def render_home() -> None:
             st.session_state.page = "jadeed"
             st.rerun()
     with c4:
-        if st.button("Takhteet", width="stretch"):
+        if st.button("Homework", width="stretch"):
             st.session_state.page = "takhteet"
             st.rerun()
     with c5:

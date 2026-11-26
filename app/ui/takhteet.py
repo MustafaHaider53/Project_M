@@ -9,7 +9,7 @@ from app.ui.student import current_student_badge
 
 def render_takhteet() -> None:
     back_home_button()
-    st.subheader("Takhteet (Homework)")
+    st.subheader("Homework")
     st.caption("Daily homework notes for Murajat, Juzulhali, and Jadeed.")
     current_student_badge()
 
@@ -37,7 +37,7 @@ def render_takhteet() -> None:
 
     col1, col2 = st.columns([1.3, 1])
     with col1:
-        if st.button("💾 Save Takhteet", type="primary", width="stretch"):
+        if st.button("💾 Save Homework", type="primary", width="stretch"):
             with st.spinner("Saving homework..."):
                 upsert_takhteet_today(
                     student_id=student_id,
@@ -53,7 +53,7 @@ def render_takhteet() -> None:
             cache_key = f"prev_takhteet_{student_id}"
             if cache_key in st.session_state:
                 del st.session_state[cache_key]
-            st.success("Takhteet saved for today.")
+            st.success("Homework saved for today.")
 
     with col2:
         if st.button("✉️ Send Email", width="stretch"):

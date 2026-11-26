@@ -511,7 +511,7 @@ def main() -> None:
             st.markdown("<div class='dock-tray-anchor' style='display: none;'></div>", unsafe_allow_html=True)
             tray_cols = st.columns(3)
             with tray_cols[0]:
-                if st.button("📅 Planner", type="primary" if current_page == "planner" else "secondary", width="stretch", key="dock_btn_planner"):
+                if st.button("📅 Takhteet", type="primary" if current_page == "planner" else "secondary", width="stretch", key="dock_btn_planner"):
                     st.session_state.page = "planner"
                     st.query_params["page"] = "planner"
                     st.session_state.show_more_tray = False
@@ -550,7 +550,7 @@ def main() -> None:
                 st.session_state.show_more_tray = False
                 st.rerun()
         with dock_cols[3]:
-            if st.button("📋 Takhteet", type="primary" if current_page == "takhteet" else "secondary", width="stretch", key="dock_btn_takhteet"):
+            if st.button("📋 Homework", type="primary" if current_page == "takhteet" else "secondary", width="stretch", key="dock_btn_takhteet"):
                 st.session_state.page = "takhteet"
                 st.query_params["page"] = "takhteet"
                 st.session_state.show_more_tray = False
@@ -558,7 +558,8 @@ def main() -> None:
         with dock_cols[4]:
             more_label = "⋯ More"
             if is_utility_page:
-                more_label = f"⋯ {current_page.capitalize()[:4]}"
+                display_util = "Takhteet" if current_page == "planner" else current_page.capitalize()
+                more_label = f"⋯ {display_util[:4]}"
             if st.button(more_label, type="primary" if is_utility_page else "secondary", width="stretch", key="dock_btn_more"):
                 st.session_state.show_more_tray = not st.session_state.get("show_more_tray", False)
                 st.rerun()
