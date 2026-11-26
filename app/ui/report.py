@@ -228,7 +228,7 @@ def render_report() -> None:
         "📝 Jadeed Report",
         "📑 Unified Summary Report",
         "📄 Jadeed Pages Summary",
-        "📋 Takhteet Report",
+        "📋 Homework Report",
         "🌟 Current Jadeed",
         "📊 Mistake Analytics",
         "📅 Class Attendance",
@@ -287,10 +287,10 @@ def render_report() -> None:
     elif selected_category == "📄 Jadeed Pages Summary":
         render_jadeed_pages_summary_fragment(now.date())
         
-    elif selected_category == "📋 Takhteet Report":
+    elif selected_category == "📋 Homework Report":
         rows = get_monthly_rows()
         if not rows:
-            st.info("No Takhteet report data found for this student in the selected month.")
+            st.info("No Homework report data found for this student in the selected month.")
         else:
             html_takhteet = build_report_html(student_name=student_name, rows=rows, report_type="takhteet")
             st.iframe(html_takhteet, height=700)
@@ -561,7 +561,7 @@ def render_email_log_dashboard() -> None:
     from app.db import get_daily_email_status, send_single_student_daily_email
 
     st.markdown("### ✉️ Daily Email Dispatch Status & Actions")
-    st.caption("Track daily recitation entries (Murajat, Juzulhali, Jadeed, Takhteet) and dispatch progress or absence emails directly.")
+    st.caption("Track daily recitation entries (Murajat, Juzulhali, Jadeed, Homework) and dispatch progress or absence emails directly.")
 
     # Select Date & Refresh
     col_date, col_btn = st.columns([2, 2])
@@ -690,7 +690,7 @@ def render_email_log_dashboard() -> None:
                 <div style="flex: 0.8; text-align: center;">Murajat</div>
                 <div style="flex: 0.8; text-align: center;">Juzulhali</div>
                 <div style="flex: 0.8; text-align: center;">Jadeed</div>
-                <div style="flex: 0.8; text-align: center;">Takhteet</div>
+                <div style="flex: 0.8; text-align: center;">Homework</div>
                 <div style="flex: 1.1; text-align: center;">Status</div>
                 <div style="flex: 1.2; text-align: center;">Action</div>
             </div>

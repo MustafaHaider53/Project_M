@@ -121,7 +121,7 @@ def delete_locked_monthly_plan(*, student_id: str, year: int, month: int) -> boo
 
 def render_planner() -> None:
     back_home_button()
-    st.subheader("Takhteet Planner")
+    st.subheader("Takhteet")
     st.caption("Auto-schedule monthly Jadeed lesson goals, manually customize days, and track live achievements.")
     current_student_badge()
 
@@ -194,7 +194,7 @@ def render_planner() -> None:
 
     # 3. Settings in the Right Column
     with col_right_layout:
-        st.markdown("### ⚙️ Planner Settings")
+        st.markdown("### ⚙️ Takhteet Settings")
         
         now = datetime.now()
         years = list(range(2025, now.year + 2))
@@ -401,7 +401,7 @@ def render_planner() -> None:
 
     # 5. Interactive Grid inside Left Column
     with col_left_layout:
-        st.markdown("### 📅 Monthly Calendar Planner")
+        st.markdown("### 📅 Monthly Takhteet Calendar")
         if is_locked:
             st.success("🔒 **This Study Plan is Locked.** Recitation progress is tracked against this locked schedule.")
         else:
