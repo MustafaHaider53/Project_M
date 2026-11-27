@@ -1,38 +1,104 @@
 /**
  * Shared Supabase multi-source loader and paginated REST helper.
  *
- * Configure unlimited Supabase projects via the Vercel Environment Variable:
- *   SUPABASE_SOURCES_JSON='[
- *     {"id":"main","label":"Main / Mukhayyam","color":"#0E6B50","url":"https://...","key":"..."},
- *     {"id":"inter_school","label":"Inter-School","color":"#1d4ed8","url":"https://...","key":"..."},
- *     {"id":"after_school","label":"After-School","color":"#7e22ce","url":"https://...","key":"..."}
- *   ]'
+ * Supports two easy ways to configure schools in Vercel Environment Variables
+ * (and you can even mix both — duplicates by `id` are deduplicated):
+ *
+ * 1) Individual per-school env vars (recommended — short values, no JSON escaping):
+ *      MAIN_SUPABASE_URL / MAIN_SUPABASE_KEY
+ *      INTER_SCHOOL_SUPABASE_URL / INTER_SCHOOL_SUPABASE_KEY
+ *      AFTER_SCHOOL_SUPABASE_URL / AFTER_SCHOOL_SUPABASE_KEY
+ *      SIBYAAN_SUPABASE_URL / SIBYAAN_SUPABASE_KEY
+ *    Or generic numbered vars for any additional school (N = 1..20):
+ *      SUPABASE_SOURCE_1_URL / SUPABASE_SOURCE_1_KEY (+ optional _ID, _LABEL, _COLOR)
+ *
+ * 2) Combined JSON array:
+ *      SUPABASE_SOURCES_JSON='[{"id":"main","label":"Main / Mukhayyam","color":"#0E6B50","url":"https://...","key":"..."}]'
  */
 
-export function getSources() {
-  const raw = (process.env.SUPABASE_SOURCES_JSON || "").trim();
-  if (!raw) {
-    throw new Error(
-      "SUPABASE_SOURCES_JSON environment variable is not set. Add your Supabase projects JSON in Vercel Project Settings -> Environment Variables."
-    );
-  }
-  let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (err) {
-    throw new Error(`Invalid JSON in SUPABASE_SOURCES_JSON: ${err.message}`);
-  }
-  if (!Array.isArray(parsed) || parsed.length === 0) {
-    throw new Error("SUPABASE_SOURCES_JSON must be a non-empty JSON array.");
-  }
-  return parsed.map((s, idx) => ({
+const NAMED_SCHOOLS = [
+  { prefix: "MAIN", id: "main", label: "Main / Mukhayyam", color: "#0E6B50" },
+  { prefix: "INTER_SCHOOL", id: "inter_school", label: "Inter-School", color: "#1d4ed8" },
+  { prefix: "AFTER_SCHOOL", id: "after_school", label: "After-School", color: "#7e22ce" },
+  { prefix: "SIBYAAN", id: "sibyaan", label: "Sibyaan", color: "#d97706" },
+];
+
+function normalizeSource(s, idx) {
+  return {
     id: String(s.id || `source_${idx + 1}`).trim(),
     label: String(s.label || s.id || `School ${idx + 1}`).trim(),
     color: String(s.color || "#0E6B50").trim(),
-    url: String(s.url || "").replace(/\/+$/, ""),
+    url: String(s.url || "").trim().replace(/\/+$/, ""),
     key: String(s.key || "").trim(),
     schema: s.schema ? String(s.schema).trim() : "",
-  }));
+  };
+}
+
+export function getSources() {
+  const sources = [];
+  const seenIds = new Set();
+
+  const addSource = (s) => {
+    const norm = normalizeSource(s, sources.length);
+    if (!norm.url || !norm.key) return;
+    if (seenIds.has(norm.id)) return;
+    seenIds.add(norm.id);
+    sources.push(norm);
+  };
+
+  // 1) Optional JSON array in SUPABASE_SOURCES_JSON
+  const raw = (process.env.SUPABASE_SOURCES_JSON || "").trim();
+  if (raw) {
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch (err) {
+      throw new Error(
+        `Invalid JSON in SUPABASE_SOURCES_JSON: ${err.message} (length=${raw.length}, endsWith=${JSON.stringify(raw.slice(-15))})`
+      );
+    }
+    if (!Array.isArray(parsed)) {
+      throw new Error("SUPABASE_SOURCES_JSON must be a JSON array.");
+    }
+    for (const item of parsed) addSource(item);
+  }
+
+  // 2) Named per-school env vars (MAIN_*, INTER_SCHOOL_*, AFTER_SCHOOL_*, SIBYAAN_*)
+  for (const cfg of NAMED_SCHOOLS) {
+    const url = (process.env[`${cfg.prefix}_SUPABASE_URL`] || "").trim();
+    const key = (process.env[`${cfg.prefix}_SUPABASE_KEY`] || "").trim();
+    if (url && key) {
+      addSource({
+        id: cfg.id,
+        label: (process.env[`${cfg.prefix}_LABEL`] || cfg.label).trim(),
+        color: (process.env[`${cfg.prefix}_COLOR`] || cfg.color).trim(),
+        url,
+        key,
+      });
+    }
+  }
+
+  // 3) Generic numbered per-school env vars (SUPABASE_SOURCE_1_URL / _KEY .. 20)
+  for (let i = 1; i <= 20; i++) {
+    const url = (process.env[`SUPABASE_SOURCE_${i}_URL`] || "").trim();
+    const key = (process.env[`SUPABASE_SOURCE_${i}_KEY`] || "").trim();
+    if (url && key) {
+      addSource({
+        id: (process.env[`SUPABASE_SOURCE_${i}_ID`] || `source_${i}`).trim(),
+        label: (process.env[`SUPABASE_SOURCE_${i}_LABEL`] || `School ${i}`).trim(),
+        color: (process.env[`SUPABASE_SOURCE_${i}_COLOR`] || "#0E6B50").trim(),
+        url,
+        key,
+      });
+    }
+  }
+
+  if (sources.length === 0) {
+    throw new Error(
+      "No Supabase sources configured. Set SUPABASE_SOURCES_JSON or individual *_SUPABASE_URL / *_SUPABASE_KEY variables in Vercel Project Settings -> Environment Variables."
+    );
+  }
+  return sources;
 }
 
 export function getSourceById(sourceId) {
