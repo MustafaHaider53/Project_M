@@ -46,19 +46,21 @@
       overscroll-behavior-y: none;
     }
 
-    /* Top App Header */
+    /* Sticky Top App Header + 2-Tab Switcher */
     .topbar {
       background: linear-gradient(135deg, var(--emerald-dark) 0%, var(--emerald) 100%);
       color: #fff;
-      padding: 10px 12px;
+      padding: 9px 12px 9px 12px;
       position: sticky;
       top: 0;
       z-index: 40;
-      box-shadow: 0 2px 10px rgba(7, 67, 50, 0.22);
+      box-shadow: 0 2px 10px rgba(7, 67, 50, 0.24);
     }
-    .topbar-row {
+    .topbar-inner {
       max-width: 1120px;
       margin: 0 auto;
+    }
+    .topbar-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -71,27 +73,27 @@
       min-width: 0;
     }
     .brand-icon {
-      width: 30px;
-      height: 30px;
+      width: 28px;
+      height: 28px;
       border-radius: 8px;
       background: rgba(212, 175, 55, 0.22);
       border: 1px solid rgba(212, 175, 55, 0.65);
       display: grid;
       place-items: center;
-      font-size: 15px;
+      font-size: 14px;
       flex-shrink: 0;
     }
     .brand-title {
       font-family: 'Outfit', sans-serif;
       font-weight: 800;
-      font-size: 15.5px;
+      font-size: 15px;
       letter-spacing: -0.01em;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
     .brand-sub {
-      font-size: 10.5px;
+      font-size: 10px;
       color: rgba(255, 255, 255, 0.8);
       font-weight: 500;
     }
@@ -106,26 +108,81 @@
       border: 1px solid rgba(255, 255, 255, 0.22);
       color: #fff;
       border-radius: 8px;
-      height: 32px;
-      padding: 0 10px;
+      height: 30px;
+      padding: 0 9px;
       font-size: 12px;
       font-weight: 600;
       display: inline-flex;
       align-items: center;
-      gap: 5px;
+      gap: 4px;
       cursor: pointer;
     }
     .icon-btn:active { transform: scale(0.96); background: rgba(255, 255, 255, 0.24); }
     .icon-btn.hidden { display: none; }
 
+    /* 2-Tab Segmented Switcher */
+    .main-tabs {
+      margin-top: 8px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+      background: rgba(0, 0, 0, 0.22);
+      padding: 3px;
+      border-radius: 10px;
+    }
+    .main-tab {
+      border: none;
+      background: transparent;
+      color: rgba(255, 255, 255, 0.82);
+      font-family: inherit;
+      font-size: 12.5px;
+      font-weight: 700;
+      padding: 6px 8px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      transition: all 0.14s;
+    }
+    .main-tab.active {
+      background: #fff;
+      color: var(--emerald-dark);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.16);
+    }
+
     /* Main Container */
     .container {
       max-width: 1120px;
       margin: 0 auto;
-      padding: 10px 8px 40px 8px;
+      padding: 10px 8px 44px 8px;
     }
 
-    /* Search Panel */
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Back-to-Jadeed drill-down banner */
+    .drill-back {
+      display: none;
+      margin-bottom: 8px;
+    }
+    .drill-back.visible { display: flex; }
+    .drill-back-btn {
+      border: 1px solid #a7f3d0;
+      background: var(--emerald-soft);
+      color: var(--emerald-dark);
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    /* Search / Filter Card */
     .search-card {
       background: var(--surface);
       border-radius: 14px;
@@ -144,24 +201,24 @@
       position: absolute;
       left: 12px;
       color: var(--muted);
-      font-size: 15px;
+      font-size: 14px;
       pointer-events: none;
     }
-    #searchInput {
+    .search-input {
       width: 100%;
-      height: 42px;
-      padding: 0 36px 0 38px;
+      height: 40px;
+      padding: 0 34px 0 36px;
       border-radius: 10px;
       border: 1.5px solid #cbd5e1;
       background: #f8fafc;
       font-family: inherit;
-      font-size: 14.5px;
+      font-size: 14px;
       font-weight: 500;
       color: var(--ink);
       outline: none;
       transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
     }
-    #searchInput:focus {
+    .search-input:focus {
       border-color: var(--emerald);
       background: #fff;
       box-shadow: 0 0 0 3px rgba(14, 107, 80, 0.14);
@@ -169,8 +226,8 @@
     .clear-btn {
       position: absolute;
       right: 8px;
-      width: 26px;
-      height: 26px;
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
       border: none;
       background: #e2e8f0;
@@ -198,7 +255,7 @@
       background: #f8fafc;
       color: #334155;
       border-radius: 999px;
-      padding: 5px 10px;
+      padding: 4px 10px;
       font-size: 11.5px;
       font-weight: 600;
       white-space: nowrap;
@@ -247,11 +304,7 @@
     }
     .result-item:last-child { border-bottom: none; }
     .result-item:active, .result-item:hover { background: var(--emerald-soft); }
-    .res-name {
-      font-weight: 600;
-      font-size: 13.5px;
-      color: var(--ink);
-    }
+    .res-name { font-weight: 600; font-size: 13.5px; color: var(--ink); }
     .res-its {
       font-size: 11px;
       color: var(--muted);
@@ -261,24 +314,16 @@
     .school-badge {
       font-size: 10px;
       font-weight: 700;
-      padding: 3px 7px;
+      padding: 2.5px 7px;
       border-radius: 999px;
       color: #fff;
       white-space: nowrap;
       flex-shrink: 0;
     }
-    .no-results {
-      padding: 16px;
-      text-align: center;
-      color: var(--muted);
-      font-size: 13px;
-    }
+    .no-results { padding: 16px; text-align: center; color: var(--muted); font-size: 13px; }
 
     /* Recent Students Strip */
-    .recent-wrap {
-      margin-top: 8px;
-      display: none;
-    }
+    .recent-wrap { margin-top: 8px; display: none; }
     .recent-wrap.visible { display: block; }
     .recent-header {
       display: flex;
@@ -329,11 +374,7 @@
       background: var(--emerald-soft);
       color: var(--emerald-dark);
     }
-    .recent-chip .r-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-    }
+    .recent-chip .r-dot { width: 6px; height: 6px; border-radius: 50%; }
 
     /* Warnings Banner */
     .warn-banner {
@@ -363,7 +404,7 @@
     .empty-state h3 { margin: 0 0 4px 0; color: var(--ink); font-size: 15px; }
     .empty-state p { margin: 0; font-size: 12.5px; }
 
-    /* Report Section */
+    /* Report Card Shared */
     .report-card {
       margin-top: 10px;
       background: var(--surface);
@@ -409,7 +450,7 @@
       font-weight: 600;
     }
 
-    /* Single Compact Jadeed KPI Card */
+    /* Single Compact Jadeed KPI Card (Tab 1) */
     .kpi-grid {
       display: flex;
       justify-content: flex-end;
@@ -432,19 +473,30 @@
     }
     .kpi-val {
       font-family: 'Outfit', sans-serif;
-      font-size: 13.5px;
+      font-size: 14px;
       font-weight: 800;
       color: #fff;
       margin-top: 1px;
       white-space: nowrap;
     }
-    .kpi-sub {
-      font-size: 9px;
-      color: #fde68a;
-      font-weight: 600;
+    .kpi-sub { font-size: 9px; color: #fde68a; font-weight: 600; }
+
+    /* 4-Col Summary Strip for Tab 2 (Jadeed Pages) */
+    .jp-kpi-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5px;
+      margin-top: 8px;
+    }
+    .jp-kpi {
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 5px 4px;
+      text-align: center;
     }
 
-    /* Month Switcher & View Toggle Bar */
+    /* Controls Bar */
     .controls-bar {
       display: flex;
       align-items: center;
@@ -468,8 +520,8 @@
       background: #fff;
       color: #334155;
       border-radius: 8px;
-      padding: 5px 10px;
-      font-size: 12px;
+      padding: 5px 9px;
+      font-size: 11.5px;
       font-weight: 700;
       cursor: pointer;
       white-space: nowrap;
@@ -508,11 +560,12 @@
       padding: 4px 8px;
       border-radius: 6px;
       cursor: pointer;
+      white-space: nowrap;
     }
     .vt-btn.active {
       background: #fff;
       color: var(--emerald-dark);
-      box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
     }
 
     /* Loading Skeleton */
@@ -534,26 +587,22 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* USR Table Wrapper (Smooth horizontal scroll safety net + sticky date column) */
+    /* Table Scroll Container */
     .table-scroll {
       width: 100%;
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
     }
 
+    /* Tab 1: USR Table */
     table.usr-table {
       width: 100%;
       border-collapse: separate;
       border-spacing: 0;
       table-layout: fixed;
     }
-    table.usr-table.mode-compact {
-      min-width: 350px; /* Fits inside standard 375px-430px phone screen with ZERO horizontal scroll! */
-    }
-    table.usr-table.mode-full {
-      min-width: 720px; /* Full 10-column classic USR layout with sticky Date column */
-      table-layout: auto;
-    }
+    table.usr-table.mode-compact { min-width: 350px; }
+    table.usr-table.mode-full { min-width: 720px; table-layout: auto; }
 
     .usr-table thead th {
       position: sticky;
@@ -581,11 +630,8 @@
       word-wrap: break-word;
       overflow-wrap: anywhere;
     }
-    .usr-table tbody tr.week-end td {
-      border-bottom: 2px solid #94a3b8;
-    }
+    .usr-table tbody tr.week-end td { border-bottom: 2px solid #94a3b8; }
 
-    /* Sticky Date Column */
     .date-cell {
       position: sticky;
       left: 0;
@@ -603,17 +649,10 @@
     .col-jh  { border-left: 2px solid #fef3c7; }
     .col-jd  { border-left: 2px solid #dcfce7; }
 
-    /* Compact Cell Content */
     .entry-stack { display: flex; flex-direction: column; gap: 4px; }
     .entry-item { line-height: 1.2; }
     .entry-surah { font-weight: 700; font-size: 10.5px; color: var(--ink); display: block; }
-    .entry-meta {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 3px;
-      margin-top: 2px;
-    }
+    .entry-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 3px; margin-top: 2px; }
     .pg-tag {
       font-size: 9.5px;
       font-weight: 600;
@@ -665,7 +704,6 @@
     }
     .dash { color: #cbd5e1; text-align: center; display: block; font-size: 11px; }
 
-    /* Absent & Weekend Strip Rows */
     .absent-cell {
       background: var(--absent-bg);
       color: var(--absent-fg);
@@ -682,6 +720,138 @@
       font-style: italic;
       font-size: 10px;
       padding: 4px !important;
+    }
+
+    /* Tab 2: Collective Month-Wise Jadeed Pages Table */
+    table.jp-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+    table.jp-table.cols-3 {
+      table-layout: fixed;
+      min-width: 340px; /* Fits 100% inside 375px+ phones with ZERO horizontal scroll! */
+    }
+    table.jp-table.cols-6 {
+      min-width: 540px;
+    }
+    .jp-table thead th {
+      background: #f1f5f9;
+      color: #334155;
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      padding: 7px 3px;
+      border-bottom: 1.5px solid #cbd5e1;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .jp-table thead th.th-st {
+      text-align: left;
+      padding-left: 6px;
+      position: sticky;
+      left: 0;
+      z-index: 4;
+      background: #f1f5f9;
+    }
+    .jp-table thead th.th-tot {
+      background: #dcfce7;
+      color: #14532d;
+      border-left: 1.5px solid #bbf7d0;
+    }
+    .jp-table tbody tr {
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .jp-table tbody tr:hover,
+    .jp-table tbody tr:active {
+      background: var(--emerald-soft);
+    }
+    .jp-table tbody td {
+      padding: 6px 3px;
+      border-bottom: 1px solid #e2e8f0;
+      vertical-align: middle;
+      text-align: center;
+      font-size: 11.5px;
+    }
+    .jp-rank {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--muted);
+      width: 24px;
+      padding: 4px 2px !important;
+    }
+    .jp-st-cell {
+      text-align: left !important;
+      padding-left: 5px !important;
+      padding-right: 4px !important;
+      position: sticky;
+      left: 0;
+      z-index: 2;
+      background: inherit;
+    }
+    .jp-table tbody tr { background: #fff; }
+    .jp-table tbody tr:nth-child(even) { background: #fafcfb; }
+    .jp-table tbody tr:hover { background: var(--emerald-soft); }
+
+    .jp-st-name {
+      font-weight: 700;
+      font-size: 11.5px;
+      color: var(--ink);
+      line-height: 1.2;
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .jp-st-sub {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 2px;
+      font-size: 9.5px;
+      color: var(--muted);
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    .jp-sdot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .jp-pg {
+      display: inline-block;
+      min-width: 24px;
+      padding: 2px 5px;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 11px;
+    }
+    .jp-pg-high { background: #dcfce7; color: #166534; }
+    .jp-pg-mid  { background: #fef3c7; color: #92400e; }
+    .jp-pg-zero { background: #fef2f2; color: #dc2626; font-weight: 600; opacity: 0.78; }
+
+    .jp-tot-cell {
+      border-left: 1.5px solid #e2e8f0;
+      background: rgba(236, 253, 245, 0.55);
+    }
+    .jp-tot-badge {
+      display: inline-block;
+      min-width: 28px;
+      padding: 2.5px 6px;
+      border-radius: 7px;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 800;
+      font-size: 12px;
+      background: var(--emerald-dark);
+      color: #fff;
+    }
+    .jp-tot-badge.zero {
+      background: #fee2e2;
+      color: #b91c1c;
     }
 
     .table-footer-note {
@@ -707,103 +877,174 @@
       .d-num { font-size: 13px; }
       .d-dow { font-size: 10.5px; }
       .kpi-val { font-size: 16px; }
+      .jp-st-name { font-size: 13px; white-space: normal; }
+      .jp-st-sub { font-size: 11px; }
+      .jp-table tbody td { padding: 8px 6px; font-size: 12.5px; }
+      .jp-pg { min-width: 34px; font-size: 12px; padding: 3px 7px; }
+      .jp-tot-badge { min-width: 38px; font-size: 13px; padding: 3px 8px; }
     }
 
     /* Clean Print Layout */
     @media print {
       body { background: #fff; }
-      .topbar, .search-card, .controls-bar, .warn-banner, .table-footer-note { display: none !important; }
+      .topbar, .search-card, .controls-bar, .warn-banner, .table-footer-note, .drill-back { display: none !important; }
       .container { padding: 0; max-width: 100%; }
       .report-card { margin: 0; border: none; box-shadow: none; }
-      .student-banner { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .student-banner, .jp-pg, .jp-tot-badge { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       .table-scroll { overflow: visible !important; }
-      table.usr-table { min-width: 100% !important; }
+      table.usr-table, table.jp-table { min-width: 100% !important; }
     }
   </style>
 </head>
 <body>
 
-  <!-- Sticky Top Bar -->
+  <!-- Sticky Top Bar + 2-Tab Switcher -->
   <header class="topbar">
-    <div class="topbar-row">
-      <div class="brand">
-        <div class="brand-icon">📑</div>
-        <div>
-          <div class="brand-title">MSB Collective USR</div>
-          <div class="brand-sub" id="directoryStatus">Loading all schools...</div>
+    <div class="topbar-inner">
+      <div class="topbar-row">
+        <div class="brand">
+          <div class="brand-icon">📑</div>
+          <div>
+            <div class="brand-title">MSB Collective USR</div>
+            <div class="brand-sub" id="directoryStatus">Loading all schools...</div>
+          </div>
+        </div>
+        <div class="top-actions">
+          <button class="icon-btn hidden" id="printBtn" title="Print / Save PDF">🖨️ Print</button>
+          <button class="icon-btn" id="refreshBtn" title="Refresh data">🔄</button>
         </div>
       </div>
-      <div class="top-actions">
-        <button class="icon-btn hidden" id="printBtn" title="Print / Save PDF">🖨️ Print</button>
-        <button class="icon-btn" id="refreshBtn" title="Refresh data">🔄</button>
-      </div>
+
+      <nav class="main-tabs" role="tablist" aria-label="Report views">
+        <button class="main-tab active" id="tabBtnUsr" role="tab" aria-selected="true">🔍 Student USR</button>
+        <button class="main-tab" id="tabBtnJpages" role="tab" aria-selected="false">📊 Jadeed Pages</button>
+      </nav>
     </div>
   </header>
 
   <main class="container">
-    <!-- Search + School Filter + Recent Chips -->
-    <section class="search-card">
-      <div class="search-input-wrap">
-        <span class="search-icon">🔍</span>
-        <input
-          type="search"
-          id="searchInput"
-          placeholder="Search student name or 8-digit ITS..."
-          autocomplete="off"
-          autocorrect="off"
-          spellcheck="false"
-        />
-        <button class="clear-btn" id="clearSearchBtn" aria-label="Clear search">×</button>
+
+    <!-- ==================== TAB 1: STUDENT USR (EXISTING) ==================== -->
+    <div class="tab-panel active" id="panelUsr">
+      <div class="drill-back" id="drillBackWrap">
+        <button class="drill-back-btn" id="drillBackBtn">← Back to Jadeed Pages</button>
       </div>
 
-      <div class="pills-row" id="sourcePills"></div>
-
-      <div class="search-results" id="searchResults"></div>
-
-      <div class="recent-wrap" id="recentWrap">
-        <div class="recent-header">
-          <span class="recent-label">Recent Searches</span>
-          <button class="recent-clear" id="clearRecentBtn">Clear</button>
+      <section class="search-card">
+        <div class="search-input-wrap">
+          <span class="search-icon">🔍</span>
+          <input
+            type="search"
+            id="searchInput"
+            class="search-input"
+            placeholder="Search student name or 8-digit ITS..."
+            autocomplete="off"
+            autocorrect="off"
+            spellcheck="false"
+          />
+          <button class="clear-btn" id="clearSearchBtn" aria-label="Clear search">×</button>
         </div>
-        <div class="recent-chips" id="recentChips"></div>
-      </div>
 
-      <div class="warn-banner" id="warnBanner"></div>
-    </section>
+        <div class="pills-row" id="sourcePills"></div>
 
-    <!-- Initial Prompt -->
-    <section class="empty-state" id="emptyState">
-      <div class="big-ico">⚡</div>
-      <h3>Instant Student USR Lookup</h3>
-      <p>Type any student's <strong>name</strong> or <strong>ITS</strong> above — or tap a recent search — to view their 3-in-1 Monthly Report across all branches.</p>
-    </section>
+        <div class="search-results" id="searchResults"></div>
 
-    <!-- USR Report Card -->
-    <section class="report-card" id="reportCard">
-      <div class="student-banner">
-        <div class="student-banner-top">
-          <div>
-            <div class="st-name" id="stName">—</div>
-            <div class="st-meta">
-              <span class="st-its-pill" id="stIts">ITS: —</span>
-              <span class="school-badge" id="stSchool">—</span>
-              <span id="stMonthLabel"></span>
+        <div class="recent-wrap" id="recentWrap">
+          <div class="recent-header">
+            <span class="recent-label">Recent Searches</span>
+            <button class="recent-clear" id="clearRecentBtn">Clear</button>
+          </div>
+          <div class="recent-chips" id="recentChips"></div>
+        </div>
+
+        <div class="warn-banner" id="warnBanner"></div>
+      </section>
+
+      <section class="empty-state" id="emptyState">
+        <div class="big-ico">⚡</div>
+        <h3>Instant Student USR Lookup</h3>
+        <p>Type any student's <strong>name</strong> or <strong>ITS</strong> above — or tap <strong>📊 Jadeed Pages</strong> to view all students' monthly Jadeed pages together.</p>
+      </section>
+
+      <section class="report-card" id="reportCard">
+        <div class="student-banner">
+          <div class="student-banner-top">
+            <div>
+              <div class="st-name" id="stName">—</div>
+              <div class="st-meta">
+                <span class="st-its-pill" id="stIts">ITS: —</span>
+                <span class="school-badge" id="stSchool">—</span>
+                <span id="stMonthLabel"></span>
+              </div>
+            </div>
+            <div class="kpi-grid" id="kpiGrid"></div>
+          </div>
+        </div>
+
+        <div class="controls-bar">
+          <div class="month-pills" id="monthPills"></div>
+          <div class="view-toggle" role="group" aria-label="Table layout">
+            <button class="vt-btn active" id="btnModeCompact" data-mode="compact">Fit</button>
+            <button class="vt-btn" id="btnModeFull" data-mode="full">Full 10-Col</button>
+          </div>
+        </div>
+
+        <div id="usrBody"></div>
+      </section>
+    </div>
+
+    <!-- ==================== TAB 2: COLLECTIVE JADEED PAGES ==================== -->
+    <div class="tab-panel" id="panelJpages">
+      <section class="search-card">
+        <div class="search-input-wrap">
+          <span class="search-icon">🔎</span>
+          <input
+            type="search"
+            id="jpFilterInput"
+            class="search-input"
+            placeholder="Quick filter student name or ITS..."
+            autocomplete="off"
+            autocorrect="off"
+            spellcheck="false"
+          />
+          <button class="clear-btn" id="jpClearFilterBtn" aria-label="Clear filter">×</button>
+        </div>
+        <div class="pills-row" id="jpSourcePills"></div>
+        <div class="warn-banner" id="jpWarnBanner"></div>
+      </section>
+
+      <section class="report-card visible" id="jpCard">
+        <div class="student-banner">
+          <div class="student-banner-top">
+            <div>
+              <div class="st-name">Collective Jadeed Pages</div>
+              <div class="st-meta">
+                <span id="jpRangeLabel">Last 3 Months • All Schools</span>
+              </div>
             </div>
           </div>
-          <div class="kpi-grid" id="kpiGrid"></div>
+          <div class="jp-kpi-strip" id="jpKpiStrip"></div>
         </div>
-      </div>
 
-      <div class="controls-bar">
-        <div class="month-pills" id="monthPills"></div>
-        <div class="view-toggle" role="group" aria-label="Table layout">
-          <button class="vt-btn active" id="btnModeCompact" data-mode="compact">Fit</button>
-          <button class="vt-btn" id="btnModeFull" data-mode="full">Full 10-Col</button>
+        <div class="controls-bar">
+          <div class="month-pills" id="jpSortPills">
+            <button class="m-pill active" data-sort="total">Total ↓</button>
+            <button class="m-pill" data-sort="current" id="jpSortCurrentBtn">Curr Mo ↓</button>
+            <button class="m-pill" data-sort="zero">0 First</button>
+            <button class="m-pill" data-sort="az">A–Z</button>
+          </div>
+          <div class="view-toggle" role="group" aria-label="Months range">
+            <button class="vt-btn active" id="jpBtn3m" data-m="3">3 Mo</button>
+            <button class="vt-btn" id="jpBtn6m" data-m="6">6 Mo</button>
+          </div>
         </div>
-      </div>
 
-      <div id="usrBody"></div>
-    </section>
+        <div id="jpBody">
+          <div class="loading-box"><div class="spinner"></div>Loading all students' Jadeed pages...</div>
+        </div>
+      </section>
+    </div>
+
   </main>
 
   <script>
@@ -812,15 +1053,25 @@
     const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
     const state = {
+      activeTab: "usr", // 'usr' | 'jpages'
+      cameFromJpages: false,
+      jpScrollY: 0,
+
+      // Tab 1 state
       sources: [],
       students: [],
       activeSourceFilter: "all",
       selectedStudent: null,
-      // cacheKey: `${source_id}::${student_id}` -> { today_iso, months: { 'YYYY-MM': payload } }
       usrCache: new Map(),
       activeMonthKey: null,
       viewMode: window.innerWidth >= 760 ? "full" : "compact",
       showFutureDays: false,
+
+      // Tab 2 (Jadeed Pages) state
+      jpMonthsCount: 3,
+      jpCache: new Map(), // monthsCount -> API response payload
+      jpSourceFilter: "all",
+      jpSort: "total", // 'total' | 'current' | 'zero' | 'az'
     };
 
     const $ = (id) => document.getElementById(id);
@@ -844,6 +1095,43 @@
       if (m >= 7.5) return "grade-ok";
       return "grade-low";
     }
+
+    function updatePrintVisibility() {
+      const show =
+        state.activeTab === "jpages" ||
+        (state.activeTab === "usr" && Boolean(state.selectedStudent));
+      $("printBtn").classList.toggle("hidden", !show);
+    }
+
+    function switchTab(tab, opts = {}) {
+      if (state.activeTab === "jpages" && tab === "usr") {
+        state.jpScrollY = window.scrollY;
+      }
+      state.activeTab = tab;
+      $("tabBtnUsr").classList.toggle("active", tab === "usr");
+      $("tabBtnJpages").classList.toggle("active", tab === "jpages");
+      $("tabBtnUsr").setAttribute("aria-selected", tab === "usr" ? "true" : "false");
+      $("tabBtnJpages").setAttribute("aria-selected", tab === "jpages" ? "true" : "false");
+
+      $("panelUsr").classList.toggle("active", tab === "usr");
+      $("panelJpages").classList.toggle("active", tab === "jpages");
+
+      if (!opts.keepDrillBack) {
+        state.cameFromJpages = false;
+      }
+      $("drillBackWrap").classList.toggle("visible", tab === "usr" && state.cameFromJpages);
+
+      updatePrintVisibility();
+
+      if (tab === "jpages") {
+        loadJadeedPages(state.jpMonthsCount, false);
+        if (opts.restoreScroll) {
+          setTimeout(() => window.scrollTo(0, state.jpScrollY), 20);
+        }
+      }
+    }
+
+    /* ==================== TAB 1: STUDENT USR ==================== */
 
     function getRecent() {
       try {
@@ -1029,7 +1317,7 @@
 
       $("emptyState").style.display = "none";
       $("reportCard").classList.add("visible");
-      $("printBtn").classList.remove("hidden");
+      updatePrintVisibility();
 
       $("stName").textContent = st.name;
       $("stIts").textContent = st.its ? `ITS: ${st.its}` : "ITS: —";
@@ -1077,7 +1365,6 @@
       const entry = state.usrCache.get(cacheKey);
       const mKey = `${year}-${String(month).padStart(2, "0")}`;
 
-      // 0ms instant switch if already prefetched/cached!
       if (entry && entry.months[mKey]) {
         state.activeMonthKey = mKey;
         renderCurrentMonth();
@@ -1261,7 +1548,6 @@
           const c = [];
           if (i === 0) c.push(dateTd(n));
 
-          // Murajat (3 cols)
           if (i < day.murajat.length) {
             const m = day.murajat[i];
             const dur = m.dur > 0 ? `<div style="margin-top:2px;"><span class="dur-tag${m.over ? " over" : ""}">⏱${fmtDur(m.dur)}</span></div>` : "";
@@ -1274,7 +1560,6 @@
             c.push(`<td class="col-mur"></td><td></td><td></td>`);
           }
 
-          // Juzulhali (3 cols)
           if (i < day.juzulhali.length) {
             const j = day.juzulhali[i];
             const dur = j.dur > 0 ? `<div style="margin-top:2px;"><span class="dur-tag${j.over ? " over" : ""}">⏱${fmtDur(j.dur)}</span></div>` : "";
@@ -1287,7 +1572,6 @@
             c.push(`<td class="col-jh"></td><td></td><td></td>`);
           }
 
-          // Jadeed (3 cols)
           if (i < day.jadeed.length) {
             const jd = day.jadeed[i];
             const flg = (jd.flags || []).map((f) => `<span class="flag-tag">${esc(f)}</span>`).join(" ");
@@ -1376,7 +1660,231 @@
       }
     }
 
-    // Event bindings
+    /* ==================== TAB 2: COLLECTIVE JADEED PAGES ==================== */
+
+    async function loadJadeedPages(monthsCount = 3, forceRefresh = false) {
+      state.jpMonthsCount = monthsCount;
+      $("jpBtn3m").classList.toggle("active", monthsCount === 3);
+      $("jpBtn6m").classList.toggle("active", monthsCount === 6);
+
+      if (!forceRefresh && state.jpCache.has(monthsCount)) {
+        renderJadeedPages();
+        return;
+      }
+
+      $("jpBody").innerHTML = `<div class="loading-box"><div class="spinner"></div>Loading ${monthsCount}-month Jadeed pages across all schools...</div>`;
+      try {
+        const res = await fetch(`/api/jadeed-pages?months=${monthsCount}${forceRefresh ? "&refresh=1" : ""}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        state.jpCache.set(monthsCount, data);
+
+        if (data.warnings && data.warnings.length) {
+          $("jpWarnBanner").textContent = "⚠️ Some branches unavailable: " + data.warnings.join(" | ");
+          $("jpWarnBanner").classList.add("visible");
+        } else {
+          $("jpWarnBanner").classList.remove("visible");
+        }
+        renderJadeedPages();
+      } catch (err) {
+        $("jpBody").innerHTML = `<div class="loading-box" style="color:#b91c1c;">❌ ${esc(err.message)}</div>`;
+      }
+    }
+
+    function renderJpSourcePills(payload) {
+      const total = payload.rows.length;
+      const pills = [
+        `<button class="pill${state.jpSourceFilter === "all" ? " active" : ""}" data-jpsrc="all">
+          All Schools <span class="cnt">(${total})</span>
+        </button>`,
+      ];
+      for (const s of payload.sources) {
+        pills.push(
+          `<button class="pill${state.jpSourceFilter === s.id ? " active" : ""}" data-jpsrc="${esc(s.id)}">
+            <span class="dot" style="background:${esc(s.color)}"></span>
+            ${esc(s.label)} <span class="cnt">(${s.count})</span>
+          </button>`
+        );
+      }
+      $("jpSourcePills").innerHTML = pills.join("");
+      $("jpSourcePills").querySelectorAll(".pill").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          state.jpSourceFilter = btn.dataset.jpsrc;
+          renderJadeedPages();
+        });
+      });
+    }
+
+    function jpPgClass(val) {
+      if (val >= 10) return "jp-pg jp-pg-high";
+      if (val >= 1) return "jp-pg jp-pg-mid";
+      return "jp-pg jp-pg-zero";
+    }
+
+    function renderJadeedPages() {
+      const payload = state.jpCache.get(state.jpMonthsCount);
+      if (!payload) return;
+
+      renderJpSourcePills(payload);
+
+      const months = payload.months || [];
+      const newest = months[months.length - 1];
+      const oldest = months[0];
+      if (newest) {
+        $("jpSortCurrentBtn").textContent = `${newest.short} ↓`;
+        const srcName =
+          state.jpSourceFilter === "all"
+            ? "All Schools"
+            : (payload.sources.find((s) => s.id === state.jpSourceFilter)?.label || state.jpSourceFilter);
+        $("jpRangeLabel").textContent = `${oldest.short_yr} – ${newest.short_yr} • ${srcName}`;
+      }
+
+      // Highlight active sort button
+      $("jpSortPills").querySelectorAll(".m-pill").forEach((b) => {
+        b.classList.toggle("active", b.dataset.sort === state.jpSort);
+      });
+
+      // Filter by school & quick search box
+      const q = $("jpFilterInput").value.trim().toLowerCase();
+      $("jpClearFilterBtn").classList.toggle("visible", q.length > 0);
+      const tokens = q ? q.split(/\s+/).filter(Boolean) : [];
+
+      let filtered = payload.rows.filter((r) => {
+        if (state.jpSourceFilter !== "all" && r.source_id !== state.jpSourceFilter) return false;
+        if (tokens.length) {
+          const hay = `${r.name} ${r.its} ${r.source_label}`.toLowerCase();
+          if (!tokens.every((t) => hay.includes(t))) return false;
+        }
+        return true;
+      });
+
+      // Sort
+      filtered = [...filtered];
+      if (state.jpSort === "total") {
+        filtered.sort((a, b) => b.total - a.total || b.current_month - a.current_month || a.name.localeCompare(b.name));
+      } else if (state.jpSort === "current") {
+        filtered.sort((a, b) => b.current_month - a.current_month || b.total - a.total || a.name.localeCompare(b.name));
+      } else if (state.jpSort === "zero") {
+        filtered.sort((a, b) => a.current_month - b.current_month || a.total - b.total || a.name.localeCompare(b.name));
+      } else if (state.jpSort === "az") {
+        filtered.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+      }
+
+      // Compute live summary KPIs
+      const totalSt = filtered.length;
+      const activeSt = filtered.filter((r) => r.total > 0).length;
+      const zeroSt = totalSt - activeSt;
+      const sumPages = filtered.reduce((acc, r) => acc + r.total, 0);
+
+      $("jpKpiStrip").innerHTML = `
+        <div class="jp-kpi">
+          <div class="kpi-lbl">Students</div>
+          <div class="kpi-val">${totalSt}</div>
+        </div>
+        <div class="jp-kpi">
+          <div class="kpi-lbl">Active</div>
+          <div class="kpi-val">${activeSt}</div>
+        </div>
+        <div class="jp-kpi">
+          <div class="kpi-lbl">0 Pages</div>
+          <div class="kpi-val" style="color:#fecaca;">${zeroSt}</div>
+        </div>
+        <div class="jp-kpi">
+          <div class="kpi-lbl">Total Pgs</div>
+          <div class="kpi-val" style="color:#fde68a;">${sumPages}</div>
+        </div>`;
+
+      if (!filtered.length) {
+        $("jpBody").innerHTML = `<div class="no-results">No matching students found.</div>`;
+        return;
+      }
+
+      const is3 = months.length <= 3;
+      const colgroup = is3
+        ? `<colgroup>
+            <col style="width:26px" />
+            <col />
+            ${months.map(() => `<col style="width:42px" />`).join("")}
+            <col style="width:46px" />
+          </colgroup>`
+        : "";
+
+      const headCols = months.map((m) => `<th>${esc(m.short)}</th>`).join("");
+      const bodyRows = filtered
+        .map((r, idx) => {
+          const latestTxt =
+            r.latest && r.latest.surah
+              ? `${r.latest.surah}${r.latest.page ? ` P:${r.latest.page}` : ""}`
+              : "No Jadeed";
+          const mCells = months
+            .map((m) => {
+              const v = r.months[m.key] || 0;
+              return `<td><span class="${jpPgClass(v)}">${v}</span></td>`;
+            })
+            .join("");
+          return `<tr data-jpidx="${idx}">
+            <td class="jp-rank">${idx + 1}</td>
+            <td class="jp-st-cell">
+              <span class="jp-st-name">${esc(r.name)}</span>
+              <span class="jp-st-sub">
+                <span class="jp-sdot" style="background:${esc(r.source_color)}"></span>
+                <span>${esc(r.source_label.split(" ")[0])}</span>
+                <span>·</span>
+                <span>${esc(latestTxt)}</span>
+              </span>
+            </td>
+            ${mCells}
+            <td class="jp-tot-cell"><span class="jp-tot-badge${r.total === 0 ? " zero" : ""}">${r.total}</span></td>
+          </tr>`;
+        })
+        .join("");
+
+      $("jpBody").innerHTML = `
+        <div class="table-scroll">
+          <table class="jp-table ${is3 ? "cols-3" : "cols-6"}">
+            ${colgroup}
+            <thead>
+              <tr>
+                <th>#</th>
+                <th class="th-st">Student</th>
+                ${headCols}
+                <th class="th-tot">Tot</th>
+              </tr>
+            </thead>
+            <tbody>${bodyRows}</tbody>
+          </table>
+        </div>
+        <div class="table-footer-note">
+          <span>Tap any student row to open their full 3-in-1 USR</span>
+          <span>${totalSt} student${totalSt === 1 ? "" : "s"}</span>
+        </div>`;
+
+      // 1-Tap Drill-Down into Student USR!
+      $("jpBody").querySelectorAll("tbody tr").forEach((tr) => {
+        tr.addEventListener("click", () => {
+          const row = filtered[Number(tr.dataset.jpidx)];
+          if (!row) return;
+          state.cameFromJpages = true;
+          switchTab("usr", { keepDrillBack: true });
+          window.scrollTo(0, 0);
+          selectStudent({
+            id: row.id,
+            name: row.name,
+            its: row.its,
+            source_id: row.source_id,
+            source_label: row.source_label,
+            source_color: row.source_color,
+          });
+        });
+      });
+    }
+
+    /* ==================== EVENT BINDINGS ==================== */
+
+    $("tabBtnUsr").addEventListener("click", () => switchTab("usr"));
+    $("tabBtnJpages").addEventListener("click", () => switchTab("jpages"));
+    $("drillBackBtn").addEventListener("click", () => switchTab("jpages", { restoreScroll: true }));
+
     $("searchInput").addEventListener("input", renderSearchResults);
     $("clearSearchBtn").addEventListener("click", () => {
       $("searchInput").value = "";
@@ -1387,6 +1895,22 @@
       localStorage.removeItem(RECENT_KEY);
       renderRecent();
     });
+
+    $("jpFilterInput").addEventListener("input", renderJadeedPages);
+    $("jpClearFilterBtn").addEventListener("click", () => {
+      $("jpFilterInput").value = "";
+      renderJadeedPages();
+      $("jpFilterInput").focus();
+    });
+    $("jpSortPills").querySelectorAll(".m-pill").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.jpSort = btn.dataset.sort;
+        renderJadeedPages();
+      });
+    });
+    $("jpBtn3m").addEventListener("click", () => loadJadeedPages(3, false));
+    $("jpBtn6m").addEventListener("click", () => loadJadeedPages(6, false));
+
     $("btnModeCompact").addEventListener("click", () => {
       state.viewMode = "compact";
       renderCurrentMonth();
@@ -1396,19 +1920,28 @@
       renderCurrentMonth();
     });
     $("printBtn").addEventListener("click", () => {
-      const prevMode = state.viewMode;
-      state.viewMode = "full";
-      renderCurrentMonth();
-      setTimeout(() => {
-        window.print();
-        state.viewMode = prevMode;
+      if (state.activeTab === "usr") {
+        const prevMode = state.viewMode;
+        state.viewMode = "full";
         renderCurrentMonth();
-      }, 80);
+        setTimeout(() => {
+          window.print();
+          state.viewMode = prevMode;
+          renderCurrentMonth();
+        }, 80);
+      } else {
+        window.print();
+      }
     });
     $("refreshBtn").addEventListener("click", () => {
       state.usrCache.clear();
+      state.jpCache.clear();
       loadDirectory(true);
-      if (state.selectedStudent) selectStudent(state.selectedStudent, true);
+      if (state.activeTab === "usr" && state.selectedStudent) {
+        selectStudent(state.selectedStudent, true);
+      } else if (state.activeTab === "jpages") {
+        loadJadeedPages(state.jpMonthsCount, true);
+      }
     });
 
     // Boot

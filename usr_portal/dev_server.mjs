@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 
 import studentsHandler from "./api/students.js";
 import usrHandler from "./api/usr.js";
+import jadeedPagesHandler from "./api/jadeed-pages.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.PORT || 3030);
@@ -48,6 +49,7 @@ const server = http.createServer(async (req, nodeRes) => {
 
   if (url.pathname === "/api/students") return studentsHandler(req, res);
   if (url.pathname === "/api/usr") return usrHandler(req, res);
+  if (url.pathname === "/api/jadeed-pages") return jadeedPagesHandler(req, res);
 
   const rel = url.pathname === "/" ? "index.html" : url.pathname.replace(/^\/+/, "");
   const filePath = path.join(__dirname, "public", rel);
