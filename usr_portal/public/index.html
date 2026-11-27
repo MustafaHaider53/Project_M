@@ -910,14 +910,14 @@
           </div>
         </div>
         <div class="top-actions">
-          <button class="icon-btn hidden" id="printBtn" title="Print / Save PDF">🖨️ Print</button>
+          <button class="icon-btn" id="printBtn" title="Print / Save PDF">🖨️ Print</button>
           <button class="icon-btn" id="refreshBtn" title="Refresh data">🔄</button>
         </div>
       </div>
 
       <nav class="main-tabs" role="tablist" aria-label="Report views">
-        <button class="main-tab active" id="tabBtnUsr" role="tab" aria-selected="true">🔍 Student USR</button>
-        <button class="main-tab" id="tabBtnJpages" role="tab" aria-selected="false">📊 Jadeed Pages</button>
+        <button class="main-tab active" id="tabBtnJpages" role="tab" aria-selected="true">📊 Jadeed Pages</button>
+        <button class="main-tab" id="tabBtnUsr" role="tab" aria-selected="false">🔍 Student USR</button>
       </nav>
     </div>
   </header>
@@ -925,7 +925,7 @@
   <main class="container">
 
     <!-- ==================== TAB 1: STUDENT USR (EXISTING) ==================== -->
-    <div class="tab-panel active" id="panelUsr">
+    <div class="tab-panel" id="panelUsr">
       <div class="drill-back" id="drillBackWrap">
         <button class="drill-back-btn" id="drillBackBtn">← Back to Jadeed Pages</button>
       </div>
@@ -994,7 +994,7 @@
     </div>
 
     <!-- ==================== TAB 2: COLLECTIVE JADEED PAGES ==================== -->
-    <div class="tab-panel" id="panelJpages">
+    <div class="tab-panel active" id="panelJpages">
       <section class="search-card">
         <div class="search-input-wrap">
           <span class="search-icon">🔎</span>
@@ -1053,7 +1053,7 @@
     const MONTH_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
     const state = {
-      activeTab: "usr", // 'usr' | 'jpages'
+      activeTab: "jpages", // 'jpages' (default) | 'usr'
       cameFromJpages: false,
       jpScrollY: 0,
 
@@ -1944,7 +1944,8 @@
       }
     });
 
-    // Boot
+    // Boot: load Jadeed Pages (default landing tab) and Student USR directory in parallel
+    loadJadeedPages(3, false);
     loadDirectory(false);
   </script>
 </body>
