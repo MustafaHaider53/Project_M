@@ -46,32 +46,51 @@ export function getSources() {
     sources.push(norm);
   };
 
-  // 1) Optional JSON array in SUPABASE_SOURCES_JSON
+  // Merge process.env with optional KEY=VALUE lines if pasted inside SUPABASE_SOURCES_JSON
+  const envMap = { ...process.env };
+
+  // 1) Optional JSON array OR KEY=VALUE lines in SUPABASE_SOURCES_JSON
   const raw = (process.env.SUPABASE_SOURCES_JSON || "").trim();
   if (raw) {
-    let parsed;
-    try {
-      parsed = JSON.parse(raw);
-    } catch (err) {
+    if (raw.startsWith("[")) {
+      let parsed;
+      try {
+        parsed = JSON.parse(raw);
+      } catch (err) {
+        throw new Error(
+          `Invalid JSON in SUPABASE_SOURCES_JSON: ${err.message} (length=${raw.length}, endsWith=${JSON.stringify(raw.slice(-15))})`
+        );
+      }
+      if (!Array.isArray(parsed)) {
+        throw new Error("SUPABASE_SOURCES_JSON must be a JSON array.");
+      }
+      for (const item of parsed) addSource(item);
+    } else if (raw.includes("=")) {
+      for (const line of raw.split(/\r?\n/)) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith("#")) continue;
+        const eq = trimmed.indexOf("=");
+        if (eq <= 0) continue;
+        const k = trimmed.slice(0, eq).trim();
+        const v = trimmed.slice(eq + 1).trim().replace(/^["']|["']$/g, "");
+        if (k && v) envMap[k] = v;
+      }
+    } else {
       throw new Error(
-        `Invalid JSON in SUPABASE_SOURCES_JSON: ${err.message} (length=${raw.length}, endsWith=${JSON.stringify(raw.slice(-15))})`
+        `Invalid format in SUPABASE_SOURCES_JSON (length=${raw.length}, endsWith=${JSON.stringify(raw.slice(-15))})`
       );
     }
-    if (!Array.isArray(parsed)) {
-      throw new Error("SUPABASE_SOURCES_JSON must be a JSON array.");
-    }
-    for (const item of parsed) addSource(item);
   }
 
   // 2) Named per-school env vars (MAIN_*, INTER_SCHOOL_*, AFTER_SCHOOL_*, SIBYAAN_*)
   for (const cfg of NAMED_SCHOOLS) {
-    const url = (process.env[`${cfg.prefix}_SUPABASE_URL`] || "").trim();
-    const key = (process.env[`${cfg.prefix}_SUPABASE_KEY`] || "").trim();
+    const url = (envMap[`${cfg.prefix}_SUPABASE_URL`] || "").trim();
+    const key = (envMap[`${cfg.prefix}_SUPABASE_KEY`] || "").trim();
     if (url && key) {
       addSource({
         id: cfg.id,
-        label: (process.env[`${cfg.prefix}_LABEL`] || cfg.label).trim(),
-        color: (process.env[`${cfg.prefix}_COLOR`] || cfg.color).trim(),
+        label: (envMap[`${cfg.prefix}_LABEL`] || cfg.label).trim(),
+        color: (envMap[`${cfg.prefix}_COLOR`] || cfg.color).trim(),
         url,
         key,
       });
@@ -80,13 +99,13 @@ export function getSources() {
 
   // 3) Generic numbered per-school env vars (SUPABASE_SOURCE_1_URL / _KEY .. 20)
   for (let i = 1; i <= 20; i++) {
-    const url = (process.env[`SUPABASE_SOURCE_${i}_URL`] || "").trim();
-    const key = (process.env[`SUPABASE_SOURCE_${i}_KEY`] || "").trim();
+    const url = (envMap[`SUPABASE_SOURCE_${i}_URL`] || "").trim();
+    const key = (envMap[`SUPABASE_SOURCE_${i}_KEY`] || "").trim();
     if (url && key) {
       addSource({
-        id: (process.env[`SUPABASE_SOURCE_${i}_ID`] || `source_${i}`).trim(),
-        label: (process.env[`SUPABASE_SOURCE_${i}_LABEL`] || `School ${i}`).trim(),
-        color: (process.env[`SUPABASE_SOURCE_${i}_COLOR`] || "#0E6B50").trim(),
+        id: (envMap[`SUPABASE_SOURCE_${i}_ID`] || `source_${i}`).trim(),
+        label: (envMap[`SUPABASE_SOURCE_${i}_LABEL`] || `School ${i}`).trim(),
+        color: (envMap[`SUPABASE_SOURCE_${i}_COLOR`] || "#0E6B50").trim(),
         url,
         key,
       });
